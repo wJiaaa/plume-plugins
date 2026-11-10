@@ -59,9 +59,6 @@ importers:
 
   plugins/hooks:
     devDependencies:
-      '@plume/platform':
-        specifier: link:../../../plume/packages/infra/platform
-        version: link:../../../plume/packages/infra/platform
       '@plume/plugin-sdk':
         specifier: link:../../../plume/packages/sdk/plugin-sdk
         version: link:../../../plume/packages/sdk/plugin-sdk

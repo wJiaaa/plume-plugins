@@ -5,10 +5,16 @@
 
 import { expect, it, vi } from "vitest";
 
-vi.mock("@plume/ui", async () => await import("../../../../plume/packages/client/ui/src/keyboard.ts"));
+// @plume/ui 的运行时由宿主给，测试里换成照公开说明写的替身：Mac 键盘按平台名认，字母键按 key 或物理按键认，
+// 组字中（输入法、keyCode 229、带 AltGraph）的键算组字。
+vi.mock("@plume/ui", () => ({
+	macKeyboard: (platform: string) => /Mac|iPhone|iPad|iPod|darwin/i.test(platform),
+	shortcutLetter: (event: Pick<KeyboardEvent, "key" | "code">) =>
+		/^[a-z]$/i.test(event.key) ? event.key.toLowerCase() : /^Key[A-Z]$/.test(event.code) ? event.code.slice(3).toLowerCase() : null,
+	composingKey: (event: KeyboardEvent) => event.isComposing || event.keyCode === 229 || event.getModifierState("AltGraph"),
+}));
 
 const { terminalKey } = await import("../src/keys.ts");
-const { composingKey } = await import("@plume/ui");
 
 /** Chromium 发来的 keydown：除非说了，没有 AltGraph。 */
 function key(keyName: string, code: string, init: Partial<KeyboardEvent> = {}, altGraph = false): KeyboardEvent {
@@ -68,7 +74,6 @@ it("Windows/Linux：Ctrl+Alt+S/P/U 归应用，AltGr 组字和别的字母仍归
 	for (const platform of ["Win32", "Linux x86_64"]) {
 		for (const letter of ["s", "p", "u"]) {
 			const ctrlAlt = key(letter, `Key${letter.toUpperCase()}`, { ctrlKey: true, altKey: true });
-			expect(composingKey(ctrlAlt)).toBe(false);
 			expect(terminalKey(ctrlAlt, false, platform)).toBe("app");
 		}
 		expect(terminalKey(key("a", "KeyA", { ctrlKey: true, altKey: true }), false, platform)).toBe("shell");
@@ -76,7 +81,6 @@ it("Windows/Linux：Ctrl+Alt+S/P/U 归应用，AltGr 组字和别的字母仍归
 	}
 	// 波兰语布局 AltGr+S 打 ś：Windows 上到达时是 Ctrl+Alt，带 AltGraph。
 	const altGr = key("ś", "KeyS", { ctrlKey: true, altKey: true }, true);
-	expect(composingKey(altGr)).toBe(true);
 	expect(terminalKey(altGr, false, "Win32")).toBe("shell");
 	// Mac 上应用的快捷键是 ⌘，xterm 不碰：Ctrl+Option 仍归 shell。
 	expect(terminalKey(key("s", "KeyS", { ctrlKey: true, altKey: true }), false, "MacIntel")).toBe("shell");

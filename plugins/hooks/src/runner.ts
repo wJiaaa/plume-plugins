@@ -13,7 +13,7 @@ import { existsSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { devNull, tmpdir } from "node:os";
 import { join } from "node:path";
-import { systemShell } from "@plume/platform";
+import { systemShell } from "./shell.ts";
 import {
 	DEFAULT_HOOK_MAX_OUTPUT_BYTES,
 	DEFAULT_HOOK_TIMEOUT_MS,

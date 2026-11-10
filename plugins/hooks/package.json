@@ -21,7 +21,6 @@
     "test": "node --test --experimental-strip-types test/*.test.ts"
   },
   "devDependencies": {
-    "@plume/platform": "link:../../../plume/packages/infra/platform",
     "@plume/plugin-sdk": "link:../../../plume/packages/sdk/plugin-sdk",
     "@types/node": "^24.10.0",
     "@types/react": "^19.2.0"
