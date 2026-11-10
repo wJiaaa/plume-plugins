@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/side-chat",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "在对话旁边另开一个侧边聊天：问问主会话在做什么、为什么这样做，或者顺手做件小事，主对话里什么都不留。",
   "author": "Plume",
   "keywords": [

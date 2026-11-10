@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/usage",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "设置 › 数据里的「使用统计」：每一次模型调用按时间、供应商、模型来切，看 token、费用、缓存命中、输出速度，一年的热力图，导出 CSV。数据只在本机。",
   "author": "Plume",
   "keywords": [

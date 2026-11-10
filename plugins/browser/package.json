@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/browser",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "在面板区开网页：地址栏能搜索，书签、缩放、视口尺寸、选取元素交给 Agent；Agent 在同一页上点、输、读，人看得见它的光标。",
   "author": "Plume",
   "keywords": [

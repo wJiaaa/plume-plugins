@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/image",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "让 agent 画图、改图：image_generate 用模型设置里标成生图模型的模型出图，对话里边画边显示；侧栏多一个画廊，所有对话画过的图按天排开，看每张图是怎么一步步改出来的。",
   "author": "Plume",
   "keywords": [

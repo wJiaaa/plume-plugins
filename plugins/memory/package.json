@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/memory",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "记住用户的偏好和每个项目学到的东西，放进以后会话的提示词：用户记忆在设置里手动加；项目记忆由 agent 用 learn 工具记下，也可以开启后台总结，从结束了的会话里提炼。",
   "author": "Plume",
   "keywords": [

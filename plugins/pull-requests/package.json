@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/pull-requests",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "跨 GitHub、GitLab、Gitee 和 Gitea 账号查看拉取请求、代码改动、检查和动态，提交评论与审查结论，并交给 Agent 分析。",
   "author": "Plume",
   "keywords": [

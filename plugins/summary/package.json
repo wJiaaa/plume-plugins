@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/summary",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "每轮结束、静下来一分钟后，在后台让模型把会话写成一段摘要，放在环境卡片里：在做什么、做到哪了、下一步是什么。",
   "author": "Plume",
   "keywords": [

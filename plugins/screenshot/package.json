@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/screenshot",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "屏幕截图：全局快捷键或输入框里的相机按钮拍下当前屏幕，框选区域或点一下整个窗口，在上面画箭头、框、文字，完成后复制、下载或钉在桌面上。",
   "author": "Plume",
   "keywords": [
