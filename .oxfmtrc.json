@@ -9,5 +9,5 @@
       "options": { "useTabs": false, "tabWidth": 2 }
     }
   ],
-  "ignorePatterns": ["pnpm-lock.yaml", "**/*.md"]
+  "ignorePatterns": ["pnpm-lock.yaml", "**/*.md", "skills/*/skills/**"]
 }

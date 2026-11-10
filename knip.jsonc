@@ -15,6 +15,9 @@
     },
   },
 
+  // 技能合集里的技能是从上游原样搬来的内容（scripts/sync-skills.mjs），带的脚本不是这个仓库的代码。
+  "ignore": ["skills/*/skills/**"],
+
   // 插件界面入口的 react 运行时由宿主的 import map 给，类型经插件 SDK，不必写进插件的依赖。放在顶层而不是插件那一组：
   // 没有界面入口的插件不 import react，写在那一组会对它们逐个提示「用不着这条」。
   "ignoreDependencies": ["react"],

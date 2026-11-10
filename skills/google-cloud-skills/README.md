@@ -1,0 +1,178 @@
+# Google Cloud Skills
+
+Google 官方的 129 个 Google Cloud 技能：部署、运维、数据与 AI 服务。
+
+这是一组技能（共 164 个），装上后 agent 在需要时按技能说明去做。
+
+## 包含的技能
+
+- **agent-platform-access-audit**：Audits AI agent data access, blast radius, and blocked policy operations in Google Cloud by querying Cloud Audit Logs via BigQuery.
+- **agent-platform-alert-configuration**：Configures best-practice alerting policies for AI agents using OpenTelemetry (OTel) metrics, generating output as Terraform (.tf) configuration files.
+- **agent-platform-architecture**：Designs, engineers, and validates enterprise Gemini platform architectures.
+- **agent-platform-deploy**：Deploy open models or custom weights from Model Garden to Agent Platform endpoints, check the status of an in-progress deployment operation, or clean up resources by undeploying models and deleting endpoints.
+- **agent-platform-endpoint-management**：Manages Agent Platform serving endpoints.
+- **agent-platform-eval-flywheel**：Measures and improves the quality of AI models and agents on Google Cloud using the Eval Quality Flywheel methodology.
+- **agent-platform-inference**：Connects to and performs inference with Google Cloud Agent Platform GenAI models, including First-Party Gemini models and Third-Party OpenMaaS models (Llama, DeepSeek, Qwen, etc.).
+- **agent-platform-migrate-from-ai-studio**：Guides agents and users through migrating from Gemini API in Google AI Studio to Gemini Enterprise Agent Platform (formerly Vertex AI).
+- **agent-platform-model-registry**：Agent Platform Model Registry Management.
+- **agent-platform-prompt-management**：Manages and orchestrates prompts in Agent Platform.
+- **agent-platform-rag-engine-management**：Manage and query Agent Platform RAG Engine Corpora and retrieve grounded contexts using the Google GenAI SDK.
+- **agent-platform-skill-registry**：Interact with the Gemini Enterprise Agent Platform Skill Registry to create and search for available skills.
+- **agent-platform-troubleshooting**：Troubleshoots Google Cloud Gemini Enterprise Agent Platform issues across Agent Gateway, Agent Connectivity Templates (ACT), Agent Registry, Agent Identity, Ide…
+- **agent-platform-tuning**：Agent Platform Model Tuning.
+- **agent-platform-tuning-management**：Manages GenAI tuning jobs in Agent Platform.
+- **alloydb-basics**：Manages clusters, instances, and backups for AlloyDB for PostgreSQL, and integrates with AlloyDB Model Context Protocol (MCP) tools for automated database operations.
+- **api-gateway-backend-security-and-rate-limiting**：Secures and rate limits backend services behind Google Cloud API Gateway across OpenAPI 2.0 and OpenAPI 3.0.x API configurations, including MCP-enabled gateways.
+- **api-gateway-mcp-server**：Configures Google Cloud API Gateway to act as a remote Model Context Protocol (MCP) server (Public Preview) that exposes REST APIs as agent tools over HTTP (POST /mcp).
+- **api-gateway-openapi-spec-authoring**：Writes, migrates, and fixes OpenAPI specs for Google Cloud API Gateway.
+- **apigee-agent-gateway-governance**：Stands up an Apigee API proxy that a Google Cloud Agent Gateway calls as an ext-proc (Service Extension) callout on an agent's LLM traffic, to meter token usage per model, extract caller identity, and apply Model Armor prompt screening or a semantic cache.
+- **application-design-center-design-deploy**：Processes GCP infrastructure design and deployment workflows within Application Design Center (ADC).
+- **application-integration-authoring**：Builds, versions, publishes, tests, and executes Google Cloud Application Integration workflows through the REST API and Python discovery client, and promotes versions across environments.
+- **application-integration-basics**：Explains Google Cloud Application Integration concepts, region provisioning, IAM roles, run-as service accounts, interface choices (REST, Python discovery client, Terraform, ADK), and platform limits.
+- **application-integration-troubleshooting**：Diagnoses failed, stuck, or silent Google Cloud Application Integration runs and Integration Connectors tasks using the REST API, Cloud Logging, and Cloud Monitoring.
+- **assured-workloads-basics**：Provisions, inspects, updates, and deletes Google Cloud Assured Workloads V1 compliant folders, CMEK settings, Sovereign Controls by Partners, and service usage restrictions.
+- **assuredworkloads-environment-assessor**：Discover Google Cloud resource telemetry and effective Org Policies, evaluate brownfield workloads against sovereign data boundary and compliance standards (EU…
+- **assuredworkloads-frameworks-author**：Authors custom cloud controls and customized frameworks for Assured Workloads when built-in resources cannot satisfy core requirements.
+- **assuredworkloads-frameworks-navigator**：Acts as a Data Boundary Compliance Analyst that maps user compliance queries against Data Boundary Frameworks and cloud controls, validates matched resources, and recommends appropriate Frameworks or cloud controls.
+- **bigquery-ai-ml**：Leverages BigQuery's built-in machine learning and GenAI capabilities for advanced data analytics.
+- **bigquery-basics**：Manages datasets, tables, and jobs in BigQuery.
+- **bigquery-bigframes**：Generates Python code using BigQuery DataFrames (BigFrames).
+- **bigquery-migration-sql-translator**：Translates SQL queries, DDL schemas, and stored procedures from legacy database dialects (Teradata, Oracle, Redshift, Snowflake, SparkSQL, HiveQL) to BigQuery GoogleSQL using the BigQuery Migration Service (BQMS) MCP server.
+- **bigquery-observability**：Provides data-retrieval best practices, tool selection guidance, and performant SQL query syntax for BigQuery telemetry across INFORMATION_SCHEMA, Cloud Monitoring, and the REST API.
+- **bigquery-optimization**：Provides workflows to optimize BigQuery environments (capacity planning, editions), storage assets (partitioning, clustering, storage lifecycles, billing models), and SQL queries.
+- **bigquery-troubleshooting**：Provides diagnostic workflows and step-by-step root-cause analysis procedures for actively broken, failing, or slow BigQuery jobs, execution graph and query plan stage bottlenecks, system performance issues, or unexpectedly expensive workloads.
+- **bigquery-udfs**：Creates, deploys, and troubleshoots BigQuery User-Defined Functions (UDFs) and Remote Functions across SQL, JavaScript, Python, and Cloud Run endpoints.
+- **bigtable-basics**：Assists in provisioning instances/tables, designing performant schemas, and querying data in Bigtable.
+- **cloud-armor-crs-rule-upgrader**：Upgrades Google Cloud Armor security policies from OWASP CRS 3.0 and 3.3 to OWASP CRS 4.22.
+- **cloud-build-basics**：Teaches the fundamentals of Cloud Build on Google Cloud.
+- **cloud-databases-onboarding**：Guides users through discovering their database requirements, recommends a Google Cloud database based on a recommendation matrix, and assists in database creation.
+- **cloud-logging-configuration-basics**：Configure single-project Cloud Logging on Google Cloud: regional log buckets, log sinks, log views, restricting or hiding sensitive logs in the default view (_Default) filter, IAM permissions for views (Logs View Accessor, IAM conditions), logs-based metrics, log exclusions, and sampling.
+- **cloud-logging-cross-project-configuration**：Configure and troubleshoot Google Cloud cross-project centralized logging and read-time aggregation.
+- **cloud-logging-finops**：Audits Cloud Logging costs for a Google Cloud project: the charges for log entries written to log buckets, the services, log streams and severities that drive them, and the log sinks that route them.
+- **cloud-logging-query-generation**：Generates Logging Query Language (LQL) queries for Cloud Logging on Google Cloud from natural language.
+- **cloud-monitoring-alert-configuration**：Configures Cloud Monitoring alerting policies using Terraform and PromQL across Cloud Run, Google Kubernetes Engine (GKE), Compute Engine, AI Hypercomputer reservations, Vertex AI Agent Engine, and generic Google Cloud resources.
+- **cloud-monitoring-chart-generation**：Generates Cloud Monitoring Server-Driven UI (SDUI) Widget and XyChart Protocol Buffer textprotos on Google Cloud from resolved PromQL or ListTimeSeries queries.
+- **cloud-monitoring-list-time-series-request**：Generates valid Cloud Monitoring ListTimeSeries requests and aggregation specifications from metric descriptors and resource parameters.
+- **cloud-monitoring-metric-selection**：Retrieve, query, and identify relevant Cloud Monitoring metric descriptors on Google Cloud for a service or resource (such as Compute Engine, Spanner, BigQuery, Cloud Run, Cloud SQL, Pub/Sub, Cloud Storage, etc.).
+- **cloud-monitoring-notification-channels-configuration**：Generates Terraform HCL configurations for Cloud Monitoring notification channels (`google_monitoring_notification_channel`) and adds notification channels to alerting policies (`google_monitoring_alert_policy`) in Google Cloud projects.
+- **cloud-monitoring-promql-query**：Generates valid PromQL queries from Cloud Monitoring metric descriptors and resource parameters.
+- **cloud-network-insights**：Guides and automates setup, onboarding, and synthetic monitoring operations for Cloud Network Insights in Google Cloud and Broadcom AppNeta.
+- **cloud-operator**：Google Cloud (GCP) assistant and operator via the autocloud MCP server.
+- **cloud-run-alert-configuration**：Configures best-practice, high-signal alerting policies for Cloud Run resources on Google Cloud (services, jobs, and worker pools) based on seasoned SRE practices.
+- **cloud-run-basics**：Manages Cloud Run services, jobs, and worker pools.
+- **cloud-sql-basics**：This file generates or explains Cloud SQL resources.
+- **cloud-trace-querying**：Query Cloud Trace spans, filter by latency thresholds or error status, correlate distributed traces with Cloud Logging, and diagnose latency bottlenecks across Google Cloud services.
+- **compute-future-reservations**：Evaluates future GPU and TPU reservation feasibility and calendar-mode booking options in Google Compute Engine (GCE).
+- **compute-on-demand-reservations**：Inspects, verifies, and manages Google Compute Engine (GCE) On-Demand reservations and analyzes consumed versus available reserved capacity.
+- **datalineage-bigquery-asset-impact-analysis**：Analyzes the downstream impact (blast radius) using data lineage on Google Cloud when a BigQuery table or view is broken, stale, or modified.
+- **datalineage-summary**：Summarizes data lineage graphs on Google Cloud to help users debug data quality issues and understand data provenance for BigQuery and Cloud Storage.
+- **dbt-sf-to-bq-translator**：Translates Snowflake dbt SQL models to Standardized BigQuery SQL.
+- **detection-engineering-coverage-evaluation**：Automates the end-to-end detection engineering workflow in Google SecOps using MCP tools.
+- **developer-device-platform-basics**：Provides guidance and instructions on managing remote devices on Developer Device Platform (DDP).
+- **developing-genkit-dart**：Generates code and provides documentation for the Genkit Dart SDK.
+- **developing-genkit-go**：Develop AI-powered applications using Genkit in Go.
+- **developing-genkit-js**：Develop AI-powered applications using Genkit in Node.js/TypeScript.
+- **developing-genkit-python**：Develop AI-powered applications using Genkit in Python.
+- **firebase-basics**：Provides foundational Firebase CLI setup, CLI installation, version checks (`firebase-tools@latest --version`), CLI login (including --no-localhost), project creation, project selection (`firebase use`), and app config file downloads (`google-services.json`, `GoogleService-Info.plist`).
+- **gcloud**：Provides safety-critical validation, guardrails, and data reduction for gcloud CLI operations across Google Cloud Platform (GCP) services and infrastructure.
+- **gemini-agents-api**：Manages custom Agent resources on Gemini Enterprise Agent Platform.
+- **gemini-api**：Use when the user asks about using Gemini in an enterprise environment or explicitly mentions Vertex AI, Google Cloud, or Agent Platform.
+- **gemini-interactions-api**：Guides the usage of Gemini Interactions API on Gemini Enterprise Agent Platform.
+- **gemini-live-api**：Generates a Gemini LiveAPI client service class in the user's chosen programming language.
+- **gke-ai-troubleshooting-handle-disruption-gpu-tpu**：Diagnoses, predicts, and mitigates node disruptions during Compute Engine host maintenance and hardware or software maintenance events for GPU and TPU workloads on GKE.
+- **gke-ai-troubleshooting-jobset-interruption**：Diagnoses GKE JobSet interruptions, restarts, and preemptions for AI/ML training workloads autonomously.
+- **gke-ai-troubleshooting-node-unresponsive-timeout**：Diagnose and mitigate GKE TPU or GPU nodes stuck in NotReady / NodeStatusUnknown ("Kubelet stopped posting node status") due to host kernel panics, hardware lockups, or disabled node auto-repair.
+- **gke-ai-troubleshooting-tpu-dynamic-slices-monitoring**：Monitors, troubleshoots, and manages GKE TPU Dynamic Slices custom resources.
+- **gke-ai-troubleshooting-tpu-metrics-monitoring**：Monitors and troubleshoots GKE TPU workloads, nodes, and node pools using GKE system metrics and PromQL.
+- **gke-ai-troubleshooting-tpu-mxla-hang**：Diagnose GKE Cloud TPU multi-slice training hangs (Megascale `HANG_DETECTED` logs and hang monitored events) using the ML Diagnostics `Megascale XLA (MXLA) Hang…
+- **gke-ai-troubleshooting-tpu-partition-overlap**：Diagnose and resolve GKE TPU slice creation failures (SliceCreationFailed) caused by partition overlap conflicts where requested TPU partitions or their nodes are already used by another slice or JobSet.
+- **gke-ai-troubleshooting-tpu-performance-degradation**：Diagnose GKE Cloud TPU training throughput drops and step-time regressions (15%+ TPU duty-cycle drop) using ML Diagnostics Workload Monitoring (`gcloud alpha ml…
+- **gke-ai-troubleshooting-tpu-reservation-stockout**：Diagnose and resolve cluster-wide GKE TPU node pool creation or scale-up failures caused by Compute Engine reservation stockouts (GCE_STOCKOUT, ZONE_RESOURCE_PO…
+- **gke-ai-troubleshooting-tpu-slice-mig-stuck-updating**：Diagnose and resolve GKE TPU Dynamic Slice creation and JobSet scheduling failures blocked by underlying Compute Engine managed instance groups (MIGs) stuck in an updating or unstable state (isStable=False).
+- **gke-ai-troubleshooting-tpu-vbar-oom**：Diagnoses and prevents vbar_control_agent segfaults, out-of-memory (OOM) errors, and TPU device initialization failures on TPU v6e nodes in GKE caused by race conditions during TPU device resets or high-frequency metrics polling.
+- **gke-ai-troubleshooting-tpu-vm-repair-stuck**：Diagnose GKE TPU VM instances stuck in Compute Engine repair (REPAIRING state) after host errors, maintenance events, or faulty host reports in single-host, multi-host, dynamic slicing, and TPU All Capacity mode node pools.
+- **gke-alert-configuration**：Configures alerting policies in Terraform for Google Kubernetes Engine (GKE) clusters, workloads, and services using PromQL and Google Cloud Managed Service for Prometheus.
+- **gke-app-onboarding**：Manages GKE application onboarding, covering containerization, deployment manifests, and migration.
+- **gke-backup-dr**：Configures Backup for GKE: the BackupRestore cluster addon, BackupPlan and RestorePlan resources, restore workflows, and CMEK-encrypted backups.
+- **gke-basics**：Manages core GKE cluster provisioning, credentials, Autopilot vs Standard selection, and workload deployment.
+- **gke-batch-hpc**：Runs batch and HPC workloads on GKE, utilizing job queues and parallel processing.
+- **gke-cluster-autoscaler**：Trigger on mention of GKE cluster autoscaler, node autoscaling, node pool auto-creation / node auto-provisioning.
+- **gke-cluster-creation**：Plans and executes GKE cluster creation, provisioning, and production readiness audits using pre-defined templates (Autopilot, Standard Regional, GPU/AI Inference, AI Hypercompute).
+- **gke-compute-classes**：Configures, optimizes, and troubleshoots GKE ComputeClasses.
+- **gke-cost-analysis**：Answer natural language questions and perform analysis on GKE cluster and workload costs using BigQuery billing exports, cost allocation data, and live cluster monitoring metrics.
+- **gke-cost-optimization**：Optimizes GKE costs, rightsizes workloads, and configures Spot VMs, CUDs, cost allocation, and resource quotas.
+- **gke-custom-golden-image-discovery**：Discovers golden base images for creating GKE custom node images based on technical specifications or context clues.
+- **gke-golden-path**：Provides GKE golden path configuration defaults, production readiness checklists, and cluster default patterns.
+- **gke-inference**：Deploys and optimizes AI/ML inference workloads on GKE, using GPUs, TPUs, and model servers.
+- **gke-manifest-generation**：Generates and updates secure, production-ready Kubernetes YAML manifests optimized for GKE Autopilot and GKE Standard clusters.
+- **gke-multitenancy**：Plans and configures multi-tenancy on GKE.
+- **gke-networking**：Plans, configures, and manages core GKE cluster networking.
+- **gke-node-notready**：Diagnoses GKE nodes reporting NotReady or Unknown status by inspecting node conditions, events, kubelet/containerd logs, and node metrics, then proposing safe remediations.
+- **gke-observability**：Configures GKE observability, including Cloud Logging, Cloud Monitoring, and managed Prometheus.
+- **gke-platform-security**：Plans, configures, and hardens platform-level Google Kubernetes Engine (GKE) cluster security.
+- **gke-productionize**：Orchestrates comprehensive production readiness reviews and assessments for GKE clusters and workloads across scalability, security, reliability, observability, backup/DR, and cost optimization.
+- **gke-reliability**：Improves GKE workload reliability, using PDBs, health probes, and topology spread constraints.
+- **gke-service-networking**：Configures GKE edge networking, traffic routing, load balancing, and private service endpoints.
+- **gke-storage**：Manages GKE storage, including PVCs, PersistentVolumes, and Filestore.
+- **gke-storage-troubleshooting**：Diagnoses GKE persistent-storage failures — volume attach/mount errors (Regional PD on optimized VMs, fsGroup mount timeouts), disk-performance and node storage…
+- **gke-upgrades**：Plans, executes, and validates Google Kubernetes Engine (GKE) cluster upgrades and maintenance operations for both Standard and Autopilot clusters.
+- **gke-workload-identity**：Configures and diagnoses Workload Identity Federation for GKE authentication failures for Pods (403 "iam.serviceAccounts.getAccessToken" / permission denied, "c…
+- **gke-workload-scaling**：Manages scaling for GKE workloads using HPA and VPA.
+- **gke-workload-scaling-troubleshooting**：Diagnoses GKE HorizontalPodAutoscaler (HPA) failures — metrics showing as &lt;unknown&gt;, FailedGetResourceMetric / FailedGetScale / FailedComputeMetricsReplicas eve…
+- **gke-workload-security**：Audits, configures, and hardens workload-level security controls for Google Kubernetes Engine (GKE) applications and namespaces.
+- **gke-workload-troubleshooting**：Diagnoses GKE workload failures (CrashLoopBackOff, OOMKilled, ImagePullBackOff, Pending, etc.) via logs and events.
+- **google-agents-cli-onboarding**：Onboarding entrypoint for agents-cli in Agent Platform.
+- **google-cloud-filestore-auditing**：Audits Filestore instances on Google Cloud across projects for disaster recovery readiness (missing or stale backups), security access governance (overly permis…
+- **google-cloud-filestore-autoscale**：Inspects Filestore capacity and utilization on Google Cloud, evaluates storage scaling rules, and performs capacity autoscaling (scale UP for low free space or scale DOWN for cost optimization).
+- **google-cloud-filestore-log-troubleshooting**：Diagnoses and resolves Filestore client mount failures on Google Cloud, permission errors (EACCES), and network timeouts (ETIMEDOUT).
+- **google-cloud-filestore-nfs-browser**：Inspects, searches, and reads files and POSIX metadata on Filestore (NFS) instances on Google Cloud without local NFS client packages or root privileges.
+- **google-cloud-global-frontend-configuration**：Guides agents through a 6-step discovery process to design and deploy Google Cloud global external Application Load Balancers with Cloud CDN, Cloud Armor, and Service Extensions, mapping workload requirements to best-practice configurations.
+- **google-cloud-networking-observability**：Investigates Google Cloud networking issues by analyzing GCP logs, metrics, and diagnostics.
+- **google-cloud-recipe-auth**：Provides expert guidance on Identity and Access Management (IAM) and authenticating and authorizing to Google Cloud services and APIs, covering human users, service identities, Application Default Credentials (ADC), and best practices for secure access.
+- **google-cloud-recipe-foundation-builder**：Deploys a baseline landing zone foundation for a Google Cloud Organization, establishing security guardrails using Organization Policies, resource hierarchy folders and projects, billing association, and centralized logging and monitoring.
+- **google-cloud-recipe-onboarding**：Guides a developer's first steps on Google Cloud, covering account creation, billing setup, project management, and deploying a first resource.
+- **google-cloud-scc-query**：Queries and retrieves active security findings, external exposures, toxic combinations, vulnerabilities, threats, and sensitive data risks from Security Command Center on Google Cloud.
+- **google-cloud-scc-remediation**：Remediates Google Cloud Security Command Center findings, including IAM permission fixes, cloud resource misconfigurations, vulnerabilities, and Toxic Combinations.
+- **google-cloud-slo-alert-configuration**：Configures Cloud Monitoring PromQL-based Service Level Objective (SLO) alerting policies on Google Cloud for resources registered in App Hub or individually specified.
+- **google-cloud-solution-agentic-ai-bidirectional-streaming**：Guides agents to interactively discover customer requirements for live, bidirectional multi-agent AI systems that process continuous streams of multimodal data for real-time technical guidance and safety monitoring.
+- **google-cloud-solution-agentic-ai-borderless-data-lakehouse**：Discovers requirements and designs a borderless open data lakehouse using Lakehouse for Apache Iceberg and BigQuery data agents.
+- **google-cloud-solution-agentic-ai-data-science-workflow**：Designs a tailored multi-product agentic data science architecture on Google Cloud that incorporates opinionated best practices.
+- **google-cloud-solution-agentic-analytics-spark-knowledge-catalog**：Discovers requirements and designs an end-to-end governed agentic analytics solution using Knowledge Catalog and Managed Service for Apache Spark (Lightning Engine).
+- **google-cloud-solution-architecture**：Interactively discovers requirements and designs holistic, multi-product system architectures, solution blueprints, and deployment recommendations for complex workloads on Google Cloud.
+- **google-cloud-solution-build-deploy-agents**：Designs, builds, and deploys AI agents or multi-agent systems on Google Cloud.
+- **google-cloud-solution-guided-gke-ai-migration**：Guides the migration of existing AI workloads (Cloud Run, Gemini API, Gemini Enterprise Agent Platform) to self-hosted GKE inference using gcloud and kubectl.
+- **google-cloud-solution-hybrid-search-alloydb**：Discovers requirements and generates architectural, design, and deployment guidance for dynamic hybrid search systems by combining semantic search and keyword search.
+- **google-cloud-solution-multi-agent-security**：Designs, deploys, and secures Google Cloud Agent Gateway solutions.
+- **google-cloud-solution-n-tier-serverless-web-app**：Assists in designing and implementing secure n-tier serverless web applications and microservices on Google Cloud.
+- **google-cloud-solution-rag-enterprise-search-gke-sqldb**：Discovers requirements, and generates architectural, design, and deployment guidance for a retrieval-augmented generation (RAG)-capable enterprise search system in Google Cloud.
+- **google-cloud-storage-basics**：Stores, retrieves, and manages data as objects in Cloud Storage on Google Cloud (also known colloquially as GCS) buckets.
+- **google-cloud-storage-bucket-architect**：Creates Cloud Storage on Google Cloud (also known colloquially as GCS) buckets.
+- **google-cloud-storage-diagnostic**：Troubleshoots and diagnoses Cloud Storage on Google Cloud (also known colloquially as GCS) access and permission denials (403 Permission Denied or Insufficient Permission) and access control conflicts.
+- **google-cloud-storage-fuse**：Mounts Cloud Storage buckets on Google Cloud as a POSIX file system with Cloud Storage FUSE (gcsfuse).
+- **google-cloud-waf-cost-optimization**：Evaluates Google Cloud workloads for cost efficiency and FinOps alignment using the Google Cloud Well-Architected Framework Cost Optimization pillar.
+- **google-cloud-waf-operational-excellence**：Generates operational guidance for CI/CD deployment pipelines, observability, monitoring, logging, and incident management on Google Cloud based on the design principles and recommendations in the Operational Excellence pillar of the Google Cloud Well-Architected Framework (WAF).
+- **google-cloud-waf-performance-optimization**：Generates performance-focused guidance for Google Cloud workloads based on the design principles and recommendations in the Performance Optimization pillar of the Google Cloud Well-Architected Framework (WAF).
+- **google-cloud-waf-reliability**：Evaluates, designs, and improves the reliability, resilience, availability, fault tolerance, and disaster recovery (DR) of Google Cloud workloads based on the design principles and recommendations in the Reliability pillar of the Google Cloud Well-Architected Framework.
+- **google-cloud-waf-security**：Generates security-focused guidance for Google Cloud workloads based on the design principles and recommendations in the Google Cloud Well-Architected Framework (WAF).
+- **google-cloud-waf-sustainability**：Provides recommendations for environmental sustainability, carbon footprint reduction, and energy efficiency based on the Sustainability pillar of the Google Cloud Well-Architected Framework (WAF).
+- **iam-helper-for-policy-management**：Streamlines the creation, modification, and management of IAM allow policies (v1) and deny policies (v2).
+- **iam-helper-for-policy-simulator**：Safely simulates and applies Identity and Access Management (IAM) v1 (Allow) policy changes on Google Cloud.
+- **iam-helper-for-privileged-access-management**：Manages the end-to-end lifecycle of on-demand, temporary access using Privileged Access Manager (PAM).
+- **iam-helper-for-troubleshooting**：Diagnoses, remediates, and manages Identity and Access Management (IAM) access issues on Google Cloud.
+- **managed-airflow-dag-authoring**：Provides guidance for authoring Apache Airflow DAGs in Managed Service for Apache Airflow (MSAA; formerly Cloud Composer).
+- **managed-airflow-dag-troubleshooting**：Provides guidance for troubleshooting Apache Airflow DAGs (failed DAG runs and task instances) in Managed Service for Apache Airflow (MSAA; formerly Cloud Composer).
+- **managed-airflow-migrations**：Provides guidance for migrating Apache Airflow DAGs in Managed Service for Apache Airflow (MSAA; formerly Cloud Composer).
+- **managed-airflow-recommendations**：Provides recommendations and best practices for creating, configuring, tuning and optimizing Managed Service for Apache Airflow (MSAA; formerly Cloud Composer) environments.
+- **secops-cases**：Manage Google Security Operations (SecOps) SOAR cases throughout their lifecycle.
+- **secops-detection-engineering**：Author, validate, test, and deploy YARA-L 2.0 detection rules and evaluate end-to-end detection coverage gaps in Google SecOps.
+- **secops-hunt**：Expert guidance for proactive threat hunting in Google SecOps.
+- **secops-investigate**：Expert guidance for deep security incident and entity investigations in Google SecOps.
+- **secops-triage**：Expert guidance for security alert triage in Google SecOps.
+- **spanner-basics**：Assists in provisioning instances and databases, designing performant schemas, and querying data in Cloud Spanner on Google Cloud.
+- **workload-manager-basics**：Use this skill to manage Google Cloud Workload Manager evaluations, rules, scanned resources, and validation results by using public client libraries and the REST API.
+
+## 来源
+
+- 上游仓库：<https://github.com/google/skills>
+- commit：[`a1a942f058366f70e11e36fda390ac4019272c9c`](https://github.com/google/skills/tree/a1a942f058366f70e11e36fda390ac4019272c9c/skills/cloud)，目录 `skills/cloud`
+- 许可证：Apache-2.0

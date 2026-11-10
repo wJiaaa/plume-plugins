@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/zotero",
+  "version": "1.0.0",
+  "description": "让 agent 读你的 Zotero 文献库：检索条目、读全文和批注、整理笔记、导出参考文献。",
+  "author": "Steven Yu",
+  "homepage": "https://github.com/54yyyu/zotero-mcp",
+  "license": "MIT",
+  "keywords": [
+    "文献",
+    "论文",
+    "引用",
+    "参考文献",
+    "学术",
+    "Zotero",
+    "citation"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Zotero",
+    "category": "科研",
+    "defaultPrompt": [
+      "在我的 Zotero 里找所有关于对比学习的论文，按年份列出来",
+      "把这篇论文里我做的高亮和批注汇总成一份读书笔记",
+      "把「毕业论文」这个集合导出成 GB/T 7714 格式的参考文献"
+    ]
+  }
+}

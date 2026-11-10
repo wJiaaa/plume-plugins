@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/context7",
+  "version": "1.0.0",
+  "description": "取库的当前文档，而不是模型记忆里那个版本的。",
+  "author": "Upstash",
+  "homepage": "https://github.com/upstash/context7",
+  "license": "MIT",
+  "keywords": [
+    "文档",
+    "API 文档",
+    "库",
+    "框架",
+    "最新文档",
+    "docs",
+    "library"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Context7",
+    "category": "开发",
+    "defaultPrompt": [
+      "用 Next.js 最新的写法做一个带流式响应的路由",
+      "这个库的这个 API 在当前版本里改成什么了",
+      "按官方现在推荐的方式配置这个工具"
+    ]
+  }
+}

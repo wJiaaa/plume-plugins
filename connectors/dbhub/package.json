@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/dbhub",
+  "version": "1.0.0",
+  "description": "一个服务连 PostgreSQL、MySQL、MariaDB、SQL Server、Oracle 和 SQLite。",
+  "author": "Bytebase",
+  "homepage": "https://github.com/bytebase/dbhub",
+  "license": "MIT",
+  "keywords": [
+    "数据库",
+    "SQL",
+    "PostgreSQL",
+    "MySQL",
+    "SQLite",
+    "SQL Server",
+    "database"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "DBHub",
+    "category": "数据",
+    "defaultPrompt": [
+      "看看这个库里有哪些表，找出和订单相关的",
+      "查一下上个月每天的新增用户数",
+      "这条查询为什么慢，看看执行计划和相关的索引"
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/markitdown",
+  "version": "1.0.0",
+  "description": "把 PDF、Word、Excel、PPT、EPUB、网页等转成 Markdown 给模型读。",
+  "author": "Microsoft",
+  "homepage": "https://github.com/microsoft/markitdown/tree/main/packages/markitdown-mcp",
+  "license": "MIT",
+  "keywords": [
+    "文档转换",
+    "PDF",
+    "Word",
+    "Excel",
+    "PPT",
+    "Markdown",
+    "convert"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "MarkItDown",
+    "category": "办公",
+    "defaultPrompt": [
+      "把这份 PDF 合同转成 Markdown，列出所有付款条款",
+      "读一下这个 Excel 的第二张表，按部门汇总金额",
+      "把这个 PPT 的内容整理成一份讲稿"
+    ]
+  }
+}

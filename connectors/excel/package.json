@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/excel",
+  "version": "1.0.0",
+  "description": "不用装 Excel，直接读写 .xlsx：数据、公式、格式、图表、数据透视表。",
+  "author": "Haris Musa",
+  "homepage": "https://github.com/haris-musa/excel-mcp-server",
+  "license": "MIT",
+  "keywords": [
+    "Excel",
+    "表格",
+    "电子表格",
+    "xlsx",
+    "数据透视表",
+    "spreadsheet"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Excel",
+    "category": "办公",
+    "defaultPrompt": [
+      "读一下 sales.xlsx，按月份和地区做一张数据透视表",
+      "给这张表的金额列加上千分位格式，超过一万的标红",
+      "根据这份数据生成一张按季度的柱状图，放在新的工作表里"
+    ]
+  }
+}

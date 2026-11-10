@@ -1,0 +1,29 @@
+{
+  "name": "@plume-plugins/grafana",
+  "version": "1.0.0",
+  "description": "查 Grafana 的仪表盘、Prometheus 指标、Loki 日志、告警和值班，出了事先问它。",
+  "author": "Grafana Labs",
+  "homepage": "https://github.com/grafana/mcp-grafana",
+  "license": "Apache-2.0",
+  "keywords": [
+    "监控",
+    "仪表盘",
+    "指标",
+    "日志",
+    "告警",
+    "Prometheus",
+    "Loki",
+    "observability"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Grafana",
+    "category": "云与运维",
+    "defaultPrompt": [
+      "过去一小时 checkout 服务的错误率和 P99 延迟是多少",
+      "在 Loki 里找今天 payment 服务的错误日志，归纳出最常见的几类",
+      "现在有哪些告警在响，分别是什么时候开始的"
+    ]
+  }
+}

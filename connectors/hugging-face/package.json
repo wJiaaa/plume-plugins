@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/hugging-face",
+  "version": "1.0.0",
+  "description": "在 Hugging Face Hub 上查模型、数据集、Space 和论文。",
+  "author": "Hugging Face",
+  "homepage": "https://github.com/huggingface/hf-mcp-server",
+  "license": "MIT",
+  "keywords": [
+    "模型",
+    "数据集",
+    "AI",
+    "机器学习",
+    "Hugging Face",
+    "model",
+    "dataset"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Hugging Face",
+    "category": "科研",
+    "defaultPrompt": [
+      "找几个能在 16G 显存上跑的中文 embedding 模型，按下载量排",
+      "看看这个数据集有哪些字段、多大、许可证是什么",
+      "今天 Hub 上有哪些热门的新论文，挑和检索相关的讲讲"
+    ]
+  }
+}

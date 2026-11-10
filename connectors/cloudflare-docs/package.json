@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/cloudflare-docs",
+  "version": "1.0.0",
+  "description": "搜索 Cloudflare 官方文档：Workers、Pages、R2、D1、KV 等。",
+  "author": "Cloudflare",
+  "homepage": "https://github.com/cloudflare/mcp-server-cloudflare/tree/main/apps/docs-ai-search",
+  "license": "Apache-2.0",
+  "keywords": [
+    "文档",
+    "Cloudflare",
+    "Workers",
+    "边缘",
+    "CDN",
+    "docs"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Cloudflare Docs",
+    "category": "文档",
+    "defaultPrompt": [
+      "Workers 里怎么绑定 D1 数据库，wrangler 配置要怎么写",
+      "R2 的预签名 URL 最长能设多久有效期",
+      "按官方步骤把这个 Pages 项目迁到 Workers"
+    ]
+  }
+}

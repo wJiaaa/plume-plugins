@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "zotero": {
+      "command": "uvx",
+      "args": ["--from", "zotero-mcp-server@latest", "zotero-mcp"],
+      "env": {
+        "ZOTERO_LOCAL": "true"
+      }
+    }
+  }
+}

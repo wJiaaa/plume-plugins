@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/waza",
+  "version": "1.0.0",
+  "description": "八件工程上的老规矩，写成了 agent 能照着执行的流程：出方案、审代码、查故障、做界面、读材料、写稿子、做研究、体检配置。",
+  "author": "tw93",
+  "homepage": "https://github.com/tw93/Waza",
+  "keywords": [
+    "工程",
+    "代码评审",
+    "排查故障",
+    "流程",
+    "code review",
+    "debug",
+    "workflow"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "skill",
+    "displayName": "Waza",
+    "category": "工作流",
+    "upstream": {
+      "repo": "https://github.com/tw93/Waza",
+      "commit": "09840da1610357704c9db7231410cc5f3f2617f9",
+      "path": "skills"
+    }
+  }
+}

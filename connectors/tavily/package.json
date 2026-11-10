@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/tavily",
+  "version": "1.0.0",
+  "description": "给 agent 用的搜索 API，另带网页抽取、整站爬取、站点地图和多步调研。",
+  "author": "Tavily",
+  "homepage": "https://github.com/tavily-ai/tavily-mcp",
+  "license": "MIT",
+  "keywords": [
+    "搜索",
+    "网页搜索",
+    "爬取",
+    "调研",
+    "search",
+    "crawl",
+    "research"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Tavily",
+    "category": "搜索",
+    "defaultPrompt": [
+      "搜一下 Kubernetes 最新一个版本的主要变化",
+      "把这个文档站的页面爬下来，整理出全部 API 的清单",
+      "调研一下几家托管向量数据库的定价和部署方式，给出对比"
+    ]
+  }
+}

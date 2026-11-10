@@ -97,6 +97,238 @@
     {
       "name": "usage",
       "source": "./plugins/usage"
+    },
+    {
+      "name": "arxiv",
+      "source": "./connectors/arxiv"
+    },
+    {
+      "name": "atlassian",
+      "source": "./connectors/atlassian"
+    },
+    {
+      "name": "aws-documentation",
+      "source": "./connectors/aws-documentation"
+    },
+    {
+      "name": "brave-search",
+      "source": "./connectors/brave-search"
+    },
+    {
+      "name": "chrome-devtools",
+      "source": "./connectors/chrome-devtools"
+    },
+    {
+      "name": "cloudflare-docs",
+      "source": "./connectors/cloudflare-docs"
+    },
+    {
+      "name": "context7",
+      "source": "./connectors/context7"
+    },
+    {
+      "name": "dbhub",
+      "source": "./connectors/dbhub"
+    },
+    {
+      "name": "deepwiki",
+      "source": "./connectors/deepwiki"
+    },
+    {
+      "name": "desktop-commander",
+      "source": "./connectors/desktop-commander"
+    },
+    {
+      "name": "drawio",
+      "source": "./connectors/drawio"
+    },
+    {
+      "name": "duckduckgo",
+      "source": "./connectors/duckduckgo"
+    },
+    {
+      "name": "exa",
+      "source": "./connectors/exa"
+    },
+    {
+      "name": "excel",
+      "source": "./connectors/excel"
+    },
+    {
+      "name": "fetch",
+      "source": "./connectors/fetch"
+    },
+    {
+      "name": "figma",
+      "source": "./connectors/figma"
+    },
+    {
+      "name": "filesystem",
+      "source": "./connectors/filesystem"
+    },
+    {
+      "name": "firecrawl",
+      "source": "./connectors/firecrawl"
+    },
+    {
+      "name": "git-server",
+      "source": "./connectors/git-server"
+    },
+    {
+      "name": "github",
+      "source": "./connectors/github"
+    },
+    {
+      "name": "gitmcp",
+      "source": "./connectors/gitmcp"
+    },
+    {
+      "name": "grafana",
+      "source": "./connectors/grafana"
+    },
+    {
+      "name": "hugging-face",
+      "source": "./connectors/hugging-face"
+    },
+    {
+      "name": "kubernetes",
+      "source": "./connectors/kubernetes"
+    },
+    {
+      "name": "markitdown",
+      "source": "./connectors/markitdown"
+    },
+    {
+      "name": "memory-graph",
+      "source": "./connectors/memory-graph"
+    },
+    {
+      "name": "microsoft-learn",
+      "source": "./connectors/microsoft-learn"
+    },
+    {
+      "name": "mongodb",
+      "source": "./connectors/mongodb"
+    },
+    {
+      "name": "notion",
+      "source": "./connectors/notion"
+    },
+    {
+      "name": "obsidian",
+      "source": "./connectors/obsidian"
+    },
+    {
+      "name": "playwright",
+      "source": "./connectors/playwright"
+    },
+    {
+      "name": "redis",
+      "source": "./connectors/redis"
+    },
+    {
+      "name": "repomix",
+      "source": "./connectors/repomix"
+    },
+    {
+      "name": "sentry",
+      "source": "./connectors/sentry"
+    },
+    {
+      "name": "sequential-thinking",
+      "source": "./connectors/sequential-thinking"
+    },
+    {
+      "name": "shadcn",
+      "source": "./connectors/shadcn"
+    },
+    {
+      "name": "slack",
+      "source": "./connectors/slack"
+    },
+    {
+      "name": "stripe",
+      "source": "./connectors/stripe"
+    },
+    {
+      "name": "supabase",
+      "source": "./connectors/supabase"
+    },
+    {
+      "name": "tavily",
+      "source": "./connectors/tavily"
+    },
+    {
+      "name": "time",
+      "source": "./connectors/time"
+    },
+    {
+      "name": "zotero",
+      "source": "./connectors/zotero"
+    },
+    {
+      "name": "baoyu-skills",
+      "source": "./skills/baoyu-skills"
+    },
+    {
+      "name": "compound-engineering",
+      "source": "./skills/compound-engineering"
+    },
+    {
+      "name": "context-engineering",
+      "source": "./skills/context-engineering"
+    },
+    {
+      "name": "emil-kowalski",
+      "source": "./skills/emil-kowalski"
+    },
+    {
+      "name": "google-cloud-skills",
+      "source": "./skills/google-cloud-skills"
+    },
+    {
+      "name": "huggingface-skills",
+      "source": "./skills/huggingface-skills"
+    },
+    {
+      "name": "i-have-adhd",
+      "source": "./skills/i-have-adhd"
+    },
+    {
+      "name": "khazix-skills",
+      "source": "./skills/khazix-skills"
+    },
+    {
+      "name": "mattpocock-skills",
+      "source": "./skills/mattpocock-skills"
+    },
+    {
+      "name": "obsidian-skills",
+      "source": "./skills/obsidian-skills"
+    },
+    {
+      "name": "planning-with-files",
+      "source": "./skills/planning-with-files"
+    },
+    {
+      "name": "ponytail",
+      "source": "./skills/ponytail"
+    },
+    {
+      "name": "supabase-skills",
+      "source": "./skills/supabase-skills"
+    },
+    {
+      "name": "taste-skill",
+      "source": "./skills/taste-skill"
+    },
+    {
+      "name": "ui-ux-pro-max",
+      "source": "./skills/ui-ux-pro-max"
+    },
+    {
+      "name": "waza",
+      "source": "./skills/waza"
     }
   ]
 }

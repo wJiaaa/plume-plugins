@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/github",
+  "version": "1.0.0",
+  "description": "GitHub 官方：读仓库和代码、查和改 issue、看和评审 PR。",
+  "author": "GitHub",
+  "homepage": "https://github.com/github/github-mcp-server",
+  "license": "MIT",
+  "keywords": [
+    "GitHub",
+    "代码仓库",
+    "仓库",
+    "issue",
+    "PR",
+    "代码评审",
+    "pull request"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "GitHub",
+    "category": "开发",
+    "defaultPrompt": [
+      "列出我参与的仓库里所有在等我评审的 PR",
+      "把这个 PR 的改动读一遍，按风险高低给出评审意见",
+      "在这个仓库的 issue 里找所有关于内存泄漏的报告，按版本归类"
+    ]
+  }
+}

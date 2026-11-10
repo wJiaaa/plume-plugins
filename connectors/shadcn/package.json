@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/shadcn",
+  "version": "1.0.0",
+  "description": "在 shadcn/ui 和第三方组件注册表里找组件、看源码和示例，给出安装命令。",
+  "author": "shadcn",
+  "homepage": "https://ui.shadcn.com/docs/mcp",
+  "license": "MIT",
+  "keywords": [
+    "组件",
+    "UI",
+    "React",
+    "前端",
+    "Tailwind",
+    "component"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "shadcn/ui",
+    "category": "开发",
+    "defaultPrompt": [
+      "用 shadcn 的组件搭一个登录页，先看看有哪些能用",
+      "找一个带搜索和分页的数据表格，把它的示例代码给我看",
+      "把 dialog、form 和 sonner 这几个组件装到项目里"
+    ]
+  }
+}

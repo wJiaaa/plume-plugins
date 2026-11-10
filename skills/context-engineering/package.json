@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/context-engineering",
+  "version": "1.0.0",
+  "description": "17 个讲上下文工程的技能：压缩、退化诊断、记忆、多 agent 分工、工具设计、评测。",
+  "author": "muratcankoylan",
+  "homepage": "https://github.com/muratcankoylan/Agent-Skills-for-Context-Engineering",
+  "keywords": [
+    "上下文工程",
+    "上下文",
+    "记忆",
+    "多 agent",
+    "提示词",
+    "context",
+    "prompt"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "skill",
+    "displayName": "Context Engineering",
+    "category": "思考",
+    "upstream": {
+      "repo": "https://github.com/muratcankoylan/Agent-Skills-for-Context-Engineering",
+      "commit": "9f87ab29617109de590fdbd16bab3d7e72723264",
+      "path": "skills"
+    }
+  }
+}

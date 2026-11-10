@@ -1,0 +1,26 @@
+{
+  "name": "@plume-plugins/supabase-skills",
+  "version": "1.0.0",
+  "description": "Supabase 官方：Supabase 各产品的用法，外加通用的 Postgres 最佳实践。",
+  "author": "supabase",
+  "homepage": "https://github.com/supabase/agent-skills",
+  "keywords": [
+    "数据库",
+    "Postgres",
+    "Supabase",
+    "SQL",
+    "后端",
+    "database"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "skill",
+    "displayName": "Supabase Skills",
+    "category": "数据",
+    "upstream": {
+      "repo": "https://github.com/supabase/agent-skills",
+      "commit": "c9be0e931b7930f7d02126d04774d904c381e7d7",
+      "path": "skills"
+    }
+  }
+}

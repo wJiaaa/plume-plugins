@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/git-server",
+  "version": "1.0.0",
+  "description": "在本机仓库里看状态、读 diff、翻日志、提交、建和切分支。不碰远端。",
+  "author": "Model Context Protocol",
+  "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/src/git",
+  "license": "MIT",
+  "keywords": [
+    "Git",
+    "版本控制",
+    "提交",
+    "分支",
+    "diff",
+    "commit"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Git",
+    "category": "开发",
+    "defaultPrompt": [
+      "看看这个仓库现在有哪些改动，按文件说说都改了什么",
+      "把最近两周的提交整理成一份更新说明",
+      "把已暂存的改动提交了，提交信息按改动内容写"
+    ]
+  }
+}

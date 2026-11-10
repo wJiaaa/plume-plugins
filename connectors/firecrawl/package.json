@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/firecrawl",
+  "version": "1.0.0",
+  "description": "把网页和文档变成干净的 Markdown：单页抓取、搜索、整站爬取、结构化抽取。",
+  "author": "Firecrawl",
+  "homepage": "https://github.com/firecrawl/firecrawl-mcp-server",
+  "license": "MIT",
+  "keywords": [
+    "爬虫",
+    "网页抓取",
+    "爬取",
+    "结构化抽取",
+    "Markdown",
+    "scrape",
+    "crawl"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Firecrawl",
+    "category": "搜索",
+    "defaultPrompt": [
+      "把这个页面抓下来转成 Markdown，表格要保留",
+      "搜一下今年的前端构建工具横评，把前三篇的要点整理出来",
+      "把这份 PDF 白皮书解析出来，列出里面所有的性能数据"
+    ]
+  }
+}

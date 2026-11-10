@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/atlassian",
+  "version": "1.0.0",
+  "description": "查和改 Jira 与 Confluence：JQL 搜索、建单改单、流转状态、读写页面。",
+  "author": "sooperset",
+  "homepage": "https://github.com/sooperset/mcp-atlassian",
+  "license": "MIT",
+  "keywords": [
+    "Jira",
+    "Confluence",
+    "项目管理",
+    "工单",
+    "协作",
+    "Atlassian",
+    "issue"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Atlassian",
+    "category": "协作",
+    "defaultPrompt": [
+      "列出当前 Sprint 里还没完成、分给我的 issue",
+      "把这个 bug 的复现步骤建成一个 Jira 单，优先级设为高",
+      "在 Confluence 里找一下新人入职文档，总结成十条"
+    ]
+  }
+}

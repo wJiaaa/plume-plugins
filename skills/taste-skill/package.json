@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/taste-skill",
+  "version": "1.0.0",
+  "description": "治 AI 做前端的通病：千篇一律的渐变、卡片和字体，先定设计方向再出页面。",
+  "author": "Leonxlnx",
+  "homepage": "https://github.com/Leonxlnx/taste-skill",
+  "keywords": [
+    "前端",
+    "设计",
+    "审美",
+    "界面",
+    "UI",
+    "design",
+    "frontend"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "skill",
+    "displayName": "Taste Skill",
+    "category": "设计",
+    "upstream": {
+      "repo": "https://github.com/Leonxlnx/taste-skill",
+      "commit": "af8a897996e159ccc89c9da535dff714d5dba62d",
+      "path": "skills"
+    }
+  }
+}

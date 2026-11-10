@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "dbhub": {
+      "command": "npx",
+      "args": ["-y", "@bytebase/dbhub@latest"],
+      "env": {
+        "DSN": "${DSN}"
+      }
+    }
+  }
+}

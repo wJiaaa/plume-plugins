@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/ui-ux-pro-max",
+  "version": "1.0.0",
+  "description": "带检索数据的界面设计技能：按产品类型推荐风格、配色、字体搭配和页面结构。",
+  "author": "nextlevelbuilder",
+  "homepage": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+  "keywords": [
+    "设计",
+    "UI",
+    "UX",
+    "配色",
+    "字体",
+    "界面",
+    "design system"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "skill",
+    "displayName": "UI UX Pro Max",
+    "category": "设计",
+    "upstream": {
+      "repo": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "commit": "4f2dbb67e64969a9a30ab00742f2d55d66ddec2b",
+      "path": ".claude/skills"
+    }
+  }
+}

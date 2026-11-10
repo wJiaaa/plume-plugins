@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/figma",
+  "version": "1.0.0",
+  "description": "把 Figma 设计稿的布局、样式和图片交给 agent，照着稿子写界面。",
+  "author": "Framelink",
+  "homepage": "https://github.com/GLips/Figma-Context-MCP",
+  "license": "MIT",
+  "keywords": [
+    "设计",
+    "设计稿",
+    "UI",
+    "界面",
+    "前端",
+    "Figma",
+    "design"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Figma",
+    "category": "设计",
+    "defaultPrompt": [
+      "照着这个 Figma 链接把登录页做出来，间距和颜色按稿子来",
+      "把这个设计稿里的图标都导出到 src/assets/icons",
+      "对比设计稿和现在的页面实现，列出不一致的地方"
+    ]
+  }
+}

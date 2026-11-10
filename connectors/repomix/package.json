@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/repomix",
+  "version": "1.0.0",
+  "description": "把整个代码仓库打包成一个模型好读的文件，本机目录和 GitHub 仓库都行。",
+  "author": "Kazuki Yamada",
+  "homepage": "https://github.com/yamadashy/repomix",
+  "license": "MIT",
+  "keywords": [
+    "代码库",
+    "打包",
+    "上下文",
+    "仓库",
+    "codebase",
+    "context"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Repomix",
+    "category": "开发",
+    "defaultPrompt": [
+      "把这个项目打包，告诉我整体架构和每个模块管什么",
+      "打包 honojs/hono 这个仓库，看看它的路由匹配是怎么实现的",
+      "在打包结果里搜一下所有读取环境变量的地方"
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/desktop-commander",
+  "version": "1.0.0",
+  "description": "在本机跑命令、编辑文件、管进程。长任务在后台跑，不占着对话。",
+  "author": "Eduard Ruzga",
+  "homepage": "https://github.com/wonderwhy-er/DesktopCommanderMCP",
+  "license": "MIT",
+  "keywords": [
+    "终端",
+    "命令行",
+    "文件",
+    "进程",
+    "本机",
+    "shell",
+    "terminal"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Desktop Commander",
+    "category": "本机",
+    "defaultPrompt": [
+      "把这个项目跑起来，构建失败的话把错误贴给我",
+      "在后台跑测试，跑完告诉我哪些挂了",
+      "找出这台机器上占空间最大的十个目录"
+    ]
+  }
+}

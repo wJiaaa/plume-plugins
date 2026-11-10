@@ -1,0 +1,26 @@
+{
+  "name": "@plume-plugins/filesystem",
+  "version": "1.0.0",
+  "description": "只在你点名的目录里读写。官方实现，边界是硬的。",
+  "author": "Model Context Protocol",
+  "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem",
+  "keywords": [
+    "文件",
+    "读写文件",
+    "目录",
+    "本机",
+    "file",
+    "fs"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Filesystem",
+    "category": "本机",
+    "defaultPrompt": [
+      "把这个目录下所有 markdown 的标题列成一份目录",
+      "找出这批文件里重复的内容",
+      "按修改时间把这个文件夹整理成按月分的子目录"
+    ]
+  }
+}

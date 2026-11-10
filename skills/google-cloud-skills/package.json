@@ -1,0 +1,26 @@
+{
+  "name": "@plume-plugins/google-cloud-skills",
+  "version": "1.0.0",
+  "description": "Google 官方的 129 个 Google Cloud 技能：部署、运维、数据与 AI 服务。",
+  "author": "google",
+  "homepage": "https://github.com/google/skills",
+  "keywords": [
+    "Google Cloud",
+    "GCP",
+    "云",
+    "部署",
+    "运维",
+    "cloud"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "skill",
+    "displayName": "Google Cloud Skills",
+    "category": "云与运维",
+    "upstream": {
+      "repo": "https://github.com/google/skills",
+      "commit": "a1a942f058366f70e11e36fda390ac4019272c9c",
+      "path": "skills/cloud"
+    }
+  }
+}

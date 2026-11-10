@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/exa",
+  "version": "1.0.0",
+  "description": "按意思而不是关键词找网页，结果直接带着清理好的正文。",
+  "author": "Exa",
+  "homepage": "https://github.com/exa-labs/exa-mcp-server",
+  "license": "MIT",
+  "keywords": [
+    "搜索",
+    "语义搜索",
+    "网页搜索",
+    "调研",
+    "search",
+    "semantic search"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Exa",
+    "category": "搜索",
+    "defaultPrompt": [
+      "找几篇讲 CRDT 在协同编辑器里怎么落地的工程博客",
+      "搜一下最近半年关于小模型蒸馏的论文和解读文章",
+      "找和这个项目定位相近的开源替代品，列出各自的差异"
+    ]
+  }
+}

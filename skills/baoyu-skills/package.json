@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/baoyu-skills",
+  "version": "1.0.0",
+  "description": "宝玉的 21 个内容技能：配图、封面、信息图、翻译，发到公众号、微博和 X。",
+  "author": "JimLiu",
+  "homepage": "https://github.com/JimLiu/baoyu-skills",
+  "keywords": [
+    "配图",
+    "封面",
+    "信息图",
+    "翻译",
+    "公众号",
+    "微博",
+    "内容创作"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "skill",
+    "displayName": "宝玉的技能",
+    "category": "媒体",
+    "upstream": {
+      "repo": "https://github.com/JimLiu/baoyu-skills",
+      "commit": "5792c7dc8d09a28d6969e8970166c5eb090ce6ad",
+      "path": "skills"
+    }
+  }
+}

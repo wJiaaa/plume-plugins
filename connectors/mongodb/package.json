@@ -1,0 +1,26 @@
+{
+  "name": "@plume-plugins/mongodb",
+  "version": "1.0.0",
+  "description": "查 MongoDB：列库和集合、看 schema 和索引、find、聚合、explain。默认只读。",
+  "author": "MongoDB",
+  "homepage": "https://github.com/mongodb-js/mongodb-mcp-server",
+  "license": "Apache-2.0",
+  "keywords": [
+    "数据库",
+    "MongoDB",
+    "NoSQL",
+    "文档数据库",
+    "database"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "MongoDB",
+    "category": "数据",
+    "defaultPrompt": [
+      "看看 orders 集合的字段结构，哪些常用字段没有索引",
+      "统计每个城市上个月的订单数和金额，按金额排序",
+      "这条查询为什么慢，给我看 explain 的结果"
+    ]
+  }
+}

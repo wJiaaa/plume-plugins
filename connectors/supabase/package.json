@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/supabase",
+  "version": "1.0.0",
+  "description": "查 Supabase 项目：表和迁移、跑只读 SQL、看日志和安全建议、生成类型。",
+  "author": "Supabase",
+  "homepage": "https://github.com/supabase/mcp",
+  "license": "Apache-2.0",
+  "keywords": [
+    "数据库",
+    "Postgres",
+    "后端",
+    "SQL",
+    "Supabase",
+    "database",
+    "backend"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Supabase",
+    "category": "数据",
+    "defaultPrompt": [
+      "看看这个项目有哪些表，有没有表忘了开 RLS",
+      "查一下过去一小时 API 的报错日志",
+      "根据当前的表结构生成 TypeScript 类型定义"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "@plume-plugins/i-have-adhd",
+  "version": "1.0.0",
+  "description": "先说下一步，步骤编号，不绕弯：治 agent 把答案埋在三段铺垫下面的毛病。",
+  "author": "ayghri",
+  "homepage": "https://github.com/ayghri/i-have-adhd",
+  "keywords": [
+    "简洁回答",
+    "步骤",
+    "直接",
+    "沟通风格",
+    "concise"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "skill",
+    "displayName": "I Have ADHD",
+    "category": "思考",
+    "upstream": {
+      "repo": "https://github.com/ayghri/i-have-adhd",
+      "commit": "5a9244e0c9e69d966243a6104d4c69ac736c9396",
+      "path": "skills"
+    }
+  }
+}

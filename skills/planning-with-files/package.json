@@ -1,0 +1,26 @@
+{
+  "name": "@plume-plugins/planning-with-files",
+  "version": "1.0.0",
+  "description": "把计划、发现和进度写进三个文件，上下文被压缩或会话中断后还能接着做。",
+  "author": "OthmanAdi",
+  "homepage": "https://github.com/OthmanAdi/planning-with-files",
+  "keywords": [
+    "规划",
+    "计划",
+    "长任务",
+    "进度",
+    "上下文",
+    "planning"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "skill",
+    "displayName": "Planning with Files",
+    "category": "思考",
+    "upstream": {
+      "repo": "https://github.com/OthmanAdi/planning-with-files",
+      "commit": "2362ca385ad74f061aa0e7b73f56543a4b7e6df2",
+      "path": "skills"
+    }
+  }
+}

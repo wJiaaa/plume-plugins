@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/obsidian-skills",
+  "version": "1.0.0",
+  "description": "让 agent 会写 Obsidian 的双链笔记、Bases 视图和 Canvas 白板。",
+  "author": "kepano",
+  "homepage": "https://github.com/kepano/obsidian-skills",
+  "keywords": [
+    "笔记",
+    "Obsidian",
+    "双链",
+    "白板",
+    "Canvas",
+    "Markdown",
+    "notes"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "skill",
+    "displayName": "Obsidian Skills",
+    "category": "文档",
+    "upstream": {
+      "repo": "https://github.com/kepano/obsidian-skills",
+      "commit": "3ccff5338ea700537839b21900aa5358a0402c98",
+      "path": "skills"
+    }
+  }
+}

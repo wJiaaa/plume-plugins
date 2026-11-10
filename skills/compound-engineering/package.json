@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/compound-engineering",
+  "version": "1.0.0",
+  "description": "36 个工程技能：出方案、评审、调试、提交、盯 PR，并把每次学到的写回仓库。",
+  "author": "EveryInc",
+  "homepage": "https://github.com/EveryInc/compound-engineering-plugin",
+  "keywords": [
+    "工程",
+    "代码评审",
+    "调试",
+    "PR",
+    "工作流",
+    "workflow",
+    "review"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "skill",
+    "displayName": "Compound Engineering",
+    "category": "工作流",
+    "upstream": {
+      "repo": "https://github.com/EveryInc/compound-engineering-plugin",
+      "commit": "11d5751ef0bc5f915c78bd7c8d02b6ebb158f393",
+      "path": "skills"
+    }
+  }
+}

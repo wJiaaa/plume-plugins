@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Plume 插件市场里的插件（`plume.` 开头的市场插件）。Plume 本体（应用、插件宿主、内置插件、插件 SDK）在另一个仓库。
+Plume 插件市场里的插件（`plume.` 开头的市场插件）：`plugins/` 下写代码的插件，`skills/` 下的技能合集，`connectors/` 下的连接器（MCP 服务）。三类都按插件发、按插件装，分组和格式见 [docs/distribution.md](docs/distribution.md)。Plume 本体（应用、插件宿主、内置插件、插件 SDK）在另一个仓库。
 
 市场发在这个仓库的 GitHub Pages 上，应用从网上读、下载插件；收录清单是根目录的 `marketplace.json`，打包格式、版本规则见 [docs/distribution.md](docs/distribution.md)。
 
@@ -21,7 +21,8 @@ plume-project/
 | 命令 | 作用 |
 | --- | --- |
 | `pnpm check` | 类型检查 + lint + 格式 + 测试 + 市场校验（`pnpm validate`）+ 本体的样式、文案、插件接口检查（`pnpm check:host`）+ 依赖方向（提交前必须通过；pre-push 钩子会跑） |
-| `pnpm validate` | 只跑市场校验（`scripts/validate.mjs`）：`marketplace.json` 和 `plugins/` 对得上，每个插件写了版本、名字、说明，有 README 和合规的图标 |
+| `pnpm validate` | 只跑市场校验（`scripts/validate.mjs`）：`marketplace.json` 和 `plugins/`、`skills/`、`connectors/` 对得上，每个插件写了版本、名字、说明、和分组对得上的 `plume.kind`，有 README 和合规的图标；技能合集有技能、连接器的 `.mcp.json` 有服务，搬来的带 LICENSE |
+| `pnpm sync-skills [<名字>...]` | 按 `skills/*/package.json` 的 `plume.upstream`（仓库、commit、子目录）从 GitHub 重新搬技能合集的 `skills/` 和 `LICENSE`；不带名字是全部。改了内容要升 `version` |
 | `pnpm build:dist` | 把构建好的插件按平台打成发布的静态目录 `dist/`（`scripts/build-dist.mjs`，`--targets` 只打某几个平台，`--published <线上 marketplace.json>` 查版本号没升而内容变了的）；CI（`.github/workflows/publish.yml`）推到 main 时打包、发到 Pages |
 | `pnpm build:plugins` | 构建插件（转给本体的 `pnpm build:plugins`，连内置插件一起） |
 | `pnpm smoke` | 转给本体的 `pnpm smoke`；改了哪个插件就跑用到它的那几段（`PLUME_SMOKE_ONLY=changed` 会算上这个仓库没提交的改动） |

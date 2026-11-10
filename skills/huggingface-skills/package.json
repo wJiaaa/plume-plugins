@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/huggingface-skills",
+  "version": "1.0.0",
+  "description": "Hugging Face 官方：在 Hub 上找模型和数据集，训练、评测、发布模型。",
+  "author": "huggingface",
+  "homepage": "https://github.com/huggingface/skills",
+  "keywords": [
+    "模型",
+    "训练",
+    "评测",
+    "数据集",
+    "机器学习",
+    "Hugging Face",
+    "ML"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "skill",
+    "displayName": "Hugging Face Skills",
+    "category": "科研",
+    "upstream": {
+      "repo": "https://github.com/huggingface/skills",
+      "commit": "25910b3d0ba31a2ba102f901cdc9e008c278a69c",
+      "path": "skills"
+    }
+  }
+}

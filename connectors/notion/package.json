@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/notion",
+  "version": "1.0.0",
+  "description": "通过 Notion API 搜索、读写页面和数据库，页面能直接按 Markdown 读写。",
+  "author": "Notion",
+  "homepage": "https://github.com/makenotion/notion-mcp-server",
+  "license": "MIT",
+  "keywords": [
+    "笔记",
+    "文档",
+    "知识库",
+    "数据库",
+    "Notion",
+    "notes",
+    "wiki"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Notion",
+    "category": "办公",
+    "defaultPrompt": [
+      "在 Notion 里找到上周的周会记录，整理出待办事项",
+      "把这份需求写进「产品需求」数据库，状态设为草稿",
+      "查一下任务库里所有已经逾期还没完成的任务"
+    ]
+  }
+}

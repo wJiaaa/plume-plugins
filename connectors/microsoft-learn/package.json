@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/microsoft-learn",
+  "version": "1.0.0",
+  "description": "搜索和阅读微软官方文档与代码示例：Azure、.NET、Windows、Microsoft 365。",
+  "author": "Microsoft",
+  "homepage": "https://github.com/MicrosoftDocs/mcp",
+  "keywords": [
+    "文档",
+    "微软",
+    "Azure",
+    ".NET",
+    "Windows",
+    "Microsoft",
+    "docs"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Microsoft Learn",
+    "category": "文档",
+    "defaultPrompt": [
+      "查一下 Azure Functions 现在的超时上限，以及怎么配置",
+      "找一个用 Microsoft Graph 读取日历事件的 C# 官方示例",
+      ".NET 9 的 minimal API 要怎么生成 OpenAPI 文档"
+    ]
+  }
+}

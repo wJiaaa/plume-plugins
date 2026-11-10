@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/obsidian",
+  "version": "1.0.0",
+  "description": "读写你的 Obsidian 仓库：搜索笔记、按标签找、在指定标题下插入内容。",
+  "author": "Markus Pfundstein",
+  "homepage": "https://github.com/MarkusPfundstein/mcp-obsidian",
+  "license": "MIT",
+  "keywords": [
+    "笔记",
+    "知识库",
+    "双链",
+    "Markdown",
+    "Obsidian",
+    "notes"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Obsidian",
+    "category": "办公",
+    "defaultPrompt": [
+      "找出我最近一周改过的笔记，整理成一份周报",
+      "在「项目 A」这篇笔记的「待办」标题下面加三条新任务",
+      "找所有带 #idea 标签的笔记，按主题归类"
+    ]
+  }
+}

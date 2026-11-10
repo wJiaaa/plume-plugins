@@ -1,0 +1,26 @@
+{
+  "name": "@plume-plugins/gitmcp",
+  "version": "1.0.0",
+  "description": "让模型现查任意公开 GitHub 仓库的文档和代码，不依赖事先建好的索引。",
+  "author": "Ido Salomon",
+  "homepage": "https://github.com/idosal/git-mcp",
+  "license": "Apache-2.0",
+  "keywords": [
+    "文档",
+    "GitHub",
+    "代码库",
+    "开源",
+    "docs"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "GitMCP",
+    "category": "文档",
+    "defaultPrompt": [
+      "查一下 honojs/hono 的中间件应该怎么写",
+      "这个库的 README 里对 Windows 的支持是怎么说的",
+      "在 astral-sh/uv 的代码里找一下 uvx 是怎么决定用哪个缓存版本的"
+    ]
+  }
+}

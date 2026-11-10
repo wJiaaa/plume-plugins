@@ -1,0 +1,26 @@
+{
+  "name": "@plume-plugins/sequential-thinking",
+  "version": "1.0.0",
+  "description": "把一个难问题拆成能一步步走、并且允许走回头路的思考。",
+  "author": "Model Context Protocol",
+  "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking",
+  "keywords": [
+    "推理",
+    "思考",
+    "拆解问题",
+    "规划",
+    "reasoning",
+    "planning"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Sequential Thinking",
+    "category": "思考",
+    "defaultPrompt": [
+      "这个系统要同时满足这三个互相冲突的约束，一步步帮我想",
+      "把这个迁移方案的每一步风险单独评估一遍",
+      "我这个判断哪里可能是错的，逐条推翻看看"
+    ]
+  }
+}

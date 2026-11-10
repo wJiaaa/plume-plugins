@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/stripe",
+  "version": "1.0.0",
+  "description": "让 agent 查和改 Stripe 里的客户、价格、订阅、发票、退款，并能搜 Stripe 文档。",
+  "author": "Stripe",
+  "homepage": "https://docs.stripe.com/mcp",
+  "keywords": [
+    "支付",
+    "订阅",
+    "账单",
+    "发票",
+    "退款",
+    "payment",
+    "billing"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Stripe",
+    "category": "开发",
+    "defaultPrompt": [
+      "在沙盒里建一个每月 20 美元的订阅价格，再生成一个支付链接",
+      "查一下这个客户最近三个月的发票和付款情况",
+      "列出本周所有失败的付款，按失败原因归类"
+    ]
+  }
+}

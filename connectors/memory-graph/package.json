@@ -1,0 +1,26 @@
+{
+  "name": "@plume-plugins/memory-graph",
+  "version": "1.0.0",
+  "description": "把跨会话要记住的东西存成一张知识图谱，而不是每次重讲一遍。",
+  "author": "Model Context Protocol",
+  "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/src/memory",
+  "keywords": [
+    "记忆",
+    "知识图谱",
+    "长期记忆",
+    "跨会话",
+    "memory",
+    "knowledge graph"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Memory",
+    "category": "思考",
+    "defaultPrompt": [
+      "记住这个项目的部署流程，下次直接照着做",
+      "我之前说过的关于这套架构的约束，还记得哪些",
+      "把这次排查的根因记下来，关联到那个服务"
+    ]
+  }
+}

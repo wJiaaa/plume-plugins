@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/slack",
+  "version": "1.0.0",
+  "description": "读 Slack 的频道、私信和讨论串，搜消息，看未读。发消息默认关闭。",
+  "author": "Dmitrii Korotovskii",
+  "homepage": "https://github.com/korotovsky/slack-mcp-server",
+  "license": "MIT",
+  "keywords": [
+    "聊天",
+    "消息",
+    "团队沟通",
+    "协作",
+    "Slack",
+    "chat",
+    "IM"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Slack",
+    "category": "协作",
+    "defaultPrompt": [
+      "把 #incident 频道今天的讨论整理成一份事故时间线",
+      "搜一下最近一个月谁提到过「数据库迁移」，列出链接",
+      "我有哪些未读的私信和 @ 我的消息"
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "@plume-plugins/chrome-devtools",
+  "version": "1.0.0",
+  "description": "性能追踪、网络请求、控制台——把 DevTools 里那几个面板交给 agent 读。",
+  "author": "Google Chrome",
+  "homepage": "https://github.com/ChromeDevTools/chrome-devtools-mcp",
+  "license": "Apache-2.0",
+  "keywords": [
+    "浏览器",
+    "调试",
+    "性能分析",
+    "网络请求",
+    "控制台",
+    "Chrome",
+    "debug",
+    "performance"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Chrome DevTools",
+    "category": "浏览器",
+    "defaultPrompt": [
+      "录一段这个页面的加载性能，告诉我最大的三个瓶颈在哪",
+      "把这次提交前后的首屏时间对比一下",
+      "这个页面控制台报了什么错，源头在哪一行"
+    ]
+  }
+}

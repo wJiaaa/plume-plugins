@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/arxiv",
+  "version": "1.0.0",
+  "description": "搜 arXiv、下载论文存在本地、按章节读正文和 LaTeX 源码、导出 BibTeX。",
+  "author": "Joe Blazick",
+  "homepage": "https://github.com/blazickjp/arxiv-mcp-server",
+  "license": "Apache-2.0",
+  "keywords": [
+    "论文",
+    "学术",
+    "arXiv",
+    "科研",
+    "文献",
+    "paper",
+    "research"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "arXiv",
+    "category": "科研",
+    "defaultPrompt": [
+      "搜一下最近三个月关于长上下文检索的论文，挑五篇最相关的讲讲",
+      "下载 1706.03762，逐节读，把方法部分讲清楚",
+      "把这几篇论文的 BibTeX 导出来，放进 refs.bib"
+    ]
+  }
+}

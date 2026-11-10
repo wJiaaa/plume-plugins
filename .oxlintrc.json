@@ -137,5 +137,5 @@
       }
     }
   ],
-  "ignorePatterns": ["**/node_modules/**", "**/dist/**", "**/out/**", "**/build/**", "**/.stage/**", "**/release/**"]
+  "ignorePatterns": ["**/node_modules/**", "**/dist/**", "**/out/**", "**/build/**", "**/.stage/**", "**/release/**", "skills/*/skills/**"]
 }

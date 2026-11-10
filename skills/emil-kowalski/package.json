@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/emil-kowalski",
+  "version": "1.0.0",
+  "description": "Emil Kowalski 的界面技能：动画该不该做、用什么曲线、多长，交互怎么调。",
+  "author": "emilkowalski",
+  "homepage": "https://github.com/emilkowalski/skills",
+  "keywords": [
+    "动画",
+    "交互",
+    "动效",
+    "界面",
+    "UI",
+    "animation",
+    "motion"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "skill",
+    "displayName": "Emil Kowalski Skills",
+    "category": "设计",
+    "upstream": {
+      "repo": "https://github.com/emilkowalski/skills",
+      "commit": "c8a79627b59d72d764d6ab6f2c87c09a48169833",
+      "path": "skills"
+    }
+  }
+}

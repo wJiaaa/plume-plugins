@@ -1,0 +1,26 @@
+{
+  "name": "@plume-plugins/khazix-skills",
+  "version": "1.0.0",
+  "description": "卡兹克自用的 6 个技能：写任务书、横纵分析、公众号长文、收尾整理、查 AI 资讯。",
+  "author": "KKKKhazix",
+  "homepage": "https://github.com/KKKKhazix/khazix-skills",
+  "keywords": [
+    "写作",
+    "公众号",
+    "长文",
+    "任务书",
+    "AI 资讯",
+    "内容创作"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "skill",
+    "displayName": "卡兹克的技能",
+    "category": "思考",
+    "upstream": {
+      "repo": "https://github.com/KKKKhazix/khazix-skills",
+      "commit": "cfa3436d4d31db9b1340af3082a914adf92f023f",
+      "path": ""
+    }
+  }
+}

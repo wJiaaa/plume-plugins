@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/aws-documentation",
+  "version": "1.0.0",
+  "description": "搜索和阅读 AWS 官方文档，在大表格里只取需要的行，推荐相关页面。",
+  "author": "AWS Labs",
+  "homepage": "https://github.com/awslabs/mcp/tree/main/src/aws-documentation-mcp-server",
+  "license": "Apache-2.0",
+  "keywords": [
+    "文档",
+    "AWS",
+    "亚马逊云",
+    "云服务",
+    "docs",
+    "cloud"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "AWS Documentation",
+    "category": "文档",
+    "defaultPrompt": [
+      "Lambda 函数现在的最长执行时间和内存上限是多少",
+      "S3 跨区域复制要怎么配，有哪些前提条件",
+      "在 EC2 的实例类型表里找出所有带 GPU 的型号"
+    ]
+  }
+}

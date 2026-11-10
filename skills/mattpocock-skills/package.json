@@ -1,0 +1,26 @@
+{
+  "name": "@plume-plugins/mattpocock-skills",
+  "version": "1.0.0",
+  "description": "Matt Pocock 自用的 18 个工程技能：TDD、排查难缠的 bug、评审、拆工单。",
+  "author": "mattpocock",
+  "homepage": "https://github.com/mattpocock/skills",
+  "keywords": [
+    "TypeScript",
+    "TS",
+    "TDD",
+    "调试",
+    "代码评审",
+    "工程"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "skill",
+    "displayName": "Matt Pocock Skills",
+    "category": "开发",
+    "upstream": {
+      "repo": "https://github.com/mattpocock/skills",
+      "commit": "a496f5513d4a4cf889bc48e189e579f4b0bdf6aa",
+      "path": "skills/engineering"
+    }
+  }
+}

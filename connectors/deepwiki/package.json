@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/deepwiki",
+  "version": "1.0.0",
+  "description": "问任何一个公开 GitHub 仓库：它的架构怎么分、某个功能是怎么实现的。",
+  "author": "Cognition",
+  "homepage": "https://docs.devin.ai/work-with-devin/deepwiki-mcp",
+  "keywords": [
+    "文档",
+    "GitHub",
+    "代码库",
+    "架构",
+    "问答",
+    "docs",
+    "wiki"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "DeepWiki",
+    "category": "文档",
+    "defaultPrompt": [
+      "vercel/next.js 的 App Router 渲染流程是怎么组织的",
+      "看看 facebook/react 里 useEffect 的调度是在哪几个文件里实现的",
+      "这个仓库的插件机制是怎么设计的，理一条从注册到调用的链路"
+    ]
+  }
+}

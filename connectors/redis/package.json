@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/redis",
+  "version": "1.0.0",
+  "description": "用自然语言读写 Redis：字符串、哈希、列表、集合、Stream、JSON 和向量检索。",
+  "author": "Redis",
+  "homepage": "https://github.com/redis/mcp-redis",
+  "license": "MIT",
+  "keywords": [
+    "数据库",
+    "缓存",
+    "Redis",
+    "键值",
+    "cache",
+    "database"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Redis",
+    "category": "数据",
+    "defaultPrompt": [
+      "看看这个 Redis 里的 key 都有哪些前缀，各有多少",
+      "把 orders 这个 Stream 里最近的 20 条消息读出来",
+      "看看这台 Redis 现在的内存占用和客户端连接情况"
+    ]
+  }
+}

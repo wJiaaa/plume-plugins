@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/duckduckgo",
+  "version": "1.0.0",
+  "description": "用 DuckDuckGo 搜网页、读网页。不用注册，不用密钥。",
+  "author": "Nick Clyde",
+  "homepage": "https://github.com/nickclyde/duckduckgo-mcp-server",
+  "license": "MIT",
+  "keywords": [
+    "搜索",
+    "网页搜索",
+    "免费",
+    "免密钥",
+    "search",
+    "web search"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "DuckDuckGo",
+    "category": "搜索",
+    "defaultPrompt": [
+      "搜一下这个报错信息，看看别人是怎么解决的",
+      "找三篇对比 Tauri 和 Electron 的文章，读完给我结论",
+      "查一下这个开源项目最近有没有安全公告"
+    ]
+  }
+}

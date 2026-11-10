@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/sentry",
+  "version": "1.0.0",
+  "description": "查 Sentry 里的报错和事件，读完整堆栈，让 Seer 分析根因，顺手改 issue 状态。",
+  "author": "Sentry",
+  "homepage": "https://github.com/getsentry/sentry-mcp",
+  "license": "FSL-1.1-ALv2",
+  "keywords": [
+    "报错",
+    "错误监控",
+    "异常",
+    "堆栈",
+    "Sentry",
+    "error tracking",
+    "debug"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Sentry",
+    "category": "云与运维",
+    "defaultPrompt": [
+      "看看这个项目最近 24 小时出现最多的三个错误，定位到代码",
+      "这个 issue 的堆栈指向哪里，帮我写个修复",
+      "这次发版之后新冒出来的错误有哪些"
+    ]
+  }
+}

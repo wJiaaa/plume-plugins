@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/time",
+  "version": "1.0.0",
+  "description": "告诉模型现在几点，并在时区之间换算时间。",
+  "author": "Model Context Protocol",
+  "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/src/time",
+  "license": "MIT",
+  "keywords": [
+    "时间",
+    "时区",
+    "日期",
+    "换算",
+    "time",
+    "timezone"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Time",
+    "category": "本机",
+    "defaultPrompt": [
+      "现在旧金山是几点，那边还在上班时间吗",
+      "北京时间周三上午十点，对应伦敦和纽约是几点",
+      "按现在的时间算，离这个截止日期还剩几个工作日"
+    ]
+  }
+}

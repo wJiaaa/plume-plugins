@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/drawio",
+  "version": "1.0.0",
+  "description": "让 agent 画流程图、架构图、时序图，在 draw.io 编辑器里打开接着改。",
+  "author": "draw.io",
+  "homepage": "https://github.com/jgraph/drawio-mcp",
+  "license": "Apache-2.0",
+  "keywords": [
+    "画图",
+    "流程图",
+    "架构图",
+    "时序图",
+    "图表",
+    "diagram",
+    "draw.io"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "draw.io",
+    "category": "设计",
+    "defaultPrompt": [
+      "把这个服务的部署架构画成图，用 AWS 的标准图标",
+      "根据这段登录代码画一张时序图",
+      "把 docs/architecture.drawio 第二页里的数据库换成 PostgreSQL 的图标"
+    ]
+  }
+}

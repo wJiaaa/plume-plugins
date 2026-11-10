@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/kubernetes",
+  "version": "1.0.0",
+  "description": "用你本机的 kubectl 和 kubeconfig 管集群：查资源、看日志、apply、扩缩容、装 Helm。",
+  "author": "Suyog Sonwalkar",
+  "homepage": "https://github.com/Flux159/mcp-server-kubernetes",
+  "license": "MIT",
+  "keywords": [
+    "Kubernetes",
+    "K8s",
+    "容器",
+    "集群",
+    "运维",
+    "kubectl",
+    "DevOps"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Kubernetes",
+    "category": "云与运维",
+    "defaultPrompt": [
+      "看看 default 命名空间里哪些 Pod 在反复重启，把最近的日志摘出来",
+      "把 web 这个 Deployment 扩到 5 个副本，等滚动更新完告诉我",
+      "列出所有没有设置资源限制的容器"
+    ]
+  }
+}

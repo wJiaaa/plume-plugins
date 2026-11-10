@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/fetch",
+  "version": "1.0.0",
+  "description": "把一个网址取回来，转成 Markdown 给模型读。不开浏览器，不跑 JS。",
+  "author": "Model Context Protocol",
+  "homepage": "https://github.com/modelcontextprotocol/servers/tree/main/src/fetch",
+  "license": "MIT",
+  "keywords": [
+    "网页",
+    "抓取",
+    "网址",
+    "Markdown",
+    "fetch",
+    "URL"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Fetch",
+    "category": "搜索",
+    "defaultPrompt": [
+      "把这篇文章取回来，总结成五条要点",
+      "读一下这个库的 CHANGELOG 页面，找出上个大版本的破坏性变更",
+      "对比这两个产品的定价页，把差异列成表"
+    ]
+  }
+}

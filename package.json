@@ -11,6 +11,7 @@
     "plugin": "node ../plume/packages/sdk/plugin-sdk/bin/plume-plugin.mjs",
     "validate": "node scripts/validate.mjs",
     "build:dist": "node scripts/build-dist.mjs",
+    "sync-skills": "node scripts/sync-skills.mjs",
     "typecheck": "pnpm -r --no-bail typecheck",
     "test": "pnpm -r --no-bail test",
     "lint": "oxlint --deny-warnings",

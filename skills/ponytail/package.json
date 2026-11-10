@@ -1,0 +1,26 @@
+{
+  "name": "@plume-plugins/ponytail",
+  "version": "1.0.0",
+  "description": "逼 agent 少写代码：浏览器自带的就不装库，一行能解决就不写十行。",
+  "author": "DietrichGebert",
+  "homepage": "https://github.com/DietrichGebert/ponytail",
+  "keywords": [
+    "精简代码",
+    "少写代码",
+    "依赖",
+    "简洁",
+    "minimal",
+    "simplify"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "skill",
+    "displayName": "Ponytail",
+    "category": "开发",
+    "upstream": {
+      "repo": "https://github.com/DietrichGebert/ponytail",
+      "commit": "ca88b4f377fd94f780ac9035808dc4dc54e7a9cf",
+      "path": "skills"
+    }
+  }
+}

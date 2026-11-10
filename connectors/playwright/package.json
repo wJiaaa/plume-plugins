@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/playwright",
+  "version": "1.0.0",
+  "description": "用无障碍树而不是截图来驱动浏览器，所以它读到的是结构，不是像素。",
+  "author": "Microsoft",
+  "homepage": "https://github.com/microsoft/playwright-mcp",
+  "license": "Apache-2.0",
+  "keywords": [
+    "浏览器",
+    "自动化",
+    "端到端测试",
+    "E2E",
+    "网页操作",
+    "browser",
+    "testing"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Playwright",
+    "category": "浏览器",
+    "defaultPrompt": [
+      "打开这个站点，把注册流程从头走一遍，遇到报错停下来告诉我",
+      "对比这个页面在手机和桌面宽度下的布局差异",
+      "把这个表单的所有校验规则试出来"
+    ]
+  }
+}

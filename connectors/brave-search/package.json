@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/brave-search",
+  "version": "1.0.0",
+  "description": "Brave 自建索引的搜索：网页、新闻、图片、视频、本地商户，外加结果摘要。",
+  "author": "Brave",
+  "homepage": "https://github.com/brave/brave-search-mcp-server",
+  "license": "MIT",
+  "keywords": [
+    "搜索",
+    "网页搜索",
+    "新闻",
+    "图片搜索",
+    "search",
+    "news"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "connector",
+    "displayName": "Brave Search",
+    "category": "搜索",
+    "defaultPrompt": [
+      "搜一下这周关于 WebGPU 的新闻，按时间排",
+      "找 Tauri 2 官方的迁移指南，读完告诉我要改哪些地方",
+      "搜几张适合做博客封面的山景图片，给我链接和来源"
+    ]
+  }
+}
