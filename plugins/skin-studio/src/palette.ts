@@ -1,3 +1,4 @@
+// color-exempt：按皮肤的强调色选择黑或白的字，确保强调色实底上的文字可读
 import type { Skin, SkinToken } from "@plume/contract/ui";
 import type { ColorSkin } from "./types.ts";
 import { contrast } from "./types.ts";

@@ -1,3 +1,4 @@
+// color-exempt：工坊的预设皮肤是持久化配色数据，供缩略图预览和 ui.skin 应用，不是固定界面色
 import type { StudioSkin, SkinColors } from "./types.ts";
 import { COLOR_KEYS } from "./types.ts";
 

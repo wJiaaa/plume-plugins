@@ -1,3 +1,4 @@
+// color-exempt：SSH 插件的终端同样是 xterm，画在 canvas 上只认字面色值：ANSI 槽和读不到 CSS 变量时的兜底，理由同 plugins/terminal/src/look.ts
 /**
  * 终端的配色和字体，从当前主题的 CSS 变量里读：xterm 画在 canvas 上，只认字面的值。
  */

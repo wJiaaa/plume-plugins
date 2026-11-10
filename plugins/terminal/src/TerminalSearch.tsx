@@ -1,3 +1,4 @@
+// color-exempt：xterm 的查找高亮只认 #RRGGBB，用不了 CSS 变量；琥珀色在浅深两种主题下各一组，匹配到的字还读得清
 /**
  * 在终端的回滚里查找：⌘F，Mac 以外是 Ctrl+Shift+F（见 keys.ts）。
  *

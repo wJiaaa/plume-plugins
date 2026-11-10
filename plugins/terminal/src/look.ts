@@ -1,3 +1,4 @@
+// color-exempt：xterm 画在 canvas 上，只认字面色值：十六个 ANSI 槽是程序说的「红」「绿」，不能映射成 token；读不到 CSS 变量时的底色、字色兜底同理
 /**
  * 终端的配色和字体，从当前主题的 CSS 变量里读：xterm 画在 canvas 上，只认字面的值。
  */

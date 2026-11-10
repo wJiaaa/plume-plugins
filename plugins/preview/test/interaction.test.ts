@@ -1,3 +1,4 @@
+// color-exempt：校验页面提供的十六进制色值，不是界面主题颜色
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { runInNewContext } from "node:vm";

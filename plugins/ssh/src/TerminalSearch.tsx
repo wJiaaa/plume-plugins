@@ -1,3 +1,4 @@
+// color-exempt：SSH 插件终端的查找高亮同样只认 #RRGGBB，理由同 plugins/terminal/src/TerminalSearch.tsx
 /**
  * 在终端的回滚里查找：⌘F，Mac 以外是 Ctrl+Shift+F（见 keys.ts）。
  *
