@@ -1,0 +1,23 @@
+[
+  {
+    "type": "cycle",
+    "from": "plugins/pull-requests/src/view/avatars.tsx",
+    "to": "plugins/pull-requests/src/view/context.tsx",
+    "unresolvedTo": "./context",
+    "dependencyTypes": ["local", "import"],
+    "rule": {
+      "severity": "error",
+      "name": "no-circular"
+    },
+    "cycle": [
+      {
+        "name": "plugins/pull-requests/src/view/context.tsx",
+        "dependencyTypes": ["local", "import"]
+      },
+      {
+        "name": "plugins/pull-requests/src/view/avatars.tsx",
+        "dependencyTypes": ["local", "import", "type-only"]
+      }
+    ]
+  }
+]

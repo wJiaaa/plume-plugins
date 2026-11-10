@@ -1,0 +1,353 @@
+/* 设置页「钩子」那一节、回复底下的运行记录、输入框上方的待审核提示。字交给 Text，颜色只取 var(--plume-*)。 */
+
+.hook-intro {
+	margin: 0 0 16px;
+}
+
+.hook-scope {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	height: 34px;
+	max-width: 240px;
+	padding: 0 14px;
+	border: 1px solid var(--plume-line);
+	border-radius: var(--plume-radius-field);
+	background: transparent;
+	color: var(--plume-ink);
+	transition: background-color var(--plume-t-quick) var(--plume-e-soft);
+}
+
+.hook-scope:hover,
+.hook-scope[aria-expanded="true"] {
+	background: var(--plume-card-hover);
+}
+
+.hook-scope-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.hook-scope-caret {
+	flex-shrink: 0;
+	color: var(--plume-ink-faint);
+	transition: transform var(--plume-t-quick) var(--plume-e-soft);
+}
+
+.hook-scope-caret[data-open] {
+	transform: rotate(180deg);
+}
+
+.hook-notice {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	padding: 10px 14px;
+	margin-top: 16px;
+	border: 1px solid color-mix(in srgb, var(--plume-accent) 30%, transparent);
+	border-radius: var(--plume-radius-field);
+	background: color-mix(in srgb, var(--plume-accent) 6%, transparent);
+}
+
+.hook-notice-icon {
+	flex-shrink: 0;
+	margin-top: 2px;
+	color: var(--plume-accent);
+}
+
+.hook-problem {
+	padding: 12px 14px;
+	margin-top: 16px;
+	border: 1px solid var(--plume-line-soft);
+	border-radius: var(--plume-radius-field);
+}
+
+.hook-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin: 20px 0 12px;
+}
+
+.hook-head-title {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+}
+
+.hook-head-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.hook-search,
+.hook-input {
+	width: 100%;
+	height: 32px;
+	padding: 0 10px;
+	border: 1px solid var(--plume-line);
+	border-radius: var(--plume-radius-field);
+	background: var(--plume-input);
+	color: var(--plume-ink);
+	outline: none;
+}
+
+.hook-search {
+	margin-bottom: 12px;
+}
+
+.hook-input:disabled {
+	color: var(--plume-ink-faint);
+}
+
+.hook-mono {
+	font-family: var(--plume-font-mono);
+}
+
+.hook-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	padding: 40px 24px;
+	text-align: center;
+}
+
+.hook-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 14px;
+	cursor: default;
+}
+
+.hook-row + .hook-row {
+	border-top: 1px solid var(--plume-line-soft);
+}
+
+.hook-row:hover {
+	background: var(--plume-card-hover);
+}
+
+.hook-row-mark {
+	display: grid;
+	flex-shrink: 0;
+	place-items: center;
+	width: 32px;
+	height: 32px;
+	border-radius: var(--plume-radius-field);
+	background: var(--plume-card);
+	color: var(--plume-ink-muted);
+}
+
+.hook-row-body {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.hook-row-body > *,
+.hook-row-title > * {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.hook-row-title {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	min-width: 0;
+}
+
+.hook-row-side {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: 8px;
+}
+
+.hook-form,
+.hook-advanced-body {
+	display: grid;
+	gap: 16px;
+}
+
+.hook-field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+
+.hook-field-label {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+}
+
+.hook-pair {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	align-items: end;
+	gap: 12px;
+}
+
+.hook-switch {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	height: 32px;
+}
+
+.hook-fixed {
+	display: flex;
+	align-items: center;
+	white-space: nowrap;
+}
+
+.hook-fit {
+	width: fit-content;
+}
+
+.hook-spacer {
+	flex: 1;
+}
+
+.hook-advanced summary {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: 28px;
+	padding: 0 8px;
+	margin-left: -8px;
+	border-radius: var(--plume-radius-item);
+	color: var(--plume-ink-muted);
+	cursor: pointer;
+	list-style: none;
+}
+
+.hook-advanced summary::-webkit-details-marker {
+	display: none;
+}
+
+.hook-advanced summary:hover {
+	background: var(--plume-card-hover);
+}
+
+.hook-advanced summary svg {
+	transition: transform var(--plume-t-base);
+}
+
+.hook-advanced[open] summary svg {
+	transform: rotate(90deg);
+}
+
+.hook-advanced-body {
+	margin-top: 12px;
+}
+
+.hook-banner {
+	display: flex;
+	width: 100%;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 6px;
+	padding: 2px 8px;
+	border: 1px solid var(--plume-line-soft);
+	border-radius: var(--plume-radius-field);
+	background: color-mix(in oklab, var(--plume-card) 60%, transparent);
+}
+
+.hook-banner-icon {
+	flex-shrink: 0;
+	color: var(--plume-accent);
+}
+
+.hook-banner-message {
+	flex: 1 1 0%;
+	min-width: 0;
+	overflow: hidden;
+	padding-block: 4px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.hook-runs-button {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	height: 24px;
+	padding: 0 6px;
+	border-radius: var(--plume-radius-item);
+	background: transparent;
+	color: var(--plume-accent);
+	transition: background-color var(--plume-t-quick) var(--plume-e-soft);
+}
+
+.hook-runs-button:hover {
+	background: var(--plume-card-hover);
+}
+
+.hook-runs-list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 4px;
+}
+
+.hook-run {
+	padding: 8px 10px;
+	border-radius: var(--plume-radius-item);
+}
+
+.hook-run-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.hook-run-side {
+	flex-shrink: 0;
+	margin-left: auto;
+}
+
+.hook-run-truncate {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.hook-run-line {
+	margin-top: 4px;
+}
+
+.hook-run-reason {
+	margin-top: 2px;
+	overflow-wrap: anywhere;
+	white-space: pre-wrap;
+}
+
+.hook-run-ok {
+	color: var(--plume-ok);
+}
+
+.hook-run-blocked {
+	color: var(--plume-accent);
+}
+
+.hook-run-bad {
+	color: var(--plume-danger);
+}
+
+.hook-run-quiet {
+	color: var(--plume-ink-faint);
+}

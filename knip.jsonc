@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+
+  // 没人用的导出、依赖和文件（`pnpm knip`，pre-push 时跑）。插件的两个入口是构建约定的（逻辑入口 src/index.ts、
+  // 界面入口 src/ui.tsx），不写在 package.json 的 exports 里，所以替它们写上。
+  "workspaces": {
+    ".": {
+      // dependency-cruiser 按名字动态加载它做解析器（见 .dependency-cruiser.cjs 的 parser），knip 看不见。
+      "ignoreDependencies": ["@swc/core"],
+    },
+    "plugins/*": {
+      // 写成一个模式：不是每个插件都有界面入口和测试，分开写的话没匹配到的那几条会被当成配置写错。
+      "entry": ["{src/index.ts,src/ui.tsx,test/**/*.test.{ts,tsx}}"],
+      "project": ["src/**/*.{ts,tsx}"],
+    },
+  },
+
+  // 插件界面入口的 react 运行时由宿主的 import map 给，类型经插件 SDK，不必写进插件的依赖。放在顶层而不是插件那一组：
+  // 没有界面入口的插件不 import react，写在那一组会对它们逐个提示「用不着这条」。
+  "ignoreDependencies": ["react"],
+}

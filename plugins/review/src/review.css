@@ -1,0 +1,4 @@
+/* 「审阅会话」三个字和行里别的说明一样是正文字重，不抢摘要的位置。 */
+.plume-review-plain {
+	font-weight: normal;
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@plume-plugins/scheduled",
+  "version": "0.1.0",
+  "description": "把常做的事排成定时任务：每天几点或每隔多少分钟、在哪个目录、发什么提示词。到点开一个新会话把提示词发出去，失败了在输入框上方告诉你。",
+  "author": "Plume",
+  "keywords": [
+    "scheduled",
+    "定时任务",
+    "自动化",
+    "页面"
+  ],
+  "plume": {
+    "displayName": "定时任务",
+    "category": "工作流",
+    "defaultPrompt": [
+      "帮我想想有哪些每天早上可以自动跑的检查"
+    ]
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@plume/plugin-sdk": "link:../../../plume/packages/sdk/plugin-sdk",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0",
+    "react": "^19.3.1",
+    "vitest": "^5.1.0"
+  }
+}

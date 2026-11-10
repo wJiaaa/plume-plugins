@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/screenshot",
+  "version": "0.1.0",
+  "description": "屏幕截图：全局快捷键或输入框里的相机按钮拍下当前屏幕，框选区域或点一下整个窗口，在上面画箭头、框、文字，完成后复制、下载或钉在桌面上。",
+  "author": "Plume",
+  "keywords": [
+    "screenshot",
+    "截图",
+    "标注",
+    "取色"
+  ],
+  "plume": {
+    "displayName": "屏幕截图",
+    "category": "工具"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test --experimental-strip-types test/*.test.ts"
+  },
+  "devDependencies": {
+    "@plume/plugin-sdk": "link:../../../plume/packages/sdk/plugin-sdk",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0",
+    "react": "^19.3.1"
+  }
+}

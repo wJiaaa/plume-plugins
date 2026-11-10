@@ -1,0 +1,26 @@
+{
+  "name": "@plume-plugins/usage",
+  "version": "0.1.0",
+  "description": "设置 › 数据里的「使用统计」：每一次模型调用按时间、供应商、模型来切，看 token、费用、缓存命中、输出速度，一年的热力图，导出 CSV。数据只在本机。",
+  "author": "Plume",
+  "keywords": [
+    "用量",
+    "token",
+    "费用",
+    "统计"
+  ],
+  "plume": {
+    "displayName": "使用统计",
+    "category": "工具"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@plume/plugin-sdk": "link:../../../plume/packages/sdk/plugin-sdk",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0"
+  }
+}

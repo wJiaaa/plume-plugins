@@ -1,0 +1,77 @@
+/* IM 机器人设置页只在这里写布局；文字、字号和控件外观交给公共组件。 */
+.im-card {
+	margin-bottom: 36px;
+}
+
+.im-field {
+	display: flex;
+	min-width: 220px;
+	align-items: center;
+	gap: 8px;
+}
+
+.im-input,
+.im-select {
+	box-sizing: border-box;
+	width: 260px;
+	min-width: 0;
+	height: 30px;
+	padding: 0 9px;
+	border: 1px solid var(--plume-line);
+	border-radius: var(--plume-radius-field);
+	background: var(--plume-shell);
+	color: var(--plume-ink);
+	font: inherit;
+	outline: none;
+	transition:
+		border-color var(--plume-t-quick),
+		background-color var(--plume-t-quick);
+}
+
+.im-input:focus,
+.im-select:focus {
+	border-color: var(--plume-accent);
+	background: var(--plume-card);
+}
+
+.im-input::placeholder {
+	color: var(--plume-ink-faint);
+}
+
+.im-select {
+	padding-right: 6px;
+}
+
+.im-secret {
+	display: flex;
+	min-width: 260px;
+	align-items: center;
+	gap: 8px;
+}
+
+.im-secret .im-input {
+	flex: 1;
+	width: auto;
+}
+
+.im-secret-status {
+	white-space: nowrap;
+}
+
+.im-trust {
+	max-width: 620px;
+	padding-bottom: 32px;
+}
+
+@media (max-width: 620px) {
+	.im-field,
+	.im-secret {
+		width: 100%;
+		min-width: 0;
+	}
+
+	.im-input,
+	.im-select {
+		width: 100%;
+	}
+}

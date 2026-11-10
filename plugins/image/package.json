@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/image",
+  "version": "0.1.0",
+  "description": "让 agent 画图、改图：image_generate 用模型设置里标成生图模型的模型出图，对话里边画边显示；侧栏多一个画廊，所有对话画过的图按天排开，看每张图是怎么一步步改出来的。",
+  "author": "Plume",
+  "keywords": [
+    "image",
+    "generate",
+    "gallery",
+    "生图",
+    "画廊"
+  ],
+  "plume": {
+    "displayName": "生图与画廊",
+    "category": "工具"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test --experimental-strip-types test/*.test.ts"
+  },
+  "devDependencies": {
+    "@plume/plugin-sdk": "link:../../../plume/packages/sdk/plugin-sdk",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0"
+  }
+}

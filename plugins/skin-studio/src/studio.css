@@ -1,0 +1,351 @@
+.skin-studio-panel {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+	min-width: 0;
+	min-height: 0;
+}
+
+.skin-studio-scroll {
+	flex: 1;
+	min-height: 0;
+}
+
+.skin-studio-content {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	padding: 16px 16px 28px;
+	min-width: 0;
+}
+
+.skin-studio-skins {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	min-width: 0;
+}
+
+.skin-studio-problem,
+.skin-studio-form {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.skin-studio-problem {
+	align-items: flex-start;
+}
+
+/* ── 标题行带三个圆形按钮；系统外观一行是标签加分段 ── */
+.skin-studio-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	min-width: 0;
+}
+
+.skin-studio-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 12px;
+	min-width: 0;
+}
+
+.skin-studio-row-label {
+	flex-shrink: 0;
+}
+
+.skin-studio-seg {
+	display: inline-flex;
+	max-width: 100%;
+	overflow: hidden;
+	border: 1px solid var(--plume-line);
+	border-radius: var(--plume-radius-field);
+}
+
+.skin-studio-seg > button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 0;
+	height: 30px;
+	padding: 0 12px;
+	color: var(--plume-ink);
+	background: transparent;
+	white-space: nowrap;
+	transition: background-color var(--plume-t-quick) var(--plume-e-soft);
+}
+
+.skin-studio-seg > button + button {
+	border-left: 1px solid var(--plume-line);
+}
+
+.skin-studio-seg > button[aria-pressed="true"] {
+	color: var(--plume-accent);
+	background: var(--plume-accent-dim);
+}
+
+@media (hover: hover) {
+	.skin-studio-seg > button:hover:not(:disabled, [aria-pressed="true"]) {
+		background: var(--plume-card-hover);
+	}
+}
+
+.skin-studio-seg > button:disabled {
+	opacity: 0.45;
+}
+
+.skin-studio-row-actions {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+.skin-studio-round {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border-radius: var(--plume-radius-panel);
+	color: var(--plume-accent);
+	background: transparent;
+	transition: background-color var(--plume-t-quick) var(--plume-e-soft);
+}
+
+@media (hover: hover) {
+	.skin-studio-round:hover:not(:disabled) {
+		background: var(--plume-accent-dim);
+	}
+}
+
+.skin-studio-round:disabled {
+	opacity: 0.4;
+}
+
+/* ── 皮肤卡片画廊 ──
+ * 圆点、胶囊和圆形按钮都借 radius-panel：边长不到两倍圆角，画出来就是圆或胶囊。 */
+.skin-studio-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 120px), 1fr));
+	gap: 12px;
+}
+
+.skin-studio-card {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	overflow: hidden;
+	border: 1px solid var(--plume-line);
+	border-radius: var(--plume-radius-panel);
+	background: var(--plume-card);
+	transition:
+		border-color var(--plume-t-quick) var(--plume-e-soft),
+		transform var(--plume-t-quick) var(--plume-e-soft);
+}
+
+.skin-studio-card[data-selected="true"] {
+	border-color: var(--plume-accent);
+	outline: 2px solid var(--plume-accent-dim);
+	outline-offset: -3px;
+}
+
+@media (hover: hover) {
+	.skin-studio-card:has(.skin-studio-choice:hover:not(:disabled)) {
+		border-color: var(--plume-accent);
+		transform: translateY(-2px);
+	}
+}
+
+/* 整张卡片都能点：透明按钮铺满卡片，复制、删除叠在它上面。 */
+.skin-studio-choice {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	width: 100%;
+	border-radius: inherit;
+	background: transparent;
+}
+
+.skin-studio-choice:disabled {
+	cursor: default;
+}
+
+.skin-studio-thumb {
+	display: flex;
+	height: 84px;
+	background: var(--plume-shell);
+}
+
+.skin-studio-thumb-side {
+	width: 30%;
+	flex-shrink: 0;
+	background: var(--plume-sidebar);
+}
+
+.skin-studio-thumb-main {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	flex: 1;
+	min-width: 0;
+	padding: 10px 8px;
+}
+
+.skin-studio-thumb-bar {
+	width: 70%;
+	height: 5px;
+	border-radius: var(--plume-radius-panel);
+	background: var(--plume-ink-muted);
+	opacity: 0.55;
+}
+
+.skin-studio-thumb-short {
+	width: 45%;
+	background: var(--plume-ink-faint);
+}
+
+.skin-studio-thumb-pill {
+	width: 26px;
+	height: 8px;
+	margin-top: 4px;
+	border-radius: var(--plume-radius-panel);
+	background: var(--plume-accent);
+}
+
+.skin-studio-card-name {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	min-height: 36px;
+	padding: 6px 10px;
+	min-width: 0;
+}
+
+.skin-studio-name {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.skin-studio-card-actions {
+	position: relative;
+	z-index: 2;
+	display: flex;
+	gap: 4px;
+	flex-shrink: 0;
+	opacity: 0;
+	transition: opacity var(--plume-t-quick) var(--plume-e-soft);
+}
+
+.skin-studio-card:hover .skin-studio-card-actions,
+.skin-studio-card:focus-within .skin-studio-card-actions {
+	opacity: 1;
+}
+
+.skin-studio-mini {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	border-radius: var(--plume-radius-panel);
+	color: var(--plume-ink-muted);
+	background: var(--plume-card-hover);
+	transition:
+		color var(--plume-t-quick) var(--plume-e-soft),
+		background-color var(--plume-t-quick) var(--plume-e-soft);
+}
+
+.skin-studio-mini:hover:not(:disabled) {
+	color: var(--plume-ink);
+	background: var(--plume-elevated);
+}
+
+.skin-studio-mini:disabled {
+	opacity: 0.45;
+}
+
+.skin-studio-badge {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	border-radius: var(--plume-radius-panel);
+	color: var(--plume-on-accent);
+	background: var(--plume-accent);
+	pointer-events: none;
+}
+
+/* 和一张卡片同高（2px 描边 + 84px 缩略图 + 36px 名称行），单独一排时也不变形。 */
+.skin-studio-add {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-height: 122px;
+	padding: 8px;
+	color: var(--plume-ink-faint);
+	border: 1px dashed var(--plume-line);
+	border-radius: var(--plume-radius-panel);
+	background: transparent;
+	text-align: center;
+	transition:
+		color var(--plume-t-quick) var(--plume-e-soft),
+		border-color var(--plume-t-quick) var(--plume-e-soft),
+		background-color var(--plume-t-quick) var(--plume-e-soft);
+}
+
+@media (hover: hover) {
+	.skin-studio-add:hover:not(:disabled) {
+		color: var(--plume-accent);
+		border-color: var(--plume-accent);
+		background: var(--plume-card-hover);
+	}
+}
+
+.skin-studio-add:disabled {
+	opacity: 0.45;
+}
+
+.skin-studio-skeleton {
+	height: 122px;
+	border-color: var(--plume-line-soft);
+	background: var(--plume-card-hover);
+}
+
+/* ── 导入对话框 ── */
+.skin-studio-field {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.skin-studio-json {
+	height: 200px;
+}
+
+.skin-studio-json-input {
+	font-family: var(--plume-font-mono);
+}
+
+.skin-studio-import-preview {
+	width: min(100%, 200px);
+}

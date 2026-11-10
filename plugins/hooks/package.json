@@ -1,0 +1,29 @@
+{
+  "name": "@plume-plugins/hooks",
+  "version": "0.1.0",
+  "description": "在会话开始、提交消息、调用工具前后、审批、回答结束或失败、会话结束时运行你配置的命令，按 Claude Code 的钩子约定读它们的决定；支持要先信任的项目钩子和运行记录，设置页里增删、开关、信任。",
+  "author": "Plume",
+  "keywords": [
+    "hooks",
+    "钩子",
+    "PreToolUse",
+    "PostToolUse",
+    "Stop"
+  ],
+  "plume": {
+    "displayName": "钩子",
+    "category": "工作流"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test --experimental-strip-types test/*.test.ts"
+  },
+  "devDependencies": {
+    "@plume/platform": "link:../../../plume/packages/infra/platform",
+    "@plume/plugin-sdk": "link:../../../plume/packages/sdk/plugin-sdk",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0"
+  }
+}

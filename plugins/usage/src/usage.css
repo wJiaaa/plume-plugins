@@ -1,0 +1,649 @@
+/*
+ * 使用统计这一页的布局。插件单独构建，产品的 Tailwind 扫不到这里的类名，所以写成样式表，由 ui.tsx 挂到页面上。
+ * 文字的字号、行高、字重由 @plume/ui 的 Text 出，颜色只取 token；圆点、热力图格子这类图形的圆角在 SVG 里画。
+ */
+
+/* 指标几列、图和系列列表并不并排，看的是这一页给了多宽，不是窗口多宽：设置页的正文有最大宽度。 */
+.usage-root {
+	container-type: inline-size;
+}
+
+.usage-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+.usage-grow {
+	min-width: 0;
+	flex: 1;
+}
+
+.usage-keep {
+	flex-shrink: 0;
+}
+
+.usage-truncate {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.usage-ok {
+	color: var(--plume-ok);
+}
+
+/* ── 工具条 ── */
+
+.usage-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.usage-toolbar-second {
+	margin-top: 8px;
+}
+
+.usage-push {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-left: auto;
+}
+
+.usage-dates {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.usage-date {
+	width: 132px;
+}
+
+.usage-search {
+	width: 220px;
+}
+
+.usage-note {
+	margin: 12px 0 8px;
+}
+
+/* ── 卡片 ── */
+
+.usage-card {
+	margin-top: 12px;
+}
+
+.usage-chart-card {
+	display: flex;
+	flex-direction: column;
+}
+
+.usage-card-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 14px 16px 0;
+}
+
+.usage-card-detail {
+	margin-top: 2px;
+}
+
+.usage-split {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+/* ── 指标：窄时两列（最后一格占满一行），够宽时一排五格 ── */
+
+.usage-kpis {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.usage-kpi {
+	min-width: 0;
+	padding: 14px 16px;
+	border-bottom: 1px solid var(--plume-line-soft);
+}
+
+.usage-kpi:nth-child(odd) {
+	border-right: 1px solid var(--plume-line-soft);
+}
+
+.usage-kpi:last-child {
+	grid-column: span 2;
+	border-bottom: 0;
+}
+
+@container (min-width: 48rem) {
+	.usage-kpis {
+		grid-template-columns: repeat(5, minmax(0, 1fr));
+	}
+
+	.usage-kpi {
+		border-right: 1px solid var(--plume-line-soft);
+		border-bottom: 0;
+	}
+
+	.usage-kpi:last-child {
+		grid-column: span 1;
+		border-right: 0;
+	}
+}
+
+.usage-kpi-value {
+	margin-top: 4px;
+}
+
+.usage-kpi-detail {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin-top: 4px;
+}
+
+/* 命中率下面那一条：高只有 4px，圆角取哪一档都会收成两头圆。 */
+.usage-meter {
+	height: 4px;
+	margin-top: 6px;
+	overflow: hidden;
+	border-radius: var(--plume-radius-item);
+	background: color-mix(in oklab, var(--plume-ink) 6%, transparent);
+}
+
+.usage-meter-fill {
+	height: 100%;
+	border-radius: var(--plume-radius-item);
+	background: var(--plume-ok);
+	transition: width var(--plume-t-slow) var(--plume-e-out);
+}
+
+.usage-meter-label {
+	padding-top: 4px;
+}
+
+/* ── 柱状图和系列列表 ── */
+
+.usage-chart-body {
+	display: grid;
+	gap: 8px;
+}
+
+@container (min-width: 48rem) {
+	.usage-chart-body {
+		grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+	}
+}
+
+.usage-bars {
+	display: flex;
+	min-height: 220px;
+	flex: 1;
+	flex-direction: column;
+	padding: 8px 12px;
+}
+
+.usage-bars-svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+	flex: 1;
+	overflow: visible;
+	contain: size;
+}
+
+.usage-bar {
+	transition:
+		y var(--plume-t-slow) var(--plume-e-out),
+		height var(--plume-t-slow) var(--plume-e-out);
+}
+
+.usage-dot {
+	flex-shrink: 0;
+}
+
+.usage-tip {
+	position: fixed;
+	z-index: 200;
+	min-width: 168px;
+	max-width: 300px;
+	padding: 8px 10px;
+	border: 1px solid var(--plume-line-soft);
+	border-radius: var(--plume-radius-menu);
+	background: var(--plume-float);
+	box-shadow: var(--plume-shadow-glass);
+	pointer-events: none;
+}
+
+.usage-tip-empty {
+	margin-top: 4px;
+}
+
+.usage-tip-rows {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin-top: 6px;
+}
+
+.usage-tip-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.usage-tip-total {
+	margin-top: 6px;
+	padding-top: 6px;
+	border-top: 1px solid var(--plume-line-soft);
+}
+
+.usage-series-scroll {
+	max-height: 300px;
+	overflow-y: auto;
+	padding: 8px 8px 12px;
+}
+
+.usage-series {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.usage-series-item {
+	display: block;
+	width: 100%;
+	padding: 6px 8px;
+	border-radius: var(--plume-radius-field);
+	text-align: left;
+	transition:
+		background-color var(--plume-t-quick),
+		opacity var(--plume-t-quick);
+}
+
+.usage-series-item:hover {
+	background: var(--plume-card-hover);
+}
+
+.usage-series-item[aria-pressed="false"] {
+	opacity: 0.45;
+}
+
+.usage-series-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.usage-share {
+	height: 3px;
+	margin: 4px 0 0 16px;
+	overflow: hidden;
+	border-radius: var(--plume-radius-item);
+	background: color-mix(in oklab, var(--plume-ink) 6%, transparent);
+}
+
+.usage-share-fill {
+	height: 100%;
+	border-radius: var(--plume-radius-item);
+	transition: width var(--plume-t-slow) var(--plume-e-out);
+}
+
+.usage-series-detail {
+	margin: 4px 0 0 16px;
+}
+
+/* ── 热力图 ── */
+
+.usage-heat-body {
+	padding: 16px;
+}
+
+/* 居中，但放不下时从右边开始让：`safe` 不让左边那几周被推到滚动区外面去。 */
+.usage-heat {
+	display: flex;
+	width: 100%;
+	overflow-x: auto;
+	justify-content: safe center;
+}
+
+.usage-heat-inner {
+	display: inline-block;
+	padding: 4px 0;
+}
+
+.usage-heat-months {
+	position: relative;
+	height: 14px;
+	margin-bottom: 4px;
+}
+
+.usage-heat-month {
+	position: absolute;
+	top: 0;
+}
+
+.usage-heat-grid,
+.usage-heat-week {
+	display: flex;
+	gap: 3px;
+}
+
+.usage-heat-week {
+	flex-direction: column;
+}
+
+.usage-heat-slot {
+	display: block;
+	width: 11px;
+	height: 11px;
+}
+
+.usage-heat-cell {
+	display: block;
+}
+
+.usage-heat-cell rect {
+	transition: fill var(--plume-t-quick);
+}
+
+/* 补到周末的那几格是将来的日子：画淡，不留成洞。 */
+.usage-heat-cell[data-future] {
+	opacity: 0.4;
+}
+
+.usage-shade-0 {
+	fill: color-mix(in oklab, var(--plume-ink) 6%, transparent);
+}
+
+.usage-shade-1 {
+	fill: color-mix(in oklab, var(--plume-accent) 25%, transparent);
+}
+
+.usage-shade-2 {
+	fill: color-mix(in oklab, var(--plume-accent) 45%, transparent);
+}
+
+.usage-shade-3 {
+	fill: color-mix(in oklab, var(--plume-accent) 70%, transparent);
+}
+
+.usage-shade-4 {
+	fill: var(--plume-accent);
+}
+
+.usage-heat-legend {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 4px;
+	margin-top: 10px;
+}
+
+.usage-heat-less {
+	margin-right: 4px;
+}
+
+.usage-heat-more {
+	margin-left: 4px;
+}
+
+/* ── 环图：两张卡片，够宽时并排；图例在卡片够宽时排两列 ── */
+
+.usage-breakdown {
+	display: grid;
+	gap: 12px;
+	margin-top: 12px;
+}
+
+@container (min-width: 56rem) {
+	.usage-breakdown {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+.usage-breakdown-card {
+	display: flex;
+	flex-direction: column;
+	padding: 16px;
+	container-type: inline-size;
+}
+
+.usage-breakdown-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 2px 12px;
+}
+
+.usage-breakdown-body {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: 24px;
+	margin-top: 16px;
+}
+
+.usage-breakdown-foot {
+	margin-top: 16px;
+}
+
+/* 环在页面上的边长，viewBox 是 120。从 12 点钟方向起画。 */
+.usage-donut {
+	position: relative;
+	width: 132px;
+	height: 132px;
+	flex-shrink: 0;
+}
+
+.usage-donut-svg {
+	width: 100%;
+	height: 100%;
+	transform: rotate(-90deg);
+}
+
+.usage-donut-track {
+	stroke: color-mix(in oklab, var(--plume-ink) 6%, transparent);
+}
+
+.usage-donut-center {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+}
+
+.usage-legend {
+	display: grid;
+	min-width: 0;
+	flex: 1;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 12px 24px;
+}
+
+@container (min-width: 36rem) {
+	.usage-legend {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+.usage-legend-item {
+	min-width: 0;
+}
+
+.usage-legend-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.usage-legend-detail {
+	margin: 2px 0 0 16px;
+}
+
+/* ── 缓存未命中：左边总数和说明，右边按原因一行一个 ── */
+
+.usage-miss {
+	padding: 16px;
+	container-type: inline-size;
+}
+
+.usage-miss-title {
+	margin-bottom: 12px;
+}
+
+.usage-miss-body {
+	display: grid;
+	gap: 16px;
+}
+
+@container (min-width: 42rem) {
+	.usage-miss-body {
+		grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+	}
+}
+
+.usage-miss-sub {
+	margin-top: 4px;
+}
+
+.usage-miss-detail {
+	margin-top: 8px;
+}
+
+.usage-miss-cause {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 8px 0;
+}
+
+.usage-miss-cause + .usage-miss-cause {
+	border-top: 1px solid var(--plume-line-soft);
+}
+
+/* ── 空、读取中 ── */
+
+.usage-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 14px;
+	padding: 48px 24px;
+	text-align: center;
+}
+
+/* 44px 的圆底配 20px 的记号：线性图标单独放在大片留白中间显得太轻，一块底给它确定的位置和重量。圆底是 SVG 画的圆，记号叠在上面。 */
+.usage-empty-mark {
+	position: relative;
+	display: flex;
+	width: 44px;
+	height: 44px;
+	align-items: center;
+	justify-content: center;
+	color: color-mix(in oklab, var(--plume-ink-faint) 70%, transparent);
+	animation: plume-settle var(--plume-t-base) var(--plume-e-out) both;
+}
+
+.usage-empty-disc {
+	position: absolute;
+	inset: 0;
+	fill: color-mix(in oklab, var(--plume-ink) 4%, transparent);
+}
+
+.usage-empty-mark > :not(.usage-empty-disc) {
+	position: relative;
+}
+
+.usage-empty-text {
+	max-width: 260px;
+	animation: plume-fade-up var(--plume-t-base) var(--plume-e-out) 70ms both;
+}
+
+.usage-skeleton-kpis {
+	display: grid;
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+	gap: 16px;
+	padding: 16px;
+}
+
+.usage-skeleton-gap {
+	margin-top: 12px;
+}
+
+.usage-skeleton-chart {
+	padding: 16px;
+}
+
+.usage-skeleton-bars {
+	display: flex;
+	height: 200px;
+	align-items: flex-end;
+	gap: 8px;
+}
+
+.usage-skeleton-bar {
+	flex: 1;
+	border-radius: var(--plume-radius-item);
+}
+
+/* 一行字高的盒子，条在里面竖直居中。 */
+.usage-skeleton-line {
+	display: flex;
+	align-items: center;
+	height: 1lh;
+}
+
+/* 环的骨架：和 .usage-donut 同样 132px，内外径照环图的 RADIUS ± STROKE / 2 按 132/120 换算，挖空的中间用遮罩，两种主题下都不露边。 */
+.usage-skeleton-ring {
+	display: block;
+	flex-shrink: 0;
+	width: 132px;
+	height: 132px;
+	mask: radial-gradient(circle, transparent 44px, var(--plume-ink) 44.5px, var(--plume-ink) 57.2px, transparent 57.7px);
+}
+
+/* ── 模型品牌标 ── */
+
+.usage-brand {
+	flex-shrink: 0;
+}
+
+.usage-brand-none {
+	color: var(--plume-ink-faint);
+}
+
+/* 单色标用满墨色；彩色标自带颜色，什么都不继承。 */
+.usage-brand-mono {
+	color: var(--plume-ink);
+}
+
+.usage-brand-dark {
+	display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+	.usage-brand-light {
+		display: none;
+	}
+
+	.usage-brand-dark {
+		display: inline;
+	}
+}

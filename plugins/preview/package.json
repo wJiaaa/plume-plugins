@@ -1,0 +1,32 @@
+{
+  "name": "@plume-plugins/preview",
+  "version": "0.1.0",
+  "description": "在回复中展示 HTML 小工具、游戏和演示，支持发布前截图检查、错误反馈和页面状态。",
+  "keywords": [
+    "preview",
+    "html",
+    "网页",
+    "演示",
+    "游戏"
+  ],
+  "plume": {
+    "displayName": "网页预览",
+    "category": "工具",
+    "defaultPrompt": [
+      "做一个番茄钟小工具，直接在回复里能用",
+      "画一个可以拖动参数的正弦波演示"
+    ]
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test --experimental-strip-types test/*.test.ts"
+  },
+  "devDependencies": {
+    "@plume/plugin-sdk": "link:../../../plume/packages/sdk/plugin-sdk",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0"
+  },
+  "author": "Plume"
+}

@@ -1,0 +1,29 @@
+{
+  "name": "@plume-plugins/summary",
+  "version": "0.1.0",
+  "description": "每轮结束、静下来一分钟后，在后台让模型把会话写成一段摘要，放在环境卡片里：在做什么、做到哪了、下一步是什么。",
+  "author": "Plume",
+  "keywords": [
+    "摘要",
+    "会话",
+    "环境卡片",
+    "summary"
+  ],
+  "plume": {
+    "displayName": "会话摘要",
+    "category": "工作流"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@plume/plugin-sdk": "link:../../../plume/packages/sdk/plugin-sdk",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0",
+    "react": "^19.3.1",
+    "vitest": "^5.1.0"
+  }
+}

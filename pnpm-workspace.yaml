@@ -1,0 +1,28 @@
+packages:
+  - plugins/*
+
+# 插件的 @plume/plugin-sdk（和钩子插件的 @plume/platform）是 link: 到旁边本体仓库 ../plume 的目录，不经 npm，
+# 两个仓库要并排放：plume-project/plume、plume-project/plume-plugins。
+
+# pnpm 默认不跑依赖的安装脚本；esbuild 要靠它装平台包。
+onlyBuiltDependencies:
+  - esbuild
+
+# koffi 的安装脚本是在没有预编译包时现编，它自带各平台的预编译包，用不上。
+# ssh2（SSH 插件）的安装脚本现编可选的加密加速和 cpu-features，不编时用自带的纯 JS 实现，打包机不需要 C++ 工具链。
+ignoredBuiltDependencies:
+  - koffi
+  - ssh2
+  - cpu-features
+
+# 可选依赖装哪些平台的，而不只是本机的：插件构建时带上各平台、各架构的原生模块，打包时按目标裁掉别的。
+# 理由同本体仓库 pnpm-workspace.yaml 的 supportedArchitectures。改了这里要删掉 node_modules 重装才生效。
+supportedArchitectures:
+  os:
+    - current
+    - darwin
+    - win32
+  cpu:
+    - current
+    - x64
+    - arm64

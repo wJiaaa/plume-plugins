@@ -1,0 +1,31 @@
+{
+  "name": "@plume-plugins/index",
+  "version": "0.1.0",
+  "description": "给 agent 一个 symbol 工具：按项目建符号索引，直接查函数、类、接口、类型和常量定义在哪个文件哪一行，比 grep 一个名字少翻很多调用处；设置页里看索引状态、重建和试搜。",
+  "author": "Plume",
+  "keywords": [
+    "index",
+    "symbol",
+    "索引",
+    "符号",
+    "定义"
+  ],
+  "plume": {
+    "displayName": "索引库",
+    "category": "工具",
+    "defaultPrompt": [
+      "用 symbol 工具找出这个项目的入口函数在哪"
+    ]
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test --experimental-strip-types test/*.test.ts"
+  },
+  "devDependencies": {
+    "@plume/plugin-sdk": "link:../../../plume/packages/sdk/plugin-sdk",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0"
+  }
+}

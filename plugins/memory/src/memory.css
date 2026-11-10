@@ -1,0 +1,141 @@
+/*
+ * 「个性化」页里记忆那一节的样式。插件单独构建，产品的 Tailwind 扫不到这里的类名，所以写成样式表，由 ui.tsx 挂到页面上。
+ * 这里只管布局和颜色：文字的字号、行高由 @plume/ui 的 Text 出，颜色只取 var(--plume-*)。
+ */
+
+.memory-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 8px;
+}
+
+/* 小标题自带的下边距是给紧跟卡片的情况的；这里下面还有一行介绍，介绍贴着标题。 */
+.memory-head h2 {
+	margin-bottom: 0;
+}
+
+.memory-intro {
+	margin-top: 2px;
+}
+
+.memory-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 12px;
+}
+
+.memory-add {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.memory-add-input {
+	flex: 1 1 0%;
+}
+
+.memory-items {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.memory-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 12px;
+	border: 1px solid var(--plume-line);
+	border-radius: var(--plume-radius-field);
+	background: var(--plume-card);
+	transition: border-color var(--plume-t-quick);
+}
+
+.memory-item:hover {
+	border-color: var(--plume-line-soft);
+}
+
+/* 项目记忆的条目可能好几行，删除按钮跟第一行对齐。 */
+.memory-item-top {
+	align-items: flex-start;
+	gap: 8px;
+}
+
+/* 脑图标对着这条记忆的中线，跟右边的删除按钮同高。 */
+.memory-item-main {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+}
+
+.memory-item-icon {
+	flex-shrink: 0;
+	color: var(--plume-accent);
+}
+
+.memory-item-body {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.memory-item-text {
+	display: block;
+}
+
+/* 后台总结的那一份是一整段 markdown，换行照原样。 */
+.memory-extracted {
+	margin: 0;
+	white-space: pre-wrap;
+	font-family: var(--plume-font-sans);
+}
+
+.memory-empty {
+	padding: 32px 0;
+	border: 1px solid color-mix(in srgb, var(--plume-line) 60%, transparent);
+	border-radius: var(--plume-radius-field);
+	background: color-mix(in srgb, var(--plume-card) 40%, transparent);
+	text-align: center;
+}
+
+.memory-project {
+	padding-top: 8px;
+}
+
+.memory-project-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 6px;
+}
+
+.memory-project-pick {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.memory-project-label {
+	flex-shrink: 0;
+}
+
+.memory-meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	column-gap: 6px;
+}
+
+.memory-meta > span {
+	flex-shrink: 0;
+	white-space: nowrap;
+}
+
+.memory-meta-dot {
+	color: var(--plume-line);
+}

@@ -1,0 +1,31 @@
+{
+  "name": "@plume-plugins/review",
+  "version": "0.1.0",
+  "description": "写代码的对话不审自己：/review 把改动或 PR 交给一个只读的审阅会话，按力度派子智能体找问题、核实，问原对话修哪几条后再修，报告交回原对话。",
+  "author": "Plume",
+  "keywords": [
+    "review",
+    "审阅",
+    "代码审查",
+    "/review"
+  ],
+  "plume": {
+    "displayName": "代码审阅",
+    "category": "工作流",
+    "defaultPrompt": [
+      "/review",
+      "/review --effort high"
+    ]
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test --experimental-strip-types test/*.test.ts"
+  },
+  "devDependencies": {
+    "@plume/plugin-sdk": "link:../../../plume/packages/sdk/plugin-sdk",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0"
+  }
+}

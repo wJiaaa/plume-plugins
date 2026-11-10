@@ -1,0 +1,36 @@
+import type { Locale } from "@plume/contract";
+const zhCN = {
+	help: "读取界面块语法",
+	empty: "暂无数据",
+	chart: "图表",
+	details: "查看图表数据",
+	preview: "将发送以下消息及全部表单值：",
+	sentPreview: "已发送以下消息及全部表单值：",
+	sent: "已发送",
+	failed: "发送失败，输入已保留。请重试。",
+	invalid: "当前值无法用于此界面，请修改输入或重置。",
+	readOnly: "只读界面，不能修改或发送。",
+	writing: "界面尚未完成，暂不能修改或发送。",
+	local: "仅更新本地值，不发送消息。",
+	updated: "已更新本地值",
+	reset: "重置表单",
+};
+export const MESSAGES: Record<Locale, typeof zhCN> = {
+	"zh-CN": zhCN,
+	en: {
+		help: "Read interface block syntax",
+		empty: "No data yet",
+		chart: "Chart",
+		details: "View chart data",
+		preview: "Sends this message and every form value:",
+		sentPreview: "Sent this message and every form value:",
+		sent: "Sent",
+		failed: "Could not send. Your inputs are preserved. Try again.",
+		invalid: "The current values cannot be used in this interface. Edit the inputs or reset them.",
+		readOnly: "Read-only interface. Editing and sending are unavailable.",
+		writing: "This interface is not finished. Editing and sending are unavailable.",
+		local: "Updates local values only. No message is sent.",
+		updated: "Local values updated",
+		reset: "Reset form",
+	},
+};

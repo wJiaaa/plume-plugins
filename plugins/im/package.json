@@ -1,0 +1,30 @@
+{
+  "name": "@plume-plugins/im",
+  "version": "0.1.0",
+  "description": "配置微信、飞书和 Telegram 机器人凭据，为后续聊天平台接入准备安全存储。",
+  "author": "Plume",
+  "keywords": [
+    "im",
+    "bot",
+    "wechat",
+    "weixin",
+    "feishu",
+    "telegram",
+    "即时通讯"
+  ],
+  "plume": {
+    "displayName": "IM 机器人",
+    "category": "连接"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test --experimental-strip-types test/*.test.ts"
+  },
+  "devDependencies": {
+    "@plume/plugin-sdk": "link:../../../plume/packages/sdk/plugin-sdk",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0"
+  }
+}

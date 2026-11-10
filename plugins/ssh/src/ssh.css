@@ -1,0 +1,694 @@
+/*
+ * plume.ssh 的样式：主机页（主机库、终端、运维助手）、SFTP、对话框、审批卡。插件单独构建，产品的 Tailwind 扫不到这里的类名，所以写成样式表，
+ * 和 xterm 的一起由 ui.tsx 挂到页面上。这里只管布局：字号、行高由 @plume/ui 的 Text 出；颜色只取 var(--plume-*)。
+ */
+
+/* —— 通用 —— */
+
+.ssh-grow {
+	flex: 1 1 0%;
+	min-width: 0;
+}
+
+.ssh-spacer {
+	flex: 1 1 0%;
+}
+
+.ssh-ellipsis {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ssh-break {
+	overflow-wrap: anywhere;
+}
+
+.ssh-keep {
+	flex-shrink: 0;
+	white-space: nowrap;
+}
+
+.ssh-faint {
+	flex-shrink: 0;
+	color: var(--plume-ink-faint);
+}
+
+.ssh-accent {
+	flex-shrink: 0;
+	color: var(--plume-accent);
+}
+
+.ssh-star {
+	flex-shrink: 0;
+	color: var(--plume-warning);
+}
+
+.ssh-mono {
+	font-family: var(--plume-font-mono);
+}
+
+.ssh-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+/* 连接状态的小圆点：连着绿、在连黄、断了灰。 */
+.ssh-dot {
+	flex-shrink: 0;
+	width: 7px;
+	height: 7px;
+	clip-path: circle(50%);
+	background: var(--plume-ink-faint);
+}
+
+.ssh-dot[data-state="connected"] {
+	background: var(--plume-ok);
+}
+
+.ssh-dot[data-state="connecting"],
+.ssh-dot[data-state="hostkey"] {
+	background: var(--plume-warning);
+}
+
+.ssh-dot[data-state="closed"] {
+	background: var(--plume-ink-faint);
+}
+
+/* —— 终端标签的内容 —— */
+
+.ssh-connection {
+	display: flex;
+	flex: 1 1 0%;
+	flex-direction: column;
+	min-height: 0;
+	container-type: inline-size;
+}
+
+.ssh-status {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	padding: 4px 8px 4px 12px;
+	border-bottom: 1px solid var(--plume-line-soft);
+}
+
+/* 窄的时候先让地址缩、再藏起来，名字留着：主机库和助手那一列都挤着终端。 */
+.ssh-status-name {
+	flex-shrink: 0;
+	max-width: 45%;
+}
+
+@container (max-width: 420px) {
+	.ssh-status-address {
+		display: none;
+	}
+}
+
+.ssh-stats {
+	display: flex;
+	gap: 10px;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+.ssh-body {
+	display: flex;
+	flex: 1 1 0%;
+	min-height: 0;
+}
+
+.ssh-terminal-wrap {
+	position: relative;
+	display: flex;
+	flex: 1 1 0%;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+}
+
+.ssh-terminal {
+	flex: 1 1 0%;
+	min-height: 0;
+	overflow: hidden;
+	padding: 6px 8px 0;
+}
+
+.ssh-overlay {
+	position: absolute;
+	inset: 0;
+	z-index: 5;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	padding: 24px;
+	background: color-mix(in oklab, var(--plume-shell) 85%, transparent);
+}
+
+.ssh-hostkey {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	width: 100%;
+	max-width: 440px;
+	padding: 16px;
+}
+
+.ssh-hostkey-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.ssh-hostkey-facts,
+.ssh-run-facts {
+	display: grid;
+	grid-template-columns: max-content minmax(0, 1fr);
+	gap: 4px 12px;
+	margin: 0;
+}
+
+.ssh-closed {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 12px;
+	border-top: 1px solid var(--plume-line-soft);
+}
+
+.ssh-closed-text {
+	flex: 1 1 0%;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+/* 查找条浮在终端右上角，见 TerminalSearch.tsx。 */
+.ssh-search {
+	position: absolute;
+	top: 8px;
+	right: 12px;
+	z-index: 10;
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	padding: 2px 4px 2px 10px;
+	border: 1px solid var(--plume-line-float);
+}
+
+.ssh-search-input {
+	width: 176px;
+	background: transparent;
+	outline: none;
+	color: var(--plume-ink);
+}
+
+.ssh-search-input[data-none] {
+	color: var(--plume-danger);
+}
+
+.ssh-search-input::placeholder {
+	color: var(--plume-ink-faint);
+}
+
+.ssh-search-count {
+	flex-shrink: 0;
+	min-width: 4.5em;
+	text-align: right;
+}
+
+/* —— SFTP —— */
+
+.ssh-sftp {
+	display: flex;
+	flex: 0 0 auto;
+	flex-direction: column;
+	width: min(320px, 45%);
+	min-width: 220px;
+	min-height: 0;
+	border-left: 1px solid var(--plume-line-soft);
+	transition: background-color var(--plume-t-quick);
+}
+
+.ssh-sftp[data-dragging] {
+	background: var(--plume-card-hover);
+}
+
+.ssh-sftp-toolbar {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: 2px;
+	padding: 4px 6px;
+	border-bottom: 1px solid var(--plume-line-soft);
+}
+
+.ssh-sftp-path {
+	flex: 1 1 0%;
+	min-width: 0;
+}
+
+.ssh-sftp-path input,
+.ssh-sftp-edit input {
+	width: 100%;
+	height: 24px;
+	padding: 0 6px;
+	border-radius: var(--plume-radius-field);
+	background: var(--plume-card);
+	color: var(--plume-ink);
+	font-family: var(--plume-font-mono);
+	outline: none;
+}
+
+.ssh-sftp-edit {
+	flex: 1 1 0%;
+	min-width: 0;
+}
+
+.ssh-sftp-scroll {
+	flex: 1 1 0%;
+	min-height: 0;
+}
+
+.ssh-sftp-list {
+	padding: 4px 4px 8px;
+}
+
+.ssh-sftp-rows {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	outline: none;
+}
+
+.ssh-sftp-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 3px 8px;
+	cursor: default;
+	user-select: none;
+}
+
+.ssh-sftp-note {
+	padding: 16px 8px;
+	text-align: center;
+	overflow-wrap: anywhere;
+}
+
+.ssh-transfers {
+	display: flex;
+	flex-shrink: 0;
+	flex-direction: column;
+	max-height: 140px;
+	overflow-y: auto;
+	padding: 4px 8px;
+	border-top: 1px solid var(--plume-line-soft);
+}
+
+.ssh-transfer {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 22px;
+}
+
+.ssh-sftp-foot {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 4px 8px;
+	border-top: 1px solid var(--plume-line-soft);
+}
+
+/* —— 主机页：主机库 | 终端 | 运维助手 —— */
+
+.ssh-desk {
+	display: flex;
+	flex: 1 1 0%;
+	height: 100%;
+	min-height: 0;
+}
+
+.ssh-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.ssh-host-column {
+	display: flex;
+	flex-shrink: 0;
+	flex-direction: column;
+	width: calc(224px + var(--plume-top-row-inset, 0px));
+	min-height: 0;
+	border-right: 1px solid var(--plume-line-soft);
+}
+
+.ssh-host-search {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 2px 10px 8px;
+}
+
+.ssh-chips {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+}
+
+.ssh-host-scroll {
+	flex: 1 1 0%;
+	min-height: 0;
+}
+
+.ssh-host-list {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	padding: 0 6px 8px;
+}
+
+.ssh-host-group {
+	padding: 10px 8px 4px;
+}
+
+.ssh-host-row {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	padding-right: 4px;
+}
+
+.ssh-host-open {
+	display: flex;
+	flex: 1 1 0%;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+	padding: 6px 4px 6px 8px;
+	text-align: left;
+}
+
+.ssh-host-text {
+	display: flex;
+	flex: 1 1 0%;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.ssh-host-title {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+}
+
+.ssh-host-none {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	padding: 32px 12px;
+	text-align: center;
+}
+
+.ssh-host-foot {
+	display: flex;
+	flex-shrink: 0;
+	gap: 6px;
+	padding: 8px 10px;
+	border-top: 1px solid var(--plume-line-soft);
+}
+
+.ssh-host-foot > * {
+	flex: 1 1 0%;
+}
+
+.ssh-terminals {
+	display: flex;
+	flex: 1 1 0%;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+}
+
+/* 标签多了在这一行里横着滑，不换行、不挤掉右边的开关。 */
+.ssh-tabs {
+	display: flex;
+	flex: 1 1 0%;
+	align-items: center;
+	gap: 2px;
+	min-width: 0;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+
+.ssh-tab {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	max-width: 180px;
+	padding-right: 2px;
+	border-radius: var(--plume-radius-item);
+}
+
+.ssh-tab:hover {
+	background: var(--plume-card-hover);
+}
+
+.ssh-tab[data-active] {
+	background: var(--plume-card);
+}
+
+.ssh-tab-button {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+	padding: 4px 4px 4px 8px;
+	color: var(--plume-ink-muted);
+}
+
+.ssh-tab[data-active] .ssh-tab-button {
+	color: var(--plume-ink);
+}
+
+.ssh-tab-body {
+	display: flex;
+	flex: 1 1 0%;
+	flex-direction: column;
+	min-height: 0;
+	border-top: 1px solid var(--plume-line-soft);
+}
+
+.ssh-tab-body[hidden] {
+	display: none;
+}
+
+.ssh-monitor {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: 6px;
+}
+
+.ssh-assistant {
+	display: flex;
+	flex-shrink: 0;
+	flex-direction: column;
+	width: clamp(300px, 30%, 420px);
+	min-height: 0;
+	border-left: 1px solid var(--plume-line-soft);
+}
+
+.ssh-assistant-body {
+	flex: 1 1 0%;
+	min-height: 0;
+}
+
+/* —— 对话框里的表单 —— */
+
+.ssh-form {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.ssh-form-pair {
+	display: flex;
+	align-items: flex-end;
+	gap: 12px;
+	min-width: 0;
+}
+
+.ssh-form-port {
+	width: 96px;
+	flex-shrink: 0;
+}
+
+.ssh-group-list {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.ssh-group-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.ssh-warnings {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin: 0;
+	padding-left: 18px;
+	list-style: disc;
+}
+
+.ssh-import-table {
+	display: flex;
+	flex-direction: column;
+	max-height: 320px;
+	overflow-y: auto;
+	border: 1px solid var(--plume-line-soft);
+	border-radius: var(--plume-radius-field);
+}
+
+.ssh-import-row {
+	display: grid;
+	grid-template-columns: 28px minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 0.8fr);
+	align-items: center;
+	gap: 8px;
+	padding: 4px 8px;
+	border-top: 1px solid var(--plume-line-soft);
+}
+
+.ssh-import-head {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	border-top: 0;
+	background: var(--plume-elevated);
+}
+
+.ssh-import-row[data-status="duplicate"],
+.ssh-import-row[data-status="invalid"],
+.ssh-import-row[data-status="formula"] {
+	opacity: 0.6;
+}
+
+.ssh-check {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+}
+
+.ssh-check:disabled {
+	cursor: default;
+}
+
+/* —— 批量命令 —— */
+
+.ssh-batch-targets {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+.ssh-batch-target {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	padding: 5px 8px;
+	text-align: left;
+}
+
+.ssh-batch-command,
+.ssh-run-command {
+	min-height: 96px;
+}
+
+.ssh-batch-results {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	max-height: 380px;
+	overflow-y: auto;
+}
+
+.ssh-batch-result-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	padding: 4px 0;
+}
+
+.ssh-batch-output {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.ssh-confirm {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.ssh-confirm-warn {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.ssh-confirm-targets {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+.ssh-confirm-target {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+/* —— ssh_run 的审批卡和卡片 —— */
+
+.ssh-run {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 4px 16px 12px;
+	outline: none;
+}
+
+.ssh-run-result {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}

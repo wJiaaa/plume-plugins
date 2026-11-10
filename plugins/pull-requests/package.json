@@ -1,0 +1,28 @@
+{
+  "name": "@plume-plugins/pull-requests",
+  "version": "0.1.0",
+  "description": "跨 GitHub、GitLab、Gitee 和 Gitea 账号查看拉取请求、代码改动、检查和动态，提交评论与审查结论，并交给 Agent 分析。",
+  "author": "Plume",
+  "keywords": [
+    "git",
+    "pull request",
+    "merge request",
+    "代码审查"
+  ],
+  "plume": {
+    "displayName": "拉取请求",
+    "category": "工具"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test --experimental-strip-types test/*.test.ts"
+  },
+  "devDependencies": {
+    "@plume/plugin-sdk": "link:../../../plume/packages/sdk/plugin-sdk",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0",
+    "react": "^19.3.1"
+  }
+}

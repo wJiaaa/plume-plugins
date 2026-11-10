@@ -1,0 +1,37 @@
+{
+  "name": "plume-plugins",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "prepare": "lefthook install",
+    "build:plugins": "pnpm --dir ../plume build:plugins",
+    "plugin": "node ../plume/packages/sdk/plugin-sdk/bin/plume-plugin.mjs",
+    "validate": "node scripts/validate.mjs",
+    "build:dist": "node scripts/build-dist.mjs",
+    "typecheck": "pnpm -r --no-bail typecheck",
+    "test": "pnpm -r --no-bail test",
+    "lint": "oxlint --deny-warnings",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "check:host": "node ../plume/scripts/check-styles.mjs && node ../plume/scripts/check-i18n.mjs && node ../plume/scripts/check-i18n-unused.mjs && node ../plume/scripts/check-plugins.mjs",
+    "check": "pnpm typecheck && pnpm lint && pnpm fmt:check && pnpm test && pnpm validate && pnpm check:host && pnpm arch",
+    "arch": "depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json plugins",
+    "arch:baseline": "depcruise --config .dependency-cruiser.cjs --output-type baseline plugins > .dependency-cruiser-known-violations.json",
+    "knip": "knip",
+    "smoke": "pnpm --dir ../plume smoke"
+  },
+  "devDependencies": {
+    "@swc/core": "^1.16.21",
+    "@types/node": "^24.10.0",
+    "dependency-cruiser": "^18.7.2",
+    "knip": "^6.44.1",
+    "lefthook": "^2.2.2",
+    "oxfmt": "^0.76.0",
+    "oxlint": "^1.91.0",
+    "typescript": "^7.0.2"
+  }
+}

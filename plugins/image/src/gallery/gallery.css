@@ -1,0 +1,580 @@
+/*
+ * 画廊页自己的样式。插件单独构建，产品的 Tailwind 扫不到这里的类名，所以写成样式表，由界面入口挂到页面上。
+ * 这里只管布局：字号、行高、字重由 @plume/ui 的 Text 出；颜色、圆角、时长只取 var(--plume-*)。
+ * 页面窄时根上带 `data-narrow`（按页面自己的宽度量，不看窗口）。
+ */
+
+/* ---- 页面 ---- */
+
+.image-gallery-page {
+	position: relative;
+	display: flex;
+	flex: 1 1 0%;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.image-gallery-album {
+	display: flex;
+	flex: 1 1 0%;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.image-gallery-scroll {
+	flex: 1 1 0%;
+}
+
+.image-gallery-content {
+	width: 100%;
+	max-width: 1320px;
+	margin: 0 auto;
+	padding: 24px 32px 40px;
+}
+
+.image-gallery-page[data-narrow] .image-gallery-content {
+	padding-inline: 16px;
+}
+
+.image-gallery-header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 12px;
+	padding-bottom: 8px;
+}
+
+.image-gallery-heading {
+	min-width: 0;
+}
+
+.image-gallery-count {
+	margin-top: 6px;
+}
+
+.image-gallery-search {
+	width: 240px;
+	max-width: 100%;
+}
+
+/* 出错、空着、没搜到：页面中间一句话。 */
+.image-gallery-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	padding: 96px 0;
+	text-align: center;
+}
+
+.image-gallery-empty {
+	gap: 8px;
+	padding: 112px 0;
+}
+
+.image-gallery-empty-icon {
+	margin-bottom: 8px;
+	color: var(--plume-ink-faint);
+}
+
+.image-gallery-empty-hint {
+	max-width: 360px;
+}
+
+.image-gallery-skeleton {
+	padding-top: 24px;
+}
+
+.image-gallery-skeleton-head {
+	margin-bottom: 12px;
+}
+
+.image-gallery-skeleton-row {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.image-gallery-skeleton-tile {
+	display: block;
+	min-width: 0;
+}
+
+/* 骨架块默认是胶囊，格子的占位要和格子一样的圆角。 */
+.image-gallery-skeleton-block {
+	border-radius: var(--plume-radius-field);
+}
+
+/* ---- 相册 ---- */
+
+.image-gallery-grid {
+	width: 100%;
+}
+
+.image-gallery-day {
+	padding-top: 20px;
+}
+
+.image-gallery-day-head {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	margin: 0 0 10px;
+}
+
+.image-gallery-rows {
+	display: flex;
+	flex-direction: column;
+}
+
+.image-gallery-row {
+	display: flex;
+}
+
+.image-gallery-tile {
+	position: relative;
+	flex-shrink: 0;
+	overflow: hidden;
+	padding: 0;
+	border: 0;
+	border-radius: var(--plume-radius-field);
+	background: var(--plume-card);
+	cursor: pointer;
+}
+
+.image-gallery-tile:focus-visible {
+	outline: 2px solid var(--plume-accent);
+	outline-offset: 2px;
+}
+
+/* 图解好了才从格子的底色上淡出来：不会一帧之间从空到有，也不会闪过一个裂开的图标。 */
+.image-gallery-picture {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	opacity: 0;
+	/* 悬停时的放大故意慢：是漂过去，不是跳一下。 */
+	transition:
+		opacity var(--plume-t-base) var(--plume-e-out),
+		transform var(--plume-t-slow) var(--plume-e-out);
+}
+
+.image-gallery-picture[data-loaded] {
+	opacity: 1;
+}
+
+.image-gallery-tile:hover .image-gallery-picture {
+	transform: scale(1.03);
+}
+
+/*
+ * 这张图的来历有几步。压在图上，底下什么颜色都有：压暗的玻璃加白字，深浅主题都一样。
+ * 白用 --plume-knob（两种主题下都是白），没有专给「图上的字」的 token。
+ */
+.image-gallery-chip {
+	position: absolute;
+	top: 8px;
+	left: 8px;
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	height: 20px;
+	padding: 0 7px;
+	border-radius: var(--plume-radius-panel);
+	background: color-mix(in srgb, var(--plume-shade) 42%, transparent);
+	color: color-mix(in srgb, var(--plume-knob) 96%, transparent);
+	backdrop-filter: blur(14px) saturate(1.4);
+}
+
+/* 指针停在图上时，图底下浮出当时要了什么。 */
+.image-gallery-caption {
+	position: absolute;
+	inset: auto 0 0;
+	display: block;
+	padding: 28px 10px 9px;
+	background: linear-gradient(to top, color-mix(in srgb, var(--plume-shade) 62%, transparent), transparent);
+	color: color-mix(in srgb, var(--plume-knob) 96%, transparent);
+	text-align: left;
+	opacity: 0;
+	transform: translateY(4px);
+	transition:
+		opacity var(--plume-t-quick) var(--plume-e-out),
+		transform var(--plume-t-base) var(--plume-e-out);
+}
+
+.image-gallery-tile:hover .image-gallery-caption,
+.image-gallery-tile:focus-visible .image-gallery-caption {
+	opacity: 1;
+	transform: none;
+}
+
+/* 图上的字跟着上面的白，不用 Text 默认的字色。 */
+.image-gallery-chip > *,
+.image-gallery-caption > * {
+	color: inherit;
+}
+
+.image-gallery-caption-words {
+	display: -webkit-box;
+	overflow: hidden;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+}
+
+.image-gallery-caption-session {
+	display: block;
+	margin-top: 2px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	opacity: 0.7;
+}
+
+/* ---- 详情 ---- */
+
+/* 盖在相册上面，相册照样排着。 */
+.image-gallery-detail {
+	position: absolute;
+	inset: 0;
+	z-index: 30;
+	display: flex;
+}
+
+.image-gallery-page[data-narrow] .image-gallery-detail {
+	flex-direction: column;
+}
+
+.image-gallery-backdrop {
+	position: absolute;
+	inset: 0;
+	background: var(--plume-shell);
+}
+
+.image-gallery-main {
+	position: relative;
+	display: flex;
+	flex: 1 1 0%;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+}
+
+.image-gallery-bar {
+	gap: 4px;
+}
+
+.image-gallery-spacer {
+	flex: 1 1 0%;
+}
+
+.image-gallery-steps {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.image-gallery-steps > :first-child {
+	margin-right: 4px;
+}
+
+.image-gallery-stage {
+	position: relative;
+	display: flex;
+	flex: 1 1 0%;
+	align-items: center;
+	justify-content: center;
+	min-height: 0;
+}
+
+.image-gallery-frame {
+	position: relative;
+	overflow: hidden;
+	padding: 0;
+	border: 0;
+	border-radius: var(--plume-radius-panel);
+	background: var(--plume-card);
+	cursor: zoom-in;
+}
+
+.image-gallery-frame img {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.image-gallery-edit-row {
+	flex-shrink: 0;
+	padding: 16px 32px 24px;
+}
+
+.image-gallery-page[data-narrow] .image-gallery-edit-row {
+	padding: 12px;
+}
+
+.image-gallery-panel {
+	position: relative;
+	display: flex;
+	flex-shrink: 0;
+	flex-direction: column;
+	width: 340px;
+	min-height: 0;
+	border-left: 1px solid var(--plume-line-soft);
+}
+
+.image-gallery-page[data-narrow] .image-gallery-panel {
+	width: auto;
+	max-height: 46%;
+	border-top: 1px solid var(--plume-line-soft);
+	border-left: 0;
+}
+
+.image-gallery-panel-scroll {
+	flex: 1 1 0%;
+	min-height: 0;
+}
+
+.image-gallery-panel-content {
+	display: flex;
+	flex-direction: column;
+	gap: 28px;
+	padding: 16px 20px 32px;
+}
+
+.image-gallery-session {
+	display: flex;
+	max-width: 100%;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--plume-ink);
+	text-align: left;
+	cursor: pointer;
+}
+
+.image-gallery-session:disabled {
+	cursor: default;
+}
+
+.image-gallery-session > * {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.image-gallery-session:enabled:hover > * {
+	text-decoration: underline;
+}
+
+.image-gallery-when {
+	margin: 4px 0 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.image-gallery-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: 12px;
+}
+
+.image-gallery-section-head {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	margin: 0 0 8px;
+}
+
+.image-gallery-section-head-split {
+	align-items: center;
+	justify-content: space-between;
+}
+
+.image-gallery-prompt {
+	margin: 0;
+	white-space: pre-wrap;
+	user-select: text;
+}
+
+.image-gallery-revised {
+	margin: 8px 0 0;
+	user-select: text;
+}
+
+.image-gallery-facts {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 6px 16px;
+	margin: 0;
+}
+
+.image-gallery-facts dt,
+.image-gallery-facts dd {
+	margin: 0;
+}
+
+.image-gallery-fact-value {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* ---- 改图的输入框 ---- */
+
+.image-gallery-edit {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	width: 100%;
+	max-width: 600px;
+	margin: 0 auto;
+	padding: 6px 6px 6px 8px;
+	border: 1px solid var(--plume-line);
+	border-radius: var(--plume-radius-panel);
+	background: var(--plume-card);
+}
+
+.image-gallery-marked {
+	position: relative;
+	flex-shrink: 0;
+}
+
+.image-gallery-marked img {
+	display: block;
+	width: 32px;
+	height: 32px;
+	border: 1px solid var(--plume-line);
+	border-radius: var(--plume-radius-field);
+	object-fit: cover;
+}
+
+/* 16px 的方块配 8px 的圆角，正好是个圆。 */
+.image-gallery-unmark {
+	position: absolute;
+	top: -6px;
+	right: -6px;
+	display: grid;
+	place-items: center;
+	width: 16px;
+	height: 16px;
+	padding: 0;
+	border: 0;
+	border-radius: var(--plume-radius-field);
+	background: var(--plume-ink);
+	color: var(--plume-shell);
+	cursor: pointer;
+}
+
+.image-gallery-words {
+	display: flex;
+	flex: 1 1 0%;
+	min-width: 0;
+}
+
+.image-gallery-words input {
+	flex: 1 1 0%;
+	min-width: 0;
+	padding: 0 6px;
+	border: 0;
+	background: transparent;
+	color: var(--plume-ink);
+	outline: none;
+}
+
+.image-gallery-words input::placeholder {
+	color: var(--plume-ink-faint);
+}
+
+.image-gallery-send {
+	display: contents;
+}
+
+/* ---- 来历 ---- */
+
+.image-lineage {
+	position: relative;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.image-lineage-step {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	height: 100%;
+	padding: 0 12px 0 0;
+	border: 0;
+	border-radius: var(--plume-radius-field);
+	background: transparent;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+	transition: background-color var(--plume-t-quick) var(--plume-e-soft);
+}
+
+.image-lineage-step:hover {
+	background: color-mix(in srgb, var(--plume-card-hover) 60%, transparent);
+}
+
+.image-lineage-step[aria-current="step"] {
+	background: var(--plume-card-hover);
+}
+
+.image-lineage-thumb {
+	display: block;
+	flex-shrink: 0;
+	border-radius: var(--plume-radius-field);
+	background: var(--plume-card);
+	object-fit: cover;
+}
+
+/* 台上那张在来历里的记号：隔一圈页面底色，再一圈强调色。 */
+.image-lineage-thumb[data-current] {
+	outline: 1.5px solid var(--plume-accent);
+	outline-offset: 2px;
+}
+
+.image-lineage-text {
+	flex: 1 1 0%;
+	min-width: 0;
+}
+
+.image-lineage-line-text {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.image-lineage-line-text + .image-lineage-line-text {
+	margin-top: 2px;
+}
+
+.image-lineage-links {
+	position: absolute;
+	top: 0;
+	left: 0;
+	overflow: visible;
+	pointer-events: none;
+}
+
+/* 来历的线：一家子别的分支用淡淡的字色，台上这张的来路用强调色——眼睛该跟着走的就是这一条。 */
+.image-lineage-link {
+	fill: none;
+	stroke: color-mix(in srgb, var(--plume-ink) 24%, transparent);
+	stroke-width: 1.5;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.image-lineage-link[data-on-path] {
+	stroke: color-mix(in srgb, var(--plume-accent) 80%, transparent);
+}

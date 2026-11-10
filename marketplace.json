@@ -1,0 +1,102 @@
+{
+  "name": "plume-plugins",
+  "description": "Plume 插件市场：Plume 官方维护的插件。",
+  "owner": {
+    "name": "Plume",
+    "url": "https://github.com/wJiaaa/plume-plugins"
+  },
+  "plugins": [
+    {
+      "name": "browser",
+      "source": "./plugins/browser"
+    },
+    {
+      "name": "followups",
+      "source": "./plugins/followups"
+    },
+    {
+      "name": "hooks",
+      "source": "./plugins/hooks"
+    },
+    {
+      "name": "im",
+      "source": "./plugins/im"
+    },
+    {
+      "name": "image",
+      "source": "./plugins/image"
+    },
+    {
+      "name": "index",
+      "source": "./plugins/index"
+    },
+    {
+      "name": "lsp",
+      "source": "./plugins/lsp"
+    },
+    {
+      "name": "memory",
+      "source": "./plugins/memory"
+    },
+    {
+      "name": "native-ui",
+      "source": "./plugins/native-ui"
+    },
+    {
+      "name": "plan",
+      "source": "./plugins/plan"
+    },
+    {
+      "name": "preview",
+      "source": "./plugins/preview"
+    },
+    {
+      "name": "pull-requests",
+      "source": "./plugins/pull-requests"
+    },
+    {
+      "name": "review",
+      "source": "./plugins/review"
+    },
+    {
+      "name": "scheduled",
+      "source": "./plugins/scheduled"
+    },
+    {
+      "name": "screenshot",
+      "source": "./plugins/screenshot"
+    },
+    {
+      "name": "sessions",
+      "source": "./plugins/sessions"
+    },
+    {
+      "name": "side-chat",
+      "source": "./plugins/side-chat"
+    },
+    {
+      "name": "skin-studio",
+      "source": "./plugins/skin-studio"
+    },
+    {
+      "name": "ssh",
+      "source": "./plugins/ssh"
+    },
+    {
+      "name": "subagents",
+      "source": "./plugins/subagents"
+    },
+    {
+      "name": "summary",
+      "source": "./plugins/summary"
+    },
+    {
+      "name": "terminal",
+      "source": "./plugins/terminal"
+    },
+    {
+      "name": "usage",
+      "source": "./plugins/usage"
+    }
+  ]
+}

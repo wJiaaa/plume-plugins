@@ -1,0 +1,31 @@
+{
+  "name": "@plume-plugins/lsp",
+  "version": "0.1.0",
+  "description": "给 agent 一个 lsp 工具：经语言服务器找一个符号的全部引用（含 grep 看不到的别名导入和重导出）、跳到定义、查一个文件的类型错误、算出重命名要改哪些地方；edit、write 之后把这个文件新出现的错误附在结果后面。",
+  "author": "Plume",
+  "keywords": [
+    "lsp",
+    "language server",
+    "tsserver",
+    "语言服务",
+    "诊断",
+    "引用"
+  ],
+  "plume": {
+    "displayName": "语言服务",
+    "category": "工具"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "plume-plugin check",
+    "test": "node --test --experimental-strip-types test/*.test.ts"
+  },
+  "dependencies": {
+    "typescript": "6.0.3"
+  },
+  "devDependencies": {
+    "@plume/plugin-sdk": "link:../../../plume/packages/sdk/plugin-sdk",
+    "@types/node": "^24.10.0"
+  }
+}

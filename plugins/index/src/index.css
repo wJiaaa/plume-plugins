@@ -1,0 +1,87 @@
+/* plume.index 设置页「索引库」的布局。文字交给 Text，这里只管排版和颜色。 */
+
+.index-intro {
+	max-width: 600px;
+	margin: 0 0 28px;
+}
+
+.index-card {
+	margin-bottom: 36px;
+}
+
+.index-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+/* 空着时的一句话：居中，四周留白。 */
+.index-empty {
+	display: flex;
+	justify-content: center;
+	padding: 48px 24px;
+	text-align: center;
+}
+
+.index-empty p {
+	max-width: 260px;
+}
+
+.index-search {
+	padding: 12px;
+	border-bottom: 1px solid var(--plume-line-soft);
+}
+
+.index-hits {
+	max-height: 340px;
+}
+
+/* 一条结果：整条是一个按钮，点了用默认应用打开那个文件。 */
+.index-hit {
+	display: flex;
+	width: 100%;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 16px;
+	border: 0;
+	border-bottom: 1px solid var(--plume-line-soft);
+	background: transparent;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+	transition: background-color var(--plume-t-quick);
+}
+
+.index-hit:last-child {
+	border-bottom: 0;
+}
+
+.index-hit:hover {
+	background: var(--plume-card-hover);
+}
+
+.index-hit-icon {
+	flex-shrink: 0;
+	color: var(--plume-ink-faint);
+}
+
+.index-hit-name {
+	flex-shrink: 0;
+}
+
+.index-hit-kind {
+	flex-shrink: 0;
+	padding: 2px 6px;
+	border-radius: var(--plume-radius-item);
+	background: var(--plume-card);
+}
+
+/* 路径靠右，太长时从末尾省略。 */
+.index-hit-file {
+	min-width: 0;
+	flex: 1 1 0%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	text-align: right;
+}
