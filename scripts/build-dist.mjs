@@ -1,13 +1,13 @@
 /**
- * 把构建好的插件打成市场发出去的静态目录（格式见 docs/distribution.md）。CI 把它发到 GitHub Pages；本体的开发和冒烟
- * 在本机起服务给应用，走的是同一条路。
+ * 把构建好的插件打成市场发出去的静态目录（格式见 docs/distribution.md）。CI 把它发到 GitHub Pages；`pnpm market`
+ * 打一份本机平台的、在本机起服务给应用联调，走的是同一条路。
  *
  *   node scripts/build-dist.mjs [--out <目录>] [--targets darwin-arm64,win32-x64] [--published <线上 marketplace.json 的地址>]
  *
  * 输出（缺省 dist/）：
  *   marketplace.json                          收录的插件、说明和每个平台的包
  *   assets/<name>/icon.png、README.md、images/  市场页安装前就要画的东西
- *   plugins/<name>/<version>/<平台>-<架构>.tgz  装下的文件（插件 SDK 的 lib/manifest.mjs 里的 SHIPPED：package.json、README.md、images、
+ *   plugins/<name>/<version>/<平台>-<架构>.tgz  装下的文件（`@plumeai/plugin-sdk/manifest` 的 SHIPPED：package.json、README.md、images、
  *                                              icon.png、dist、skills、.mcp.json、LICENSE）
  *
  * 每个平台一个包：插件构建时带上了各平台的原生模块（插件 SDK 的 lib/targets.mjs），这里按目标只留那一份。
@@ -23,8 +23,8 @@ import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, rea
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { PLUGIN_ENTRY, readManifest, SHIPPED } from "../../plume/packages/sdk/plugin-sdk/lib/manifest.mjs";
-import { trimNative } from "../../plume/packages/sdk/plugin-sdk/lib/targets.mjs";
+import { trimNative } from "@plumeai/plugin-sdk/targets";
+import { PLUGIN_ENTRY, readManifest, SHIPPED } from "@plumeai/plugin-sdk/manifest";
 import { listed } from "./validate.mjs";
 
 const root = resolve(import.meta.dirname, "..");

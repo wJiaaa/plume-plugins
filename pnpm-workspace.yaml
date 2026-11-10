@@ -1,8 +1,10 @@
 packages:
   - plugins/*
 
-# 插件的 @plume/plugin-sdk（和钩子插件的 @plume/platform）是 link: 到旁边本体仓库 ../plume 的目录，不经 npm，
-# 两个仓库要并排放：plume-project/plume、plume-project/plume-plugins。
+# 插件 SDK 从 npm 装，各插件和根目录都写 `catalog:`，版本只在这里改一处。SDK 的版本跟着 Plume 走：
+# 插件用了新版 SDK 才有的接口，就要求用户的 Plume 至少是这一版。
+catalog:
+  "@plumeai/plugin-sdk": ^0.1.2
 
 # pnpm 默认不跑依赖的安装脚本；esbuild 要靠它装平台包。
 onlyBuiltDependencies:
@@ -15,8 +17,8 @@ ignoredBuiltDependencies:
   - ssh2
   - cpu-features
 
-# 可选依赖装哪些平台的，而不只是本机的：插件构建时带上各平台、各架构的原生模块，打包时按目标裁掉别的。
-# 理由同本体仓库 pnpm-workspace.yaml 的 supportedArchitectures。改了这里要删掉 node_modules 重装才生效。
+# 可选依赖装哪些平台的，而不只是本机的：插件构建时带上各平台、各架构的原生模块，build-dist 按目标裁掉别的。
+# 原生模块一个平台一个包，pnpm 默认只装本机那份，别的平台的市场包就会带着跑不起来的二进制。改了这里要删掉 node_modules 重装才生效。
 supportedArchitectures:
   os:
     - current

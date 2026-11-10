@@ -1,5 +1,5 @@
 # Git 钩子，和本体仓库的 lefthook.yml 同一套分工：pre-commit 只碰暂存的文件和一秒内跑完的检查，pre-push 跑全量。
-# 样式、文案、插件接口和提交信息的检查脚本在旁边的本体仓库里（../plume/scripts）。
+# 插件规则来自 npm 上的插件 SDK（scripts/check-plugins.mjs），提交信息的格式见 scripts/check-commit-msg.mjs。
 #
 # `pnpm install` 时由根目录的 `prepare` 装上（`lefthook install`）。要临时跳过：LEFTHOOK=0 git commit …
 
@@ -12,27 +12,26 @@ pre-commit:
         jobs:
           - name: format
             glob: "*.{ts,tsx,mts,cts,mjs,cjs,js,jsx,json,jsonc,css,yml,yaml}"
-            run: ./node_modules/.bin/oxfmt --no-error-on-unmatched-pattern {staged_files} && node ../plume/scripts/check-only-commit.mjs {staged_files}
+            run: ./node_modules/.bin/oxfmt --no-error-on-unmatched-pattern {staged_files} && node scripts/check-only-commit.mjs {staged_files}
             stage_fixed: true
 
           - name: lint
             glob: "*.{ts,tsx,mts,cts,mjs,js,jsx}"
-            run: ./node_modules/.bin/oxlint --deny-warnings --fix {staged_files} && node ../plume/scripts/check-only-commit.mjs {staged_files}
+            run: ./node_modules/.bin/oxlint --deny-warnings --fix {staged_files} && node scripts/check-only-commit.mjs {staged_files}
             stage_fixed: true
 
     - name: whitespace
       run: git diff --cached --check
 
-    - name: host-checks
-      # 样式、文案、插件只引用公开接口：脚本在本体仓库，扫两个仓库，全量跑一遍几秒。
-      glob: "*.{ts,tsx,css,mjs}"
-      run: pnpm check:host
+    - name: plugin-rules
+      # 只引用公开接口、样式只用 token、界面文字走 messages.ts：全量跑一遍几秒。
+      glob: "*.{ts,tsx,css}"
+      run: pnpm check:plugins
 
-# 提交信息的格式，见本体仓库的 spec/tech/commits.md。
 commit-msg:
   jobs:
     - name: commit-msg
-      run: node ../plume/scripts/check-commit-msg.mjs {1}
+      run: node scripts/check-commit-msg.mjs {1}
 
 pre-push:
   jobs:

@@ -8,4 +8,4 @@ Plume 官方维护的插件。在 Plume 的「插件」页里浏览、安装和�
 
 市场发布在 GitHub Pages：<https://wjiaaa.github.io/plume-plugins/marketplace.json>。
 
-开发要和 Plume 本体仓库并排放，见 [AGENTS.md](AGENTS.md)。
+开发只要 Node 24 和 pnpm：`pnpm install` 后插件 SDK 从 npm 装上，命令见 [AGENTS.md](AGENTS.md)。

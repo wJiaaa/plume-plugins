@@ -1,6 +1,6 @@
 /**
  * 依赖方向（`pnpm arch`，`pnpm check` 的一部分），取本体仓库 .dependency-cruiser.cjs 里管得到插件的两条：值之间不循环、
- * 没有没人引的模块。插件只引用公开接口由 `pnpm check:host`（本体的 scripts/check-plugins.mjs）查，这里不重复。
+ * 没有没人引的模块。插件只引用公开接口由 `pnpm check:plugins`（插件 SDK 的规则）查，这里不重复。
  *
  * 已有的违规登记在 `.dependency-cruiser-known-violations.json`，照常通过；新加的违规直接失败。基线只能
  * 有意地重新生成（`pnpm arch:baseline`），变小是清理，变大要说得出理由。

@@ -5,7 +5,7 @@
  *    `source` 是 `./<分组>/<name>`。三个分组各放一类（`GROUPS`）：plugins/ 是写代码的插件，skills/ 是技能合集，
  *    connectors/ 是连接器（MCP 服务）；分组下的每个目录都要登记，登记的都要在，名字在三组里不能重。
  * 2. 每个插件的 package.json 写了市场要的说明：版本号（x.y.z，发出去以后不可变，改了内容要升）、`plume.displayName`、
- *    `description`，`plume.kind` 和所在分组对得上；有 README.md。格式见本体仓库里插件 SDK 的 lib/manifest.mjs。
+ *    `description`，`plume.kind` 和所在分组对得上；有 README.md。格式见插件 SDK 的 `@plumeai/plugin-sdk/manifest`。
  * 3. 图标 icon.png：正方形 PNG、不超过 256 KiB。同一品牌的几个插件（同一家的连接器、技能合集）可以用同一张标志。
  * 4. 技能合集只带技能：`skills/` 下至少一个 `<技能>/SKILL.md`，没有源码；连接器只带 `.mcp.json`，里面的 `mcpServers`
  *    至少一台。从上游搬来的（写了 `plume.upstream`）要带上游的 LICENSE。
@@ -15,7 +15,7 @@
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { DIR_NAME, manifestProblems, readManifest } from "../../plume/packages/sdk/plugin-sdk/lib/manifest.mjs";
+import { DIR_NAME, manifestProblems, readManifest } from "@plumeai/plugin-sdk/manifest";
 
 const root = resolve(import.meta.dirname, "..");
 const MAX_ICON_BYTES = 256 * 1024;

@@ -24,7 +24,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {
-    "@plume/plugin-sdk": "link:../../../plume/packages/sdk/plugin-sdk",
+    "@plumeai/plugin-sdk": "catalog:",
     "@types/node": "^24.10.0",
     "@types/react": "^19.2.0"
   }

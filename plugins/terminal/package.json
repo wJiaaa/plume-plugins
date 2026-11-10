@@ -24,7 +24,7 @@
     "node-pty": "1.1.0"
   },
   "devDependencies": {
-    "@plume/plugin-sdk": "link:../../../plume/packages/sdk/plugin-sdk",
+    "@plumeai/plugin-sdk": "catalog:",
     "@types/node": "^24.10.0",
     "@types/react": "^19.2.0",
     "@xterm/addon-fit": "0.11.0",

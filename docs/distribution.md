@@ -21,7 +21,7 @@ Plume 的插件市场是一个静态目录：这个仓库的 CI（`.github/workf
 
 后两组只有内容、不是 workspace 的包，不用构建；打包时替它们写一个什么都不做的逻辑入口，装上后照常当插件加载，技能插件读它的 `skills/`，MCP 插件读它的 `.mcp.json`。搬来的第三方技能不过 lint、格式和 knip。
 
-市场里显示的说明不写在这里，读自插件自己的 `package.json`：`version`、`description`、`plume.displayName`、`plume.kind`、`plume.category`、`plume.defaultPrompt`（「试试这样问」）、`keywords`、`author`、`homepage`、`license`；图标是插件目录里的 `icon.png`（正方形 PNG，不超过 256 KiB），介绍是 `README.md`，介绍里引用的图放在 `images/` 下。怎么读、怎么校验写在本体仓库里插件 SDK 的 `lib/manifest.mjs`，校验、打包和应用读的是同一份；改格式改那一份。
+市场里显示的说明不写在这里，读自插件自己的 `package.json`：`version`、`description`、`plume.displayName`、`plume.kind`、`plume.category`、`plume.defaultPrompt`（「试试这样问」）、`keywords`、`author`、`homepage`、`license`；图标是插件目录里的 `icon.png`（正方形 PNG，不超过 256 KiB），介绍是 `README.md`，介绍里引用的图放在 `images/` 下。怎么读、怎么校验写在插件 SDK 的 `@plumeai/plugin-sdk/manifest` 里，校验、打包和应用读的是同一份；改格式要改本体仓库里的 SDK、发新版再升这里的版本。
 
 `pnpm validate` 查这些（`pnpm check` 包含它）。
 
@@ -62,12 +62,12 @@ plugins/<name>/<version>/<平台>-<架构>.tgz   装下的文件
 ## 版本和更新
 
 - 应用按版本号判断有没有更新：目录里的版本比装着的新，就是有更新（自动更新开着时直接换上）。
-- **发出去的版本不可变。** 改了插件的内容（包括本体的插件 SDK 变了、构建出来的东西跟着变）要升 `package.json` 的 `version`。CI 打包时拿线上的 `marketplace.json` 比：版本号没变而指纹变了就失败，不发布。否则装过这个版本的人永远拿不到改动。
+- **发出去的版本不可变。** 改了插件的内容（包括升了插件 SDK、构建出来的东西跟着变）要升 `package.json` 的 `version`。CI 打包时拿线上的 `marketplace.json` 比：版本号没变而指纹变了就失败，不发布。否则装过这个版本的人永远拿不到改动。
 - 每次发布都是整站替换，`dist/` 里是所有插件的当前版本；旧版本的包不留。打包是全量的（几秒），但应用只下载升了版本的插件。
 
 ## 本机试
 
-本体仓库的 `pnpm dev`、`pnpm smoke` 会调用这里的 `build-dist.mjs`，只打本机平台，在本机起一个服务，经 `PLUME_MARKET_URL` 让应用从它装插件，和装线上的走同一条路（`plume/scripts/market-serve.mjs`）。要连线上的市场开发，启动前设 `PLUME_MARKET_URL=https://wjiaaa.github.io/plume-plugins/marketplace.json`。应用只接受 https 和本机（127.0.0.1、localhost）的 http 地址。
+`pnpm market` 构建插件、调用 `build-dist.mjs` 只打本机平台，在本机起一个服务并打印地址；本体那边启动前设 `PLUME_MARKET_URL=<这个地址>`，应用就从它装插件，和装线上的走同一条路。不设时应用读线上的市场。应用只接受 https 和本机（127.0.0.1、localhost）的 http 地址。
 
 ## 新增一个插件
 

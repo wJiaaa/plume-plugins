@@ -20,7 +20,7 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "@plume/plugin-sdk": "link:../../../plume/packages/sdk/plugin-sdk",
+    "@plumeai/plugin-sdk": "catalog:",
     "@types/node": "^24.10.0",
     "vitest": "^5.1.0"
   }

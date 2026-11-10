@@ -25,7 +25,7 @@
     "typescript": "6.0.3"
   },
   "devDependencies": {
-    "@plume/plugin-sdk": "link:../../../plume/packages/sdk/plugin-sdk",
+    "@plumeai/plugin-sdk": "catalog:",
     "@types/node": "^24.10.0"
   }
 }
