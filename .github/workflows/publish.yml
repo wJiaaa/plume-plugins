@@ -2,11 +2,12 @@ name: 发布插件市场
 
 # 把 plugins/ 下的插件构建、按平台打包，发到这个仓库的 GitHub Pages（格式见 docs/distribution.md），Plume 从
 # https://wjiaaa.github.io/plume-plugins/marketplace.json 读市场、下载插件。
-# 推到 main 时发布；PR 上只校验、打包，查出「内容变了版本号没升」就失败，不发布。
-# Pages 要在仓库设置里打开，来源选 GitHub Actions。
+# 和 Plume 本体一样，推 `v*` tag 才发布；推到 main、PR 和手动运行只校验、打包，查出「内容变了版本号没升」就失败，不发布。
+# Pages 要在仓库设置里打开，来源选 GitHub Actions；github-pages 环境的部署规则要放行 `v*` tag。
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
 
@@ -15,7 +16,7 @@ permissions:
 
 # 同一时间只发一次；正在发的不取消，发到一半的站点不完整。
 concurrency:
-  group: pages-${{ github.event_name == 'pull_request' && github.ref || 'publish' }}
+  group: pages-${{ github.ref_type == 'tag' && 'publish' || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -53,13 +54,13 @@ jobs:
         run: pnpm build:dist --published https://wjiaaa.github.io/plume-plugins/marketplace.json
 
       - name: 上传站点
-        if: github.event_name != 'pull_request'
+        if: github.ref_type == 'tag'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
           path: dist
 
   deploy:
-    if: github.event_name != 'pull_request'
+    if: github.ref_type == 'tag'
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 10

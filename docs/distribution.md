@@ -63,6 +63,7 @@ plugins/<name>/<version>/<平台>-<架构>.tgz   装下的文件
 
 - 应用按版本号判断有没有更新：目录里的版本比装着的新，就是有更新（自动更新开着时直接换上）。
 - **发出去的版本不可变。** 改了插件的内容（包括升了插件 SDK、构建出来的东西跟着变）要升 `package.json` 的 `version`。CI 打包时拿线上的 `marketplace.json` 比：版本号没变而指纹变了就失败，不发布。否则装过这个版本的人永远拿不到改动。
+- **要发版时才发。** 推到 main 不发布，只校验、打包；在 main 上打一个 `v` 开头的 tag 推上去才发（如 `git tag v2026.11.11 && git push origin v2026.11.11`，同一天再发一次加 `.2`）。tag 只标这次发布，插件各自的版本仍看各自的 `version`。
 - 每次发布都是整站替换，`dist/` 里是所有插件的当前版本；旧版本的包不留。打包是全量的（几秒），但应用只下载升了版本的插件。
 
 ## 本机试
@@ -73,6 +74,6 @@ plugins/<name>/<version>/<平台>-<架构>.tgz   装下的文件
 
 1. `pnpm plugin init plugins/<目录名>`，写好、`pnpm install`、`pnpm build:plugins`。
 2. 在 `marketplace.json` 里登记，写好 `version`、`description`、`plume.displayName`，放上 `icon.png` 和 `README.md`。
-3. `pnpm check`，提交，合进 main 后 CI 发布。
+3. `pnpm check`，提交，合进 main；要发版时推 `v*` tag，CI 发布。
 
 技能合集和连接器不用第 1 步：建好 `skills/<目录名>/` 或 `connectors/<目录名>/`，写 `package.json`（`private: true`，`plume.kind`、`plume.displayName` 等）、`README.md`、`icon.png`，放进技能（或写好 `plume.upstream` 后跑 `node scripts/sync-skills.mjs <目录名>`）或 `.mcp.json`，再登记。更新搬来的技能：改 `plume.upstream.commit`、跑同步、升 `version`。
