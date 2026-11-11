@@ -315,6 +315,10 @@
       "source": "./skills/ponytail"
     },
     {
+      "name": "pstack",
+      "source": "./skills/pstack"
+    },
+    {
       "name": "supabase-skills",
       "source": "./skills/supabase-skills"
     },

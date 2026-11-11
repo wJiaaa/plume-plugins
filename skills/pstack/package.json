@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/pstack",
+  "version": "1.0.0",
+  "description": "poteto 在 Cursor 写代码用的工程技能：先想透再动手，少写代码、写可验证的代码，配一套工程原则。",
+  "author": "poteto",
+  "homepage": "https://github.com/backnotprop/pstack",
+  "keywords": [
+    "工程原则",
+    "代码质量",
+    "调研",
+    "架构",
+    "评审",
+    "TDD",
+    "poteto"
+  ],
+  "private": true,
+  "plume": {
+    "kind": "skill",
+    "displayName": "pstack",
+    "category": "开发",
+    "upstream": {
+      "repo": "https://github.com/backnotprop/pstack",
+      "commit": "08547969e1dffaa6457ea65141cc62c1d9a2eef1",
+      "path": "skills"
+    }
+  }
+}
