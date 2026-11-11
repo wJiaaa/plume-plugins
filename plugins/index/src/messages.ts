@@ -8,9 +8,7 @@ const zhCN = {
 	title: "索引库",
 	/** 转录里 `symbol` 那一行的动作：「查找符号 runAgent」。 */
 	toolVerb: "查找符号",
-	/** 页头下的一句介绍：`{strong}` 画成加粗的 `definitions`，`{tool}` 画成等宽的工具名；位置由译文定。 */
-	intro: "索引记录函数、类、接口、类型和常量的{strong}，Agent 用 {tool} 工具查它。",
-	definitions: "定义位置",
+	intro: "索引记录函数、类、接口、类型和常量的定义位置，Agent 用 symbol 工具查它。",
 	status: "状态",
 	project: "项目",
 	building: "构建中…",
@@ -37,8 +35,7 @@ export const MESSAGES: Record<Locale, typeof zhCN> = {
 	en: {
 		title: "Index",
 		toolVerb: "Looked up symbols",
-		intro: "The index records, for functions, classes, interfaces, types and constants, their {strong} — the agent looks it up with the {tool} tool.",
-		definitions: "where things are defined",
+		intro: "The index records, for functions, classes, interfaces, types and constants, where things are defined — the agent looks it up with the symbol tool.",
 		status: "Status",
 		project: "Project",
 		building: "Building…",

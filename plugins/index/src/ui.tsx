@@ -38,6 +38,7 @@ export default {
 		});
 		ui.settingsSection("index", () => <IndexSettings api={api} notify={notify} useProjects={() => ui.useProjects()} />, {
 			title: (locale) => MESSAGES[locale].title,
+			detail: (locale) => MESSAGES[locale].intro,
 			icon: Database,
 			// 「数据」组里依次是索引库、使用统计、存储。
 			order: 1,

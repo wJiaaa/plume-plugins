@@ -27,23 +27,6 @@ function folderChoiceName(projects: readonly ProjectInfo[], path: string, locale
 	return new Intl.ListFormat(locale, { type: "conjunction" }).format(names);
 }
 
-/** 一句话里嵌两段有样式的片段，位置由译文定：`{strong}` 是加粗的「定义位置」，`{tool}` 是等宽的工具名。 */
-function intro(sentence: string, strong: string): React.ReactNode {
-	return sentence.split(/(\{strong\}|\{tool\})/).map((part, at) =>
-		part === "{strong}" ? (
-			<Text key={at} size="label" weight="medium">
-				{strong}
-			</Text>
-		) : part === "{tool}" ? (
-			<Text key={at} size="detail" mono>
-				symbol
-			</Text>
-		) : (
-			part
-		),
-	);
-}
-
 function Empty({ children }: { children: React.ReactNode }) {
 	return (
 		<div className="index-empty">
@@ -125,10 +108,6 @@ export function IndexSettings({ api, notify, useProjects }: { api: Remote<IndexA
 
 	return (
 		<div data-index-settings="">
-			<Text as="p" size="label" tone="muted" className="index-intro">
-				{intro(text.intro, text.definitions)}
-			</Text>
-
 			{!path ? (
 				<SettingsCard>
 					<Empty>{text.noProjects}</Empty>
