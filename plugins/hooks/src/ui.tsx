@@ -167,9 +167,6 @@ function HooksSettings({ api, notify, projects }: { api: Remote<HooksApi>; notif
 
 	return (
 		<div data-hooks-settings="">
-			<Text as="p" size="detail" tone="muted" className="hook-intro">
-				{text.intro}
-			</Text>
 			<ProjectScope value={project} choices={choices} onChange={hooksProject.set} text={text} />
 			{untrusted && view?.projectPath && (
 				<div className="hook-notice" role="status" data-hook-trust-notice="">
@@ -744,6 +741,7 @@ export default {
 		const notify = ui.notify.bind(ui);
 		ui.settingsSection("hooks", () => <HooksSettings api={api} notify={notify} projects={ui.useProjects()} />, {
 			title: (locale) => MESSAGES[locale].settingsTitle,
+			detail: (locale) => MESSAGES[locale].intro,
 			icon: Anchor,
 			order: 2,
 			group: "agent",

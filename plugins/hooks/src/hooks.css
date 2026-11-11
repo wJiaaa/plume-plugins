@@ -1,9 +1,5 @@
 /* 设置页「钩子」那一节、回复底下的运行记录、输入框上方的待审核提示。字交给 Text，颜色只取 var(--plume-*)。 */
 
-.hook-intro {
-	margin: 0 0 16px;
-}
-
 .hook-scope {
 	display: flex;
 	align-items: center;

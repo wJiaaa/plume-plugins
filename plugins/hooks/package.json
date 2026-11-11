@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/hooks",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "在会话开始、提交消息、调用工具前后、审批、回答结束或失败、会话结束时运行你配置的命令，按 Claude Code 的钩子约定读它们的决定；支持要先信任的项目钩子和运行记录，设置页里增删、开关、信任。",
   "author": "Plume",
   "keywords": [
