@@ -251,9 +251,8 @@ export default {
 				if (typeof toolCallId === "string" && typeof command === "string" && command.length <= 32_000) edits.set(toolCallId, command);
 			},
 
-			ask: (message) => assistant.ask(message),
+			ask: (message, choice) => assistant.ask(message, choice),
 			stopAssistant: () => assistant.stop(),
-			prepareAssistant: async () => void (await assistant.prepare()),
 			newAssistant: () => assistant.fresh(),
 			history: () => assistant.history(),
 			openAssistant: (id) => assistant.open(String(id)),

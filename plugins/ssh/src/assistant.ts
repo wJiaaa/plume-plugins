@@ -8,6 +8,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { PluginContext, SessionMessage } from "@plume/contract";
+import type { SessionChoice } from "@plume/contract/ui";
 import type { AssistantMessage, AssistantSegment } from "./api.ts";
 
 export class Assistant {
@@ -54,27 +55,22 @@ export class Assistant {
 	}
 
 	/**
-	 * 现在这一段，还没有就先开一个空的：输入框旁的上下文用量、模型和思考档位都量的是会话，会话在了才画，人发第一句之前就能换模型。
-	 * 空的那段不进历史；换到别的段时删掉。
+	 * 对现在这一段说一句；还没有这一段就照 `choice`（人在第一句之前选的模型和档位，只取这两样，不对时 `create` 抛错）开一段。
+	 * 主机页上「问 AI」交来的没有 `choice`，用默认模型。
 	 */
-	async prepare(): Promise<string> {
+	async ask(message: string | AssistantMessage, choice?: SessionChoice): Promise<void> {
 		await this.ready;
-		// 连着叫两次（页面挂上时、人马上发第一句）只开一段。
-		return (
+		// 两处同时发第一句（输入框、终端上的「问 AI」）只开一段。
+		const id =
 			this.current ??
-			(this.creating ??= this.ctx.sessions
-				.create({})
+			(await (this.creating ??= this.ctx.sessions
+				.create({ ...(choice?.model ? { model: choice.model } : {}), ...(choice?.thinking ? { thinking: choice.thinking } : {}) })
 				.then((created) => {
 					this.mine.add(created.id);
 					this.choose(created.id);
 					return created.id;
 				})
-				.finally(() => (this.creating = undefined)))
-		);
-	}
-
-	async ask(message: string | AssistantMessage): Promise<void> {
-		const id = await this.prepare();
+				.finally(() => (this.creating = undefined))));
 		await this.ctx.sessions.send(id, typeof message === "string" ? message : body(message));
 	}
 
@@ -82,12 +78,10 @@ export class Assistant {
 		if (this.current) this.ctx.sessions.stop(this.current);
 	}
 
-	/** 「新开一段」：这一段还没说过话就不用换。 */
+	/** 「新开一段」：这一段留在历史里，下一句话开新的一段。 */
 	async fresh(): Promise<void> {
 		await this.ready;
-		if (this.current && (await this.blank(this.current))) return;
 		this.choose(null);
-		await this.prepare();
 	}
 
 	async history(): Promise<AssistantSegment[]> {
@@ -99,19 +93,12 @@ export class Assistant {
 
 	async open(id: string): Promise<void> {
 		if (!this.mine.has(id)) throw new Error("unknown assistant session"); // i18n-exempt：界面只交历史里有的
-		const previous = this.current;
 		this.choose(id);
-		if (previous && previous !== id && (await this.blank(previous))) await this.ctx.sessions.delete(previous);
 	}
 
 	async remove(id: string): Promise<void> {
 		if (!this.mine.has(id)) return;
 		await this.ctx.sessions.delete(id);
-	}
-
-	private async blank(id: string): Promise<boolean> {
-		const session = (await this.ctx.sessions.list()).find((entry) => entry.id === id);
-		return !session || (session.messageCount ?? 0) === 0;
 	}
 
 	private choose(id: string | null): void {

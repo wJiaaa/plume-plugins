@@ -4,7 +4,7 @@
  */
 
 import type { OutgoingMessage } from "@plume/contract";
-import type { Remote, UiContext } from "@plume/contract/ui";
+import type { Remote, SessionChoice, UiContext } from "@plume/contract/ui";
 import {
 	IconButton,
 	MENU_MAX_HEIGHT,
@@ -21,7 +21,7 @@ import {
 	usePopover,
 } from "@plume/ui";
 import { Check, History, Sparkles, SquarePen, Trash2 } from "@plume/ui/icons";
-import { type MouseEvent, useEffect, useState } from "react";
+import { type MouseEvent, useState } from "react";
 import type { AssistantSegment, SshApi } from "./api.ts";
 import { errorText } from "./client.ts";
 import { type Messages, MESSAGES } from "./messages.ts";
@@ -34,14 +34,10 @@ type Host = Pick<UiContext, "Conversation" | "notify" | "useSession">;
 export function AssistantColumn({ ui, api, sessionId, text }: { ui: Host; api: Remote<SshApi>; sessionId: string | null; text: Messages }) {
 	const history = usePopover();
 	const view = ui.useSession(sessionId ?? undefined);
-	// 还没有这一段（刚装上、刚删掉）就先开一个空的：输入框旁的上下文用量、模型和思考档位跟着会话才画得出来。
-	useEffect(() => {
-		if (!sessionId) void api.prepareAssistant().catch((cause: unknown) => ui.notify(errorText(cause), "error"));
-	}, [sessionId, api, ui]);
 	const [segments, setSegments] = useState<AssistantSegment[] | null>(null);
 	const confirmer = useConfirmer();
 	const report = (cause: unknown) => ui.notify(errorText(cause), "error");
-	const send = async (message: string | OutgoingMessage) => {
+	const send = async (message: string | OutgoingMessage, choice?: SessionChoice) => {
 		await api.ask(
 			typeof message === "string"
 				? message
@@ -50,6 +46,7 @@ export function AssistantColumn({ ui, api, sessionId, text }: { ui: Host; api: R
 						...(message.displayText !== undefined ? { displayText: message.displayText } : {}),
 						...(message.attachments ? { attachments: message.attachments } : {}),
 					},
+			choice,
 		);
 	};
 	const openHistory = (event: MouseEvent<HTMLButtonElement>) => {
@@ -140,6 +137,8 @@ export function AssistantColumn({ ui, api, sessionId, text }: { ui: Host; api: R
 					composer={{
 						draftKey: DRAFT_KEY,
 						model: "choose",
+						// 还没有这一段（刚装上、刚新开、刚删掉）时也能先选模型和档位，第一句照选的开这一段。
+						blank: {},
 						placeholder: (locale) => MESSAGES[locale].assistantPlaceholder,
 						send,
 						sendMessage: send,

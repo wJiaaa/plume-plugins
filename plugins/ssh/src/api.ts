@@ -4,6 +4,7 @@
  */
 
 import type { CallContext, SessionMessage } from "@plume/contract";
+import type { SessionChoice } from "@plume/contract/ui";
 
 /** 一台主机。密码不出逻辑入口。 */
 export interface HostProfile {
@@ -284,12 +285,10 @@ export interface SshApi {
 	/** 审批卡上人改过的命令，先交过来再 respond。 */
 	editRun(toolCallId: string, command: string): void;
 
-	/** 对运维助手说一句，等这一轮结束；还没有这一段时先开一段。 */
-	ask(message: string | AssistantMessage): Promise<void>;
+	/** 对运维助手说一句，等这一轮结束；还没有这一段时照 `choice`（人在第一句之前选的模型和档位）开一段。 */
+	ask(message: string | AssistantMessage, choice?: SessionChoice): Promise<void>;
 	stopAssistant(): void;
-	/** 页面上的运维助手还没有这一段时先开一个空的，输入框才画得出模型和思考档位。 */
-	prepareAssistant(): Promise<void>;
-	/** 「新开一段」：开一个新的会话，这一段留在历史里；这一段还没说过话时不换。 */
+	/** 「新开一段」：这一段留在历史里，下一句话开新的一段。 */
 	newAssistant(): Promise<void>;
 	/** 说过的各段，最近的在前。 */
 	history(): Promise<AssistantSegment[]>;
