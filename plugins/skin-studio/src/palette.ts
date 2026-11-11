@@ -35,7 +35,8 @@ export function toSkin(skin: ColorSkin): Skin {
 		"on-accent": contrast(c.accent, "#FFFFFF") >= contrast(c.accent, "#000000") ? "#FFFFFF" : "#000000",
 		line: c.border,
 		"line-soft": c.border,
-		"line-float": c.border,
+		// line-float 不写，交回宿主的半透明前景色：它要压在外圈底纹上也深一档（侧栏空闲会话的空心圈），
+		// 不透明的 border 是按正文区挑的，落在外圈上和底色几乎一样，圈就看不见了。
 	};
 	return { name: skin.name, mode: skin.base, light: tokens, dark: tokens };
 }

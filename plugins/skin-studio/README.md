@@ -46,7 +46,7 @@
 | `textTertiary` | 提示文字 |
 | `accent` | 强调色 |
 | `accentDim` | 强调底纹 |
-| `border` | 描边 |
+| `border` | 分隔线和描边；浮层上的线和侧栏会话前的空心圈由 Plume 按文字色自动算，不用它 |
 
 可选的 `backdrop` 给窗口外圈和停靠侧栏铺一层渐变底纹：`{ "from": "#RRGGBB", "to": "#RRGGBB" }`，从 `from` 斜着过渡到 `to`。没有 `backdrop` 时外圈是 `bgRoot` 的实色。颗粒质感不属于皮肤，由「背景与质感」里的「磨砂」统一控制。
 
