@@ -9,6 +9,7 @@ import { createStudioStore } from "../src/store.ts";
 import { PRESETS } from "../src/presets.ts";
 import { COLOR_KEYS, contrast, parseSkin } from "../src/types.ts";
 import { toSkin } from "../src/palette.ts";
+import { oklch } from "../src/tone.ts";
 
 async function fixture(t: { after(callback: () => Promise<void>): void }) {
 	const dir = await mkdtemp(join(tmpdir(), "plume-skin-studio-"));
@@ -41,6 +42,60 @@ test("八套预设均有12色，文字在所有表面可读，映射不丢角色
 	}
 });
 
+/** OKLCH 的亮度（0–1），只用来比两块底色分不分得开。 */
+function lightness(hex: string): number {
+	const [r, g, b] = [1, 3, 5].map((offset) => {
+		const channel = Number.parseInt(hex.slice(offset, offset + 2), 16) / 255;
+		return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+	}) as [number, number, number];
+	const l = Math.cbrt(0.4122214708 * r + 0.5363137081 * g + 0.0514459683 * b);
+	const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+	const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+	return 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+}
+
+test("每套预设的侧栏（外圈）都比会话窗暗一档，浅色的悬停在侧栏上也看得出", () => {
+	for (const preset of PRESETS) {
+		const { bgRoot, bgMain, bgHover } = preset.colors;
+		assert.ok(lightness(bgMain) - lightness(bgRoot) >= 0.035, `${preset.id}：侧栏 ${bgRoot} 和会话窗 ${bgMain} 太接近`);
+		if (preset.base === "light" && !preset.backdrop) assert.ok(lightness(bgRoot) - lightness(bgHover) >= 0.02, `${preset.id}：侧栏上的悬停看不出来`);
+	}
+});
+
+test("色调皮肤由色相推出，外圈是纯渐变、不带颗粒；没有底纹的皮肤不写 root-image", () => {
+	const tones = PRESETS.filter((preset) => preset.backdrop);
+	assert.deepEqual(
+		tones.map((tone) => tone.id),
+		["light-tone-sky", "light-tone-lavender", "light-tone-celadon"],
+	);
+	for (const tone of tones) {
+		// 渐变两端也要过文字对比度，parseSkin 原样保留底纹。
+		assert.deepEqual(parseSkin(tone).backdrop, tone.backdrop);
+		assert.equal(toSkin(tone).light!["root-image"], `linear-gradient(160deg, ${tone.backdrop!.from}, ${tone.backdrop!.to})`);
+		assert.ok(contrast(tone.colors.accent, toSkin(tone).light!["on-accent"]!) >= 4.5);
+	}
+	assert.equal(toSkin(PRESETS[0]!).light!["root-image"], undefined);
+	// 彩度为 0 时是灰：三个通道相同；白和黑的对比度是 21:1。
+	const gray = oklch(0.5, 0, 0);
+	assert.equal(gray.slice(1, 3).repeat(3), gray.slice(1));
+	assert.equal(Math.round(contrast(oklch(1, 0, 0), oklch(0, 0, 0))), 21);
+});
+
+test("底纹只接受两个 #RRGGBB，文字压不住渐变两端时拒绝，颗粒不进皮肤", () => {
+	const tone = PRESETS.find((preset) => preset.backdrop)!;
+	for (const backdrop of [
+		null,
+		[],
+		{ from: tone.backdrop!.from },
+		{ ...tone.backdrop, from: "url(https://example.com)" },
+		{ ...tone.backdrop, to: "linear-gradient(red, blue)" },
+	])
+		assert.throws(() => parseSkin({ ...tone, backdrop }), /invalidBackdrop/);
+	assert.throws(() => parseSkin({ ...tone, backdrop: { ...tone.backdrop, to: tone.colors.textPrimary } }), /lowContrast/);
+	// 别人分享的旧 JSON 里多带的 grain 丢掉，不存进作品。
+	assert.deepEqual(parseSkin({ ...tone, backdrop: { ...tone.backdrop, grain: true } }).backdrop, tone.backdrop);
+});
+
 test("拒绝缺失颜色、CSS/URL、非法模式、过长名和不可读的AI配色", () => {
 	const valid = PRESETS[0]!;
 	for (const invalid of [
@@ -65,7 +120,7 @@ test("保存、切换、提取、删除及重启恢复；同名作品不覆盖",
 	const copy = view.skins.find((skin) => skin.id === view.activeId)!;
 	assert.equal(copy.name, "我的薄荷");
 	assert.equal(copy.builtin, false);
-	assert.deepEqual(copy.colors, PRESETS[1]!.colors);
+	assert.deepEqual(copy.colors, PRESETS.find((skin) => skin.id === "light-mint")!.colors);
 	view = await store.save({ ...copy, id: "light-mint", builtin: true }, false);
 	assert.equal(view.activeId, copy.id);
 	assert.equal(view.skins.filter((skin) => skin.name === copy.name).length, 2);
@@ -159,7 +214,7 @@ test("AI工具真正保存并应用，列表只读，拒绝只读模式下的修
 	const run = { signal: new AbortController().signal } as ToolRun;
 	assert.equal(tool.readsOnly?.({ action: "list" }), true);
 	assert.equal(tool.readsOnly?.({ action: "apply" }), false);
-	const applied = await tool.execute({ action: "apply", ...PRESETS[4], id: undefined, name: "AI 莓果" }, run);
+	const applied = await tool.execute({ action: "apply", ...PRESETS.find((skin) => skin.id === "dark-berry"), id: undefined, name: "AI 莓果" }, run);
 	assert.ok(!applied.isError, applied.output);
 	const view = JSON.parse(applied.output);
 	assert.equal(view.skins.find((skin: { id: string }) => skin.id === view.activeId).name, "AI 莓果");
@@ -177,4 +232,14 @@ test("AI工具真正保存并应用，列表只读，拒绝只读模式下的修
 	const defaults = await tool.execute({ action: "apply", id: "default-system" }, run);
 	assert.equal(JSON.parse(defaults.output).activeId, "default-system");
 	assert.equal((await tool.execute({ action: "save", name: "默认副本" }, run)).isError, true);
+});
+
+test("带底纹的作品保存、复制当前皮肤和重启后都保留底纹", async (t) => {
+	const { store, dir, stop } = await fixture(t);
+	await store.apply("light-tone-sky");
+	const view = await store.saveCurrent("我的晴空");
+	const copy = view.skins.find((skin) => skin.id === view.activeId)!;
+	assert.deepEqual(copy.backdrop, PRESETS.find((skin) => skin.id === "light-tone-sky")!.backdrop);
+	const reloaded = await (await createStudioStore(dir, stop.signal)).view();
+	assert.deepEqual(reloaded.skins.find((skin) => skin.id === copy.id)!.backdrop, copy.backdrop);
 });

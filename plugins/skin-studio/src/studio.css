@@ -186,10 +186,12 @@
 	background: var(--plume-shell);
 }
 
+/* 带底纹的皮肤在侧栏那一格画出外圈的渐变；没有底纹时 Thumb 给 none，不透出正在用的皮肤的底纹。 */
 .skin-studio-thumb-side {
 	width: 30%;
 	flex-shrink: 0;
-	background: var(--plume-sidebar);
+	background-color: var(--plume-sidebar);
+	background-image: var(--plume-root-image);
 }
 
 .skin-studio-thumb-main {

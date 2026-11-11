@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/skin-studio",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "用 12 色设计完整皮肤：预设画廊、AI 设计、自定义皮肤保存与分享，文字和各层背景分别配色。",
   "author": "Plume",
   "keywords": [

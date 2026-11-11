@@ -22,10 +22,16 @@ export const COLOR_KEYS = [
 ] as const;
 type ColorKey = (typeof COLOR_KEYS)[number];
 export type SkinColors = Record<ColorKey, string>;
+/** 窗口外圈的底纹：from 到 to 的斜向渐变。侧栏的字压在上面，两端都要过文字对比度。磨砂颗粒是宿主的用户开关，不归皮肤。 */
+interface SkinBackdrop {
+	from: string;
+	to: string;
+}
 export interface ColorSkin {
 	name: string;
 	base: "light" | "dark";
 	colors: SkinColors;
+	backdrop?: SkinBackdrop;
 }
 export interface StudioSkin extends ColorSkin {
 	id: string;
@@ -61,17 +67,25 @@ export function parseSkin(value: unknown): ColorSkin {
 	const colors = {} as SkinColors;
 	for (const key of COLOR_KEYS) {
 		const value = source[key];
-		if (typeof value !== "string" || !/^#[\da-f]{6}$/i.test(value)) throw new Error("invalidColors");
+		if (!isHex(value)) throw new Error("invalidColors");
 		colors[key] = value.toUpperCase();
 	}
-	for (const background of ["bgRoot", "bgMain", "bgSidebar", "bgElevated", "bgHover", "bgActive"] as const) {
-		if (
-			contrast(colors.textPrimary, colors[background]) < 4.5 ||
-			contrast(colors.textSecondary, colors[background]) < 4.5 ||
-			contrast(colors.textTertiary, colors[background]) < 3
-		) {
+	let backdrop: SkinBackdrop | undefined;
+	if (raw.backdrop !== undefined) {
+		const value = raw.backdrop as Record<string, unknown> | null;
+		if (!value || typeof value !== "object" || Array.isArray(value) || !isHex(value.from) || !isHex(value.to)) throw new Error("invalidBackdrop");
+		backdrop = { from: value.from.toUpperCase(), to: value.to.toUpperCase() };
+	}
+	const backgrounds = [colors.bgRoot, colors.bgMain, colors.bgSidebar, colors.bgElevated, colors.bgHover, colors.bgActive];
+	if (backdrop) backgrounds.push(backdrop.from, backdrop.to);
+	for (const background of backgrounds) {
+		if (contrast(colors.textPrimary, background) < 4.5 || contrast(colors.textSecondary, background) < 4.5 || contrast(colors.textTertiary, background) < 3) {
 			throw new Error("lowContrast");
 		}
 	}
-	return { name: raw.name.trim(), base: raw.base, colors };
+	return { name: raw.name.trim(), base: raw.base, colors, ...(backdrop && { backdrop }) };
+}
+
+function isHex(value: unknown): value is string {
+	return typeof value === "string" && /^#[\da-f]{6}$/i.test(value);
 }

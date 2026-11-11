@@ -1,47 +1,37 @@
 // color-exempt：工坊的预设皮肤是持久化配色数据，供缩略图预览和 ui.skin 应用，不是固定界面色
 import type { StudioSkin, SkinColors } from "./types.ts";
+import { toneSkin } from "./tone.ts";
 import { COLOR_KEYS } from "./types.ts";
 
-/** 预设是皮肤数据；提示字适度加深或提亮，保证选中底上的可读性。 */
+/**
+ * 预设是皮肤数据；提示字适度加深或提亮，保证选中底上的可读性。
+ * 外圈（停靠侧栏）比会话窗暗一档（OKLCH 亮度约 0.04），两块分得开；浅色的悬停、按下再比外圈深，侧栏上也看得出。
+ */
 function preset(id: string, name: string, base: StudioSkin["base"], values: readonly string[]): StudioSkin {
 	return { id, name, base, builtin: true, colors: Object.fromEntries(COLOR_KEYS.map((key, index) => [key, values[index]])) as SkinColors };
 }
 
 export const PRESETS: readonly StudioSkin[] = [
-	preset("light-snow", "Snow White", "light", [
-		"#FFFFFF",
-		"#FFFFFF",
-		"#F6F6F8",
-		"#FFFFFF",
-		"#F0F1F3",
-		"#E6E8EB",
-		"#1C1C1F",
-		"#5B5D66",
-		"#737580",
-		"#2F6FED",
-		"#E2EBFD",
-		"#E6E7EB",
-	]),
 	preset("light-mint", "Mint Morning", "light", [
-		"#F6FBF8",
+		"#E8EEEA",
 		"#F6FBF8",
 		"#EEF7F1",
 		"#FFFFFF",
-		"#E6F3EA",
-		"#D8ECDF",
+		"#DCE9E0",
+		"#D2E6D9",
 		"#173226",
-		"#4D6B5B",
+		"#456253",
 		"#657C6D",
 		"#0E9F6E",
 		"#D9F4E6",
 		"#DCECE2",
 	]),
 	preset("light-peach", "Peach Cream", "light", [
-		"#FFF8F6",
+		"#F2EAE8",
 		"#FFF8F6",
 		"#FDEEEC",
 		"#FFFFFF",
-		"#FBE3E0",
+		"#F7DFDC",
 		"#F7D2CE",
 		"#3A1F1D",
 		"#7A4E49",
@@ -51,7 +41,7 @@ export const PRESETS: readonly StudioSkin[] = [
 		"#F3DDD8",
 	]),
 	preset("dark-graphite", "Graphite", "dark", [
-		"#17181B",
+		"#121216",
 		"#1B1C20",
 		"#131417",
 		"#222327",
@@ -65,7 +55,7 @@ export const PRESETS: readonly StudioSkin[] = [
 		"#2B2C31",
 	]),
 	preset("dark-berry", "Midnight Berry", "dark", [
-		"#180F16",
+		"#130910",
 		"#1D1219",
 		"#140C12",
 		"#25151F",
@@ -79,7 +69,7 @@ export const PRESETS: readonly StudioSkin[] = [
 		"#301C29",
 	]),
 	preset("dark-teal", "Deep Teal", "dark", [
-		"#0D1A1C",
+		"#06171A",
 		"#0F2124",
 		"#0A1517",
 		"#15292C",
@@ -92,33 +82,8 @@ export const PRESETS: readonly StudioSkin[] = [
 		"#0F3A35",
 		"#1C3335",
 	]),
-	// 保留青春清爽的种子色，按原对比度 0.62 固化派生色；浅色提示字略加深，满足所有表面上的对比度。
-	preset("light-youthful", "Youthful Fresh (Light)", "light", [
-		"#FFF8F1",
-		"#FFF8F1",
-		"#FAF4ED",
-		"#F8F2EC",
-		"#F3EDE8",
-		"#EBE6E2",
-		"#17243D",
-		"#5D6473",
-		"#7F838E",
-		"#C03959",
-		"#F9E5E2",
-		"#DEDAD7",
-	]),
-	preset("dark-youthful", "Youthful Fresh (Dark)", "dark", [
-		"#1D1B38",
-		"#1D1B38",
-		"#272541",
-		"#2B2945",
-		"#2A2844",
-		"#33304C",
-		"#F4EFFF",
-		"#B3AFC3",
-		"#9592A7",
-		"#69E6C2",
-		"#252F46",
-		"#2F2D49",
-	]),
+	// 色调皮肤：只给色相和彩度，整套颜色和渐变外圈都由 OKLCH 推出来。
+	toneSkin("light-tone-sky", "Clear Sky", 262, 0.055),
+	toneSkin("light-tone-lavender", "Lavender Mist", 296, 0.058),
+	toneSkin("light-tone-celadon", "Celadon", 172, 0.048),
 ];

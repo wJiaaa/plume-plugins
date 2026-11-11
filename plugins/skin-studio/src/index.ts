@@ -12,7 +12,7 @@ export default {
 		ctx.serve(store);
 		ctx.tools.register({
 			name: "skin_studio_theme",
-			description: `Design and manage Plume color skins. list returns all built-in and saved skins, defaults, and activeId. The default-system, default-light, and default-dark ids use native Plume colors with system/light/dark mode; they do not erase user preferences and cannot be copied as a 12-color skin. apply with id switches to an existing skin; apply with name, base and colors saves a new skin and applies it immediately. save with name, base and colors only adds to the library; save with only name copies the active Studio skin. remove deletes a custom skin by id (ask the user first); reset releases the Studio skin and restores prior appearance preferences. Never edit app settings or CSS to change skins. A skin contains exactly these 12 color roles: ${COLOR_KEYS.join(", ")}. Provide all colors as #RRGGBB. base is light or dark and sets the application mode. Primary and secondary text must have contrast >=4.5:1 and tertiary text >=3:1 against all six bg surfaces. Keep accent readable on its dim background. Skins are local data, not executable code.`,
+			description: `Design and manage Plume color skins. list returns all built-in and saved skins, defaults, and activeId. The default-system, default-light, and default-dark ids use native Plume colors with system/light/dark mode; they do not erase user preferences and cannot be copied as a 12-color skin. apply with id switches to an existing skin; apply with name, base and colors saves a new skin and applies it immediately. save with name, base and colors only adds to the library; save with only name copies the active Studio skin. remove deletes a custom skin by id (ask the user first); reset releases the Studio skin and restores prior appearance preferences. Never edit app settings or CSS to change skins. A skin contains exactly these 12 color roles: ${COLOR_KEYS.join(", ")}. Provide all colors as #RRGGBB. base is light or dark and sets the application mode. Primary and secondary text must have contrast >=4.5:1 and tertiary text >=3:1 against all six bg surfaces. Keep accent readable on its dim background. Optionally add backdrop { from, to } to paint the window frame and docked sidebar with a diagonal gradient from one #RRGGBB to another; text must meet the same contrast against from and to. Film grain is a separate user setting, not part of a skin. Skins are local data, not executable code.`,
 			parameters: {
 				type: "object",
 				properties: {
@@ -24,6 +24,16 @@ export default {
 						type: "object",
 						properties: Object.fromEntries(COLOR_KEYS.map((key) => [key, { type: "string", pattern: "^#[0-9a-fA-F]{6}$" }])),
 						required: [...COLOR_KEYS],
+						additionalProperties: false,
+					},
+					backdrop: {
+						type: "object",
+						description: "Optional gradient behind the window frame and docked sidebar.",
+						properties: {
+							from: { type: "string", pattern: "^#[0-9a-fA-F]{6}$" },
+							to: { type: "string", pattern: "^#[0-9a-fA-F]{6}$" },
+						},
+						required: ["from", "to"],
 						additionalProperties: false,
 					},
 				},
@@ -45,8 +55,8 @@ export default {
 							view = await store.apply(null);
 							break;
 						case "apply":
-							if (args.id !== undefined && (args.colors !== undefined || args.name !== undefined || args.base !== undefined)) {
-								return { output: "Use either id or name/base/colors, not both.", isError: true };
+							if (args.id !== undefined && (args.colors !== undefined || args.name !== undefined || args.base !== undefined || args.backdrop !== undefined)) {
+								return { output: "Use either id or name/base/colors/backdrop, not both.", isError: true };
 							}
 							view = typeof args.id === "string" ? await store.apply(args.id) : await store.save(args, true);
 							break;
