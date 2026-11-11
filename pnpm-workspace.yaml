@@ -4,7 +4,7 @@ packages:
 # 插件 SDK 从 npm 装，各插件和根目录都写 `catalog:`，版本只在这里改一处。SDK 的版本跟着 Plume 走：
 # 插件用了新版 SDK 才有的接口，就要求用户的 Plume 至少是这一版。
 catalog:
-  "@plumeai/plugin-sdk": ^0.1.2
+  "@plumeai/plugin-sdk": ^0.1.4
 
 # pnpm 默认不跑依赖的安装脚本；esbuild 要靠它装平台包。
 onlyBuiltDependencies:
