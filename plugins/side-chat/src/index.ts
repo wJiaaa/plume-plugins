@@ -18,6 +18,7 @@
 import { readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Message, Plugin, PromptSection, SessionMessage } from "@plume/contract";
+import type { SessionChoice } from "@plume/contract/ui";
 import type { SideChatApi } from "./api.ts";
 import { createSideChatBindings } from "./bindings.ts";
 import { changeIds, sideChangesNote } from "./changes.ts";
@@ -81,8 +82,14 @@ export default {
 		let model = typeof saved === "string" ? saved : undefined;
 		let writingSettings: Promise<void> = Promise.resolve();
 
-		async function open(parentId: string): Promise<string> {
-			const side = await ctx.sessions.create({ parentId, ...(model ? { model } : {}) });
+		/** `choice`：人在面板里第一句之前选的模型和档位（只取这两样，不对时 `create` 抛错）；`/btw`、排队条新开的没有，用上面的默认。 */
+		async function open(parentId: string, choice?: SessionChoice): Promise<string> {
+			const picked = choice
+				? { ...(choice.model ? { model: choice.model } : {}), ...(choice.thinking ? { thinking: choice.thinking } : {}) }
+				: model
+					? { model }
+					: {};
+			const side = await ctx.sessions.create({ parentId, ...picked });
 			sides.set(side.id, parentId);
 			noted.set(side.id, { seen: 0, lastAt: 0 });
 			return side.id;
@@ -214,7 +221,7 @@ export default {
 
 		ctx.serve({
 			bind: (tab: string, parentId: string) => bindings.bind(String(tab), String(parentId)),
-			open: (tab: string, parentId: string) => bindings.open(String(tab), String(parentId)),
+			open: (tab: string, parentId: string, choice?: SessionChoice) => bindings.open(String(tab), String(parentId), choice),
 			async ask(sideId: string, message: string | SessionMessage) {
 				// 界面交来的只取正文、气泡上的字和附件：不能借这条路冒充派发方（`origin`）。
 				const body: string | SessionMessage =

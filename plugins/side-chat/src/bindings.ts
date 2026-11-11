@@ -1,11 +1,12 @@
 import { readFile, rename, writeFile } from "node:fs/promises";
+import type { SessionChoice } from "@plume/contract/ui";
 import type { SideChatEntry } from "./api.ts";
 
 interface BindingDeps {
 	file: string;
 	parentOf(sideId: string): string | undefined;
 	list(parentId: string): Promise<SideChatEntry[]>;
-	open(parentId: string): Promise<string>;
+	open(parentId: string, choice?: SessionChoice): Promise<string>;
 	close(sideId: string): Promise<void>;
 	missing(): Error;
 }
@@ -38,7 +39,7 @@ export async function createSideChatBindings(deps: BindingDeps) {
 		await rename(`${deps.file}.tmp`, deps.file);
 		bound = next;
 	};
-	const resolve = async (tab: string, parentId: string, create: boolean): Promise<string | undefined> => {
+	const resolve = async (tab: string, parentId: string, create?: () => Promise<string>): Promise<string | undefined> => {
 		if (closed.has(tab)) throw deps.missing();
 		const known = bound.get(tab);
 		if (known) {
@@ -47,7 +48,7 @@ export async function createSideChatBindings(deps: BindingDeps) {
 		}
 		const taken = new Set(bound.values());
 		const free = bound.has(tab) ? undefined : (await deps.list(parentId)).find((entry) => !taken.has(entry.id));
-		const id = free?.id ?? (create ? await deps.open(parentId) : undefined);
+		const id = free?.id ?? (create ? await create() : undefined);
 		if (id || !bound.has(tab)) {
 			const next = new Map(bound);
 			next.set(tab, id ?? null);
@@ -58,10 +59,10 @@ export async function createSideChatBindings(deps: BindingDeps) {
 	};
 
 	return {
-		bind: (tab: string, parentId: string) => run(() => resolve(tab, parentId, false)),
-		open: (tab: string, parentId: string) =>
+		bind: (tab: string, parentId: string) => run(() => resolve(tab, parentId)),
+		open: (tab: string, parentId: string, choice?: SessionChoice) =>
 			run(async () => {
-				const id = await resolve(tab, parentId, true);
+				const id = await resolve(tab, parentId, () => deps.open(parentId, choice));
 				if (!id) throw deps.missing();
 				return id;
 			}),

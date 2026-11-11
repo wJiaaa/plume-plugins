@@ -8,7 +8,7 @@
  * 主输入框排队条的「更多」菜单里加一项「在侧边聊天中打开」：这句话先拿到侧边聊天问，不占用正在跑的这一轮。
  */
 
-import type { PanelProps, Remote, UiContext, UiPlugin } from "@plume/contract/ui";
+import type { PanelProps, Remote, SessionChoice, UiContext, UiPlugin } from "@plume/contract/ui";
 import type { OutgoingMessage } from "@plume/contract";
 import { ChoiceMark, Confirm, PanelEmpty, Text, useI18n } from "@plume/ui";
 import { MessageSquarePlus, MessagesSquare } from "@plume/ui/icons";
@@ -44,6 +44,21 @@ function SideChatPanel({ session, tab, setTitle, onClose }: PanelProps) {
 	const closing = useRef(false);
 	const side = ui.useSession(sideId);
 	const [asking, setAsking] = useState<((sure: boolean) => void) | undefined>(undefined);
+	// 还没开的这段要用的模型：第一句之前输入框里先画它，人没动过就照它开。
+	const [defaultModel, setDefaultModel] = useState<string | undefined>(undefined);
+	useEffect(() => {
+		if (sideId) return;
+		let current = true;
+		void api.model().then(
+			(value) => {
+				if (current) setDefaultModel(value);
+			},
+			(error: unknown) => ui.notify(error instanceof Error ? error.message : String(error), "error"),
+		);
+		return () => {
+			current = false;
+		};
+	}, [sideId]);
 
 	// 只恢复绑定，不在挂载时新建；卸载不能删除绑定或子会话。
 	useEffect(() => {
@@ -68,9 +83,9 @@ function SideChatPanel({ session, tab, setTitle, onClose }: PanelProps) {
 	const said = side ? side.messages.length > 0 : Boolean(sideId);
 	const saidRef = useRef(said);
 	saidRef.current = said;
-	const send = async (question: string | OutgoingMessage) => {
+	const send = async (question: string | OutgoingMessage, choice?: SessionChoice) => {
 		if (!parentId || closing.current) return;
-		const id = await api.open(tab, parentId);
+		const id = await api.open(tab, parentId, choice);
 		if (closing.current) return;
 		setSideId(id);
 		await api.ask(id, question);
@@ -116,6 +131,7 @@ function SideChatPanel({ session, tab, setTitle, onClose }: PanelProps) {
 				composer={{
 					draftKey: tab,
 					model: "choose",
+					blank: { parentId, ...(defaultModel ? { model: defaultModel } : {}) },
 					placeholder: (locale) => MESSAGES[locale].placeholder,
 					send,
 					sendMessage: send,
