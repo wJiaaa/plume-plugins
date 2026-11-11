@@ -95,6 +95,10 @@
       "source": "./plugins/usage"
     },
     {
+      "name": "welcome",
+      "source": "./plugins/welcome"
+    },
+    {
       "name": "arxiv",
       "source": "./connectors/arxiv"
     },

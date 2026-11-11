@@ -1,0 +1,27 @@
+{
+  "name": "@plume-plugins/welcome",
+  "version": "0.1.0",
+  "description": "欢迎页问候下面每天换一句话：每天第一次打开时让默认模型写一句，当天都显示它，换掉「要在某个项目里开发什么」那一行。",
+  "author": "Plume",
+  "keywords": [
+    "欢迎页",
+    "每日一句",
+    "welcome"
+  ],
+  "plume": {
+    "displayName": "每日一句",
+    "category": "外观"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@plumeai/plugin-sdk": "catalog:",
+    "@types/node": "^24.10.0",
+    "react": "^19.3.1",
+    "vitest": "^5.1.0"
+  }
+}
