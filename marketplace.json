@@ -7,10 +7,6 @@
   },
   "plugins": [
     {
-      "name": "browser",
-      "source": "./plugins/browser"
-    },
-    {
       "name": "followups",
       "source": "./plugins/followups"
     },
