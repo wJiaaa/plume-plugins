@@ -3,7 +3,7 @@ import { readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { SkinStudioApi } from "./api.ts";
 import { PRESETS } from "./presets.ts";
-import { defaultMode, parseSkin, type StudioSkin, type StudioView } from "./types.ts";
+import { parseSkin, type StudioSkin, type StudioView } from "./types.ts";
 
 interface Library {
 	custom: StudioSkin[];
@@ -28,8 +28,7 @@ export async function createStudioStore(dataDir: string, signal: AbortSignal): P
 			return { ...skin, id, builtin: false };
 		});
 		if (new Set(custom.map((skin) => skin.id)).size !== custom.length) throw new Error("invalidLibrary");
-		if (candidate.activeId !== null && !defaultMode(candidate.activeId) && ![...PRESETS, ...custom].some((skin) => skin.id === candidate.activeId))
-			throw new Error("invalidLibrary");
+		if (candidate.activeId !== null && ![...PRESETS, ...custom].some((skin) => skin.id === candidate.activeId)) throw new Error("invalidLibrary");
 		state = { custom, activeId: candidate.activeId as string | null };
 	} catch (error) {
 		if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw new Error("invalidLibrary", { cause: error });
@@ -85,7 +84,7 @@ export async function createStudioStore(dataDir: string, signal: AbortSignal): P
 		},
 		apply: (id) =>
 			change((current) => {
-				if (id !== null && !defaultMode(id) && ![...PRESETS, ...current.custom].some((skin) => skin.id === id)) throw new Error("missingSkin");
+				if (id !== null && ![...PRESETS, ...current.custom].some((skin) => skin.id === id)) throw new Error("missingSkin");
 				return { ...current, activeId: id };
 			}),
 		save: (value, apply) => change((current) => add(current, value, apply === true)),
@@ -97,7 +96,7 @@ export async function createStudioStore(dataDir: string, signal: AbortSignal): P
 			}),
 		remove: (id) =>
 			change((current) => {
-				if (defaultMode(id) || PRESETS.some((skin) => skin.id === id)) throw new Error("builtinSkin");
+				if (PRESETS.some((skin) => skin.id === id)) throw new Error("builtinSkin");
 				if (!current.custom.some((skin) => skin.id === id)) throw new Error("missingSkin");
 				return { custom: current.custom.filter((skin) => skin.id !== id), activeId: current.activeId === id ? null : current.activeId };
 			}),

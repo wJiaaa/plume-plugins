@@ -24,12 +24,22 @@ function fixture() {
 		},
 	};
 	const applied: Array<Skin | null> = [];
-	const ui = { skin: (skin: Skin | null) => applied.push(skin) } as UiContext;
-	const api = { watch: () => call } as unknown as Remote<SkinStudioApi>;
+	const themes: string[] = [];
+	const released: Array<string | null> = [];
+	const ui = { skin: (skin: Skin | null) => applied.push(skin), setTheme: (theme: string) => themes.push(theme) } as UiContext;
+	const api = {
+		watch: () => call,
+		apply: (id: string | null) => {
+			released.push(id);
+			return Promise.resolve();
+		},
+	} as unknown as Remote<SkinStudioApi>;
 	const store = createStudioStore(ui, api);
 	return {
 		store,
 		applied,
+		themes,
+		released,
 		cancelled: () => cancelled,
 		async push(view: StudioView) {
 			deliver?.({ done: false, value: view });
@@ -56,20 +66,22 @@ test("启用即订阅，无需挂载面板；保存未应用作品不抢皮肤�
 	assert.equal(cancelled(), true);
 });
 
-test("原生默认配色清除数据色值，三模式独立应用并在恢复时撤下", async () => {
-	const { store, applied, push } = fixture();
+test("系统外观改的是应用主题：先当场撤下工坊皮肤再改主题，库里的当前皮肤随后清掉", async () => {
+	const { store, applied, themes, released, push } = fixture();
 	store.start();
 	const view = { skins: structuredClone([...PRESETS]), activeId: "dark-berry" };
 	await push(view);
-	for (const mode of ["system", "light", "dark"] as const) {
-		await push({ ...view, activeId: `default-${mode}` });
-		assert.deepEqual(applied.at(-1), { name: "Plume", mode });
-	}
-	const count = applied.length;
-	await push({ ...view, activeId: "default-dark" });
-	assert.equal(applied.length, count, "同一个默认模式不重复注册");
-	await push({ ...view, activeId: null });
+	assert.equal(await store.chooseTheme("light"), true);
 	assert.equal(applied.at(-1), null);
+	assert.deepEqual(themes, ["light"]);
+	assert.deepEqual(released, [null]);
+	const count = applied.length;
+	await push({ ...view, activeId: null });
+	assert.equal(applied.length, count, "库里清掉后的广播不再撤一次");
+	assert.equal(await store.chooseTheme("dark"), true);
+	assert.deepEqual(themes, ["light", "dark"]);
+	assert.deepEqual(released, [null], "没用工坊皮肤时不写库");
+	assert.equal(applied.length, count);
 	store.dispose();
 });
 

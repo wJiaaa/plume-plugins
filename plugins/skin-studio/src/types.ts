@@ -1,10 +1,3 @@
-export const DEFAULT_MODES = ["system", "light", "dark"] as const;
-
-/** 默认配色不复制 token，运行时由产品主题决定；其选择与普通皮肤使用同一个 activeId。 */
-export function defaultMode(id: string | null): (typeof DEFAULT_MODES)[number] | undefined {
-	return DEFAULT_MODES.find((mode) => id === `default-${mode}`);
-}
-
 /** 皮肤是配色数据，不接受 CSS、路径或脚本。 */
 export const COLOR_KEYS = [
 	"bgRoot",

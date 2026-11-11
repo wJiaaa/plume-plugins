@@ -6,7 +6,7 @@ import type { SkinStudioApi } from "./api.ts";
 import { errorText } from "./errors.ts";
 import { MESSAGES, skinName } from "./messages.ts";
 import { toSkin } from "./palette.ts";
-import { DEFAULT_MODES, defaultMode, parseSkin, type ColorSkin, type StudioSkin } from "./types.ts";
+import { parseSkin, type ColorSkin, type StudioSkin } from "./types.ts";
 import type { StudioStore } from "./ui-store.ts";
 
 /** 缩略图：侧栏、主区两条字和一颗强调色胶囊，颜色取自作品数据，只在这个子树里覆盖 token。 */
@@ -253,7 +253,9 @@ export function StudioPanel({ ui, api, store, sessionId }: { ui: UiContext; api:
 	const [dialog, setDialog] = useState<"save" | "import" | null>(null);
 	const [removing, setRemoving] = useState<StudioSkin | null>(null);
 	const active = state.view?.skins.find((skin) => skin.id === state.view?.activeId);
-	const mode = defaultMode(state.view?.activeId ?? null);
+	// 没用工坊皮肤时，外观页选的是哪张主题卡片，这里就亮哪个。
+	const theme = ui.useTheme();
+	const mode = state.view && !state.view.activeId ? theme : undefined;
 	const ready = state.status === "ready";
 
 	const copy = async (skin: ColorSkin) => {
@@ -327,14 +329,8 @@ export function StudioPanel({ ui, api, store, sessionId }: { ui: UiContext; api:
 							{text.systemTheme}
 						</Text>
 						<div className="skin-studio-seg" role="group" aria-label={text.systemTheme}>
-							{DEFAULT_MODES.map((value) => (
-								<button
-									key={value}
-									type="button"
-									aria-pressed={mode === value}
-									disabled={!ready}
-									onClick={() => void store.run(() => api.apply(`default-${value}`))}
-								>
+							{(["system", "light", "dark"] as const).map((value) => (
+								<button key={value} type="button" aria-pressed={mode === value} disabled={!ready} onClick={() => void store.chooseTheme(value)}>
 									<Text tone={mode === value ? "accent" : "default"} weight={mode === value ? "semibold" : undefined}>
 										{text[value]}
 									</Text>

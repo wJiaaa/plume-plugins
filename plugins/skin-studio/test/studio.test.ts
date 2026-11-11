@@ -135,20 +135,6 @@ test("保存、切换、提取、删除及重启恢复；同名作品不覆盖",
 	assert.equal((await store.apply(null)).activeId, null);
 });
 
-test("原生默认配色的三模式可切换、保存和重启恢复，不能当作12色副本或删除", async (t) => {
-	const { store, dir, stop } = await fixture(t);
-	for (const mode of ["system", "light", "dark"]) {
-		const id = `default-${mode}`;
-		assert.equal((await store.apply(id)).activeId, id);
-		assert.equal((await (await createStudioStore(dir, stop.signal)).view()).activeId, id);
-		await assert.rejects(store.saveCurrent("默认副本"), /noCurrent/);
-		await assert.rejects(store.remove(id), /builtinSkin/);
-	}
-	await assert.rejects(store.apply("default-invalid"), /missingSkin/);
-	assert.equal((await store.apply("light-mint")).activeId, "light-mint");
-	assert.equal((await store.apply(null)).activeId, null);
-});
-
 test("并发保存串行落盘，失败不污染当前皮肤或下一次保存", async (t) => {
 	const { store, dir } = await fixture(t);
 	await Promise.all(Array.from({ length: 8 }, (_, index) => store.save({ ...PRESETS[0], name: `skin ${index}` }, false)));
@@ -225,13 +211,8 @@ test("AI工具真正保存并应用，列表只读，拒绝只读模式下的修
 	assert.equal((await tool.execute({ action: "apply", id: "dark-teal", colors: PRESETS[0]!.colors }, run)).isError, true);
 	const listed = await tool.execute({ action: "list" }, run);
 	assert.equal(listed.isError, undefined);
-	assert.deepEqual(
-		JSON.parse(listed.output).defaults.map((item: { id: string }) => item.id),
-		["default-system", "default-light", "default-dark"],
-	);
-	const defaults = await tool.execute({ action: "apply", id: "default-system" }, run);
-	assert.equal(JSON.parse(defaults.output).activeId, "default-system");
-	assert.equal((await tool.execute({ action: "save", name: "默认副本" }, run)).isError, true);
+	// 跟随系统、浅色、深色是应用的主题设置，工具不碰。
+	assert.equal((await tool.execute({ action: "apply", id: "default-dark" }, run)).isError, true);
 });
 
 test("带底纹的作品保存、复制当前皮肤和重启后都保留底纹", async (t) => {

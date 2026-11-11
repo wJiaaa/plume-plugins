@@ -2,7 +2,7 @@
 import type { Remote, UiContext } from "@plume/contract/ui";
 import type { SkinStudioApi } from "./api.ts";
 import { toSkin } from "./palette.ts";
-import { COLOR_KEYS, defaultMode, type StudioView } from "./types.ts";
+import { COLOR_KEYS, type StudioView } from "./types.ts";
 
 interface StudioState {
 	view: StudioView | null;
@@ -41,11 +41,10 @@ export function createStudioStore(ui: UiContext, api: Remote<SkinStudioApi>) {
 				for await (const view of call) {
 					if (disposed || own !== generation) return;
 					const active = view.skins.find((skin) => skin.id === view.activeId);
-					const mode = defaultMode(view.activeId);
 					// 只保存作品不应重新注册皮肤，避免抢走其他皮肤插件的优先级。
-					const key = active ? JSON.stringify([active.id, active.base, ...COLOR_KEYS.map((name) => active.colors[name])]) : (view.activeId ?? "null");
+					const key = active ? JSON.stringify([active.id, active.base, ...COLOR_KEYS.map((name) => active.colors[name])]) : "null";
 					if (key !== applied) {
-						ui.skin(active ? toSkin(active) : mode ? { name: "Plume", mode } : null);
+						ui.skin(active ? toSkin(active) : null);
 						applied = key;
 					}
 					update({ view, status: "ready", error: null });
@@ -55,6 +54,28 @@ export function createStudioStore(ui: UiContext, api: Remote<SkinStudioApi>) {
 				if (!disposed && own === generation) update({ status: "error", error });
 			}
 		})();
+	};
+
+	/**
+	 * 不锁界面：逻辑入口按顺序写库，连点几张卡片也只是依次切换，最后一次为准。
+	 * 切换只要一次本地写盘，给整块面板盖一层忙碌态反而让每次点击都闪一下。
+	 */
+	const run = async (action: () => ReturnType<typeof api.apply>): Promise<boolean> => {
+		if (disposed || state.status !== "ready") return false;
+		if (state.actionError !== null) update({ actionError: null });
+		let call: ReturnType<typeof api.apply> | undefined;
+		try {
+			call = action();
+			pending.add(call);
+			// 广播是唯一的数据来源，不让较晚返回的操作结果盖过更新的 watch 快照。
+			await call;
+			return !disposed;
+		} catch (error) {
+			if (!disposed && !cancelled(error)) update({ actionError: error });
+			return false;
+		} finally {
+			if (call) pending.delete(call);
+		}
 	};
 
 	return {
@@ -68,26 +89,19 @@ export function createStudioStore(ui: UiContext, api: Remote<SkinStudioApi>) {
 		clearError() {
 			if (!disposed && state.actionError !== null) update({ actionError: null });
 		},
+		run,
 		/**
-		 * 不锁界面：逻辑入口按顺序写库，连点几张卡片也只是依次切换，最后一次为准。
-		 * 切换只要一次本地写盘，给整块面板盖一层忙碌态反而让每次点击都闪一下。
+		 * 「系统外观」三个按钮就是外观页的主题卡片：先当场撤下工坊皮肤（皮肤接管深浅模式时宿主不让改主题），
+		 * 再改应用的主题偏好，最后把库里的当前皮肤清掉、各窗口跟着撤下。
 		 */
-		async run(action: () => ReturnType<typeof api.apply>): Promise<boolean> {
-			if (disposed || state.status !== "ready") return false;
-			if (state.actionError !== null) update({ actionError: null });
-			let call: ReturnType<typeof api.apply> | undefined;
-			try {
-				call = action();
-				pending.add(call);
-				// 广播是唯一的数据来源，不让较晚返回的操作结果盖过更新的 watch 快照。
-				await call;
-				return !disposed;
-			} catch (error) {
-				if (!disposed && !cancelled(error)) update({ actionError: error });
-				return false;
-			} finally {
-				if (call) pending.delete(call);
+		chooseTheme(theme: "system" | "light" | "dark"): Promise<boolean> {
+			if (disposed || state.status !== "ready") return Promise.resolve(false);
+			if (applied !== "null") {
+				ui.skin(null);
+				applied = "null";
 			}
+			ui.setTheme(theme);
+			return state.view?.activeId ? run(() => api.apply(null)) : Promise.resolve(true);
 		},
 		dispose() {
 			disposed = true;
