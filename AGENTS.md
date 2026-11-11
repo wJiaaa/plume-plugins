@@ -8,7 +8,7 @@ Plume 插件市场里的插件（`plume.` 开头的市场插件）：`plugins/` 
 
 - 这个仓库和本体仓库互不引用，放在哪都行。插件只依赖 npm 上的 `@plumeai/plugin-sdk`（类型、构建、检查、模板和 skill），版本统一写在 `pnpm-workspace.yaml` 的 `catalog`，各插件写 `"catalog:"`；`pnpm install` 就能开发。SDK 的版本跟 Plume 走，要用宿主新加的接口时把 catalog 升到带它的版本。
 - 写插件用 skill `plume-plugin`（`.claude/skills/plume-plugin` 链到 `node_modules/@plumeai/plugin-sdk/skill`，装好依赖才有），只靠它和公开接口（`@plume/contract` 的类型、`@plume/ui`、`@plume/styles`），不读宿主的实现。插件要的能力宿主没有，就到本体仓库提改动，不在插件里绕过。
-- 和本体联调：这边 `pnpm market` 在本机起一个市场，本体那边设它打印的 `PLUME_MARKET_URL` 再 `pnpm dev` 或 `pnpm smoke`，应用就从这里装插件。不设时本体从线上市场装。
+- 和本体联调：应用只读线上市场，这个仓库只是这些插件的源码，没有别的通道。试还没发布的改动和任何插件作者一样：`pnpm plugin dev plugins/<目录名>`（就是 `plume-plugin dev`）把这一个插件装进本机，用法见 skill `plume-plugin`。
 
 ## 命令
 
@@ -20,7 +20,6 @@ Plume 插件市场里的插件（`plume.` 开头的市场插件）：`plugins/` 
 | `pnpm build:dist` | 把构建好的插件按平台打成发布的静态目录 `dist/`（`scripts/build-dist.mjs`，`--targets` 只打某几个平台，`--published <线上 marketplace.json>` 查版本号没升而内容变了的）；CI（`.github/workflows/publish.yml`）推到 main 时打包、发到 Pages |
 | `pnpm check:plugins` | 只跑插件规则（`scripts/check-plugins.mjs`，规则在插件 SDK 的 `lint/`，和 `plume-plugin check` 同一份）：只引用公开接口，颜色、样式只用主题 token 和 Plume 认的 Tailwind 类，界面文字放进 `src/messages.ts`；确实要写死色值的文件（画在 canvas、终端配色这类）第一行写 `// color-exempt：<理由>` |
 | `pnpm build:plugins` | 构建 `plugins/` 下的插件（`scripts/build-plugins.mjs`，SDK 的构建） |
-| `pnpm market [--port <端口>]` | 构建插件、按本机平台打一份市场放进 `.market/`、在本机服务起来，打印给本体用的 `PLUME_MARKET_URL`（`scripts/market.mjs`） |
 | `pnpm knip` | 没人用的导出、依赖和文件（pre-push 钩子会跑） |
 | `pnpm plugin init plugins/<目录名>` | 从插件 SDK 的模板新建一个插件（SDK 依赖写成 npm 上的版本号，改成 `"catalog:"` 和别的插件对齐），再 `pnpm install`、`pnpm build:plugins` |
 

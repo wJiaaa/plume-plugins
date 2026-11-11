@@ -67,7 +67,7 @@ plugins/<name>/<version>/<平台>-<架构>.tgz   装下的文件
 
 ## 本机试
 
-`pnpm market` 构建插件、调用 `build-dist.mjs` 只打本机平台，在本机起一个服务并打印地址；本体那边启动前设 `PLUME_MARKET_URL=<这个地址>`，应用就从它装插件，和装线上的走同一条路。不设时应用读线上的市场。应用只接受 https 和本机（127.0.0.1、localhost）的 http 地址。
+应用只读线上的市场。在本机试一个插件还没发布的改动，和任何插件作者一样用 `pnpm plugin dev plugins/<目录名>`（就是 `plume-plugin dev`），用法见 skill `plume-plugin`。
 
 ## 新增一个插件
 

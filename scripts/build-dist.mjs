@@ -1,6 +1,5 @@
 /**
- * 把构建好的插件打成市场发出去的静态目录（格式见 docs/distribution.md）。CI 把它发到 GitHub Pages；`pnpm market`
- * 打一份本机平台的、在本机起服务给应用联调，走的是同一条路。
+ * 把构建好的插件打成市场发出去的静态目录（格式见 docs/distribution.md）。CI 把它发到 GitHub Pages。
  *
  *   node scripts/build-dist.mjs [--out <目录>] [--targets darwin-arm64,win32-x64] [--published <线上 marketplace.json 的地址>]
  *

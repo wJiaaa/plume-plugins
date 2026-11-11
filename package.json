@@ -22,8 +22,7 @@
     "check": "pnpm typecheck && pnpm lint && pnpm fmt:check && pnpm test && pnpm validate && pnpm check:plugins && pnpm arch",
     "arch": "depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json plugins",
     "arch:baseline": "depcruise --config .dependency-cruiser.cjs --output-type baseline plugins > .dependency-cruiser-known-violations.json",
-    "knip": "knip",
-    "market": "node scripts/market.mjs"
+    "knip": "knip"
   },
   "devDependencies": {
     "@plumeai/plugin-sdk": "catalog:",
