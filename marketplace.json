@@ -67,20 +67,12 @@
       "source": "./plugins/sessions"
     },
     {
-      "name": "side-chat",
-      "source": "./plugins/side-chat"
-    },
-    {
       "name": "skin-studio",
       "source": "./plugins/skin-studio"
     },
     {
       "name": "ssh",
       "source": "./plugins/ssh"
-    },
-    {
-      "name": "subagents",
-      "source": "./plugins/subagents"
     },
     {
       "name": "summary",
