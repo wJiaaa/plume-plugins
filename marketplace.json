@@ -39,10 +39,6 @@
       "source": "./plugins/native-ui"
     },
     {
-      "name": "plan",
-      "source": "./plugins/plan"
-    },
-    {
       "name": "preview",
       "source": "./plugins/preview"
     },
