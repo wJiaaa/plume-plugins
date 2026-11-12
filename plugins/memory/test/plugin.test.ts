@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { HookLayer, ModelCompletion, ModelContext, PluginContext, SessionSummary } from "@plume/contract";
+import type { HookLayer, ModelCompletion, ModelContext, PluginContext, PromptSection, SessionSummary } from "@plume/contract";
 import type { MemoryApi } from "../src/api.ts";
 import plugin from "../src/index.ts";
 import { MIN_AGE_MS } from "../src/extract.ts";
@@ -55,14 +55,15 @@ async function harness(
 		},
 	} as unknown as PluginContext;
 	await plugin.apply(ctx);
+	const context = (sessionId: string, sections: PromptSection[] = []) =>
+		layer!({ sessionId, cwd: dir, sections, tools: [] } as unknown as ModelContext, async (value) => value);
 	return {
 		api: api!,
+		context,
 		reset: (sessionId: string) => reset!(sessionId),
 		deleted: (sessionId: string) => deleted!(sessionId),
 		async memory(sessionId: string) {
-			const input = { sessionId, cwd: dir, sections: [], tools: [] } as unknown as ModelContext;
-			const result = await layer!(input, async (value) => value);
-			return result.sections.map((section) => section.text).join("\n");
+			return (await context(sessionId)).sections.map((section) => section.text).join("\n");
 		},
 	};
 }
@@ -148,4 +149,33 @@ it("后台总结只跑最近在用的项目，等它空闲满 5 分钟：有会�
 	expect(prompt).not.toContain("## 会话 s2");
 	await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
 	expect(complete).toHaveBeenCalledOnce();
+});
+
+it("按类别认段：记忆插在项目指令（conventions）前面，后台总结的「当前指令」是全局（instructions）和项目指令的原文", async () => {
+	vi.useFakeTimers();
+	const old = Date.now() - MIN_AGE_MS - 1;
+	const complete = vi.fn(async () => "（没有）");
+	let finish: (() => void) | undefined;
+	const finished = new Promise<void>((resolve) => {
+		finish = resolve;
+	});
+	const host = await harness({
+		sessions: [{ id: "s0", title: "早先的", kind: "top", project: "p1", cwd: dir, createdAt: 0, updatedAt: old, running: false }],
+		complete,
+		finished: () => finish!(),
+	});
+	await host.api.add("偏好");
+	const sections: PromptSection[] = [
+		{ id: "guidelines", text: "准则", category: "guidelines" },
+		{ id: "userInstructions", text: "<global>全局</global>", category: "instructions" },
+		{ id: "projectInstructions", text: "<project>项目</project>", category: "conventions" },
+		{ id: "workspace", text: "工作目录" },
+	];
+	const result = await host.context("s1", sections);
+	expect(result.sections.map((section) => section.id)).toEqual(["guidelines", "userInstructions", "userMemory", "projectInstructions", "workspace"]);
+	await host.api.setSettings({ extraction: true });
+	await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
+	await finished;
+	const prompt = (complete.mock.calls[0] as unknown as [ModelCompletion])[0].prompt;
+	expect(prompt).toContain("## 当前指令\n<global>全局</global>\n\n<project>项目</project>");
 });

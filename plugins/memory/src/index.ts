@@ -55,7 +55,8 @@ export default {
 		ctx.hook("model.context", async (input, next) => {
 			const current = settings.get();
 			const dir = projectDir(dataDir, memoryHome(input.cwd));
-			const said = input.sections.filter((section) => section.id === "projectInstructions" || section.id === "userInstructions").map((section) => section.text);
+			// 人写的指令按类别（`PromptSection.category`）认：全局的 `instructions`，项目里的 `conventions`。
+			const said = input.sections.filter((section) => section.category === "instructions" || section.category === "conventions").map((section) => section.text);
 			instructions.set(dir, said.join("\n\n"));
 			const extra = await injector.sections(input.sessionId, dir, current);
 			return next({

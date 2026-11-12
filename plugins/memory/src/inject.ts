@@ -81,7 +81,8 @@ export function createInjector(dataDir: string) {
 /** 把记忆的段插在项目指令前面；没有项目指令时插在工作目录前面；都没有就接在最后。 */
 export function insertSections(sections: PromptSection[], extra: PromptSection[]): PromptSection[] {
 	if (extra.length === 0) return sections;
-	let at = sections.findIndex((section) => section.id === "projectInstructions");
+	let at = sections.findIndex((section) => section.category === "conventions");
+	// 工作目录那段没有类别可认，只能认 plume.prompt 的段名。
 	if (at < 0) at = sections.findIndex((section) => section.id === "workspace");
 	if (at < 0) at = sections.length;
 	return [...sections.slice(0, at), ...extra, ...sections.slice(at)];

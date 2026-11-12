@@ -150,7 +150,7 @@ describe("提示词里的段", () => {
 		expect(
 			ids([
 				{ id: "identity", text: "" },
-				{ id: "projectInstructions", text: "" },
+				{ id: "projectInstructions", text: "", category: "conventions" },
 				{ id: "workspace", text: "" },
 			]),
 		).toEqual(["identity", "userMemory", "projectInstructions", "workspace"]);
