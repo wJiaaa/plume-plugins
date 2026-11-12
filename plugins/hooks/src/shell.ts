@@ -2,7 +2,8 @@
  * 命令类钩子跑在哪个 shell 里：和智能体自己的命令同一个。
  *
  * 选法照抄 Plume 宿主选 shell 的规则（本体仓库 packages/infra/platform 的 systemShell）：插件只能用公开接口，宿主的这个库
- * 不随 SDK 发，宿主的 `sandbox` 服务又不能给命令写 stdin（钩子要从 stdin 读输入）。宿主改了选法，这里要跟着改。
+ * 不随 SDK 发；宿主起命令的 `ToolRun.shell()`、`exec()` 只在一次工具调用里有，钩子不在调用里，`exec` 也不能给命令写 stdin
+ * （钩子要从 stdin 读输入）。宿主改了选法，这里要跟着改。
  *
  * **Unix。** 用户自己的 shell 是 bash 或 zsh 时用它，否则用 bash，最后退到 `/bin/sh`。zsh 关掉 `NOMATCH`，和 bash 一样把
  * 没匹配上的通配符原样传下去。

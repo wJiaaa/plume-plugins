@@ -42,7 +42,10 @@ import { trustedHookDigests, trustHookDigests } from "./trust.ts";
 const MAX_STOP_HOOK_CONTINUATIONS = 3;
 const HOOK_CONTEXT_MAX_CHARS = 24_000;
 const PREVIEW_MAX = 4000;
-/** 挂在 plume.approval（1000）里面：权限模式放行了的到不了这里，只有真要弹给人的才问 PermissionRequest。 */
+/**
+ * 挂在 plume.approval 里面：contract 的钩子 `tool.approve` 文档写明它在 order 1000，只管真要弹给人的层挂在大于 1000 的地方。
+ * 权限模式放行了的到不了这里，只有真要弹给人的才问 PermissionRequest。
+ */
 const PERMISSION_REQUEST_ORDER = 2000;
 
 const reasonOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
