@@ -162,7 +162,7 @@ export function imageTool(ctx: PluginContext): ToolDefinition {
 			const outside = relative(run.cwd, absolute).startsWith("..") || isAbsolute(relative(run.cwd, absolute));
 			if (outside) {
 				const decision = await run.ask({
-					kind: "read",
+					kind: "view",
 					title: MESSAGES[ctx.locale()].readOutside(basename(absolute)),
 					detail: absolute,
 					subject: absolute,
