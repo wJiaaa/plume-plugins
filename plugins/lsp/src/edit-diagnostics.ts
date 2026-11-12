@@ -1,6 +1,6 @@
 /**
- * After `edit` or `write`: the errors the language server now reports in that file, appended to the
- * result.
+ * After a tool that writes or changes a file (declared `kind: "create"` or `"modify"`, like plume.tools'
+ * `write` and `edit`): the errors the language server now reports in that file, appended to the result.
  *
  * Without it a type error just written stays unknown until something runs a check. In session
  * histories `lsp diagnostics` was called 0 times across 417 code edits, and 10 of 29 sessions that
@@ -12,11 +12,11 @@
  * rather than asks for a fix: the first of three planned edits often leaves an error the third
  * removes, and "please fix" pulls the model into fixing it early.
  *
- * A layer of the `tool.execute` hook rather than part of the tools: `edit` and `write` belong to the
- * built-in plume.tools, and this plugin only reads their results.
+ * A layer of the `tool.execute` hook rather than part of the tools: the file tools belong to other
+ * plugins (the built-in plume.tools), and this plugin only reads their results.
  */
 
-import type { ToolExecution, ToolOutput } from "@plume/contract";
+import type { ToolExecution, ToolKind, ToolOutput } from "@plume/contract";
 import type { CodeIntelManager } from "./manager.ts";
 import { toAbsolute } from "./paths.ts";
 import type { Diagnostic } from "./types.ts";
@@ -30,9 +30,12 @@ import type { Diagnostic } from "./types.ts";
 const WAIT_MS = 2000;
 const MAX_SHOWN = 10;
 
-/** 只接 plume.tools 的 edit、write 改成了的那次：别的插件同名的工具，结果不一定是这个样子。 */
-export function editedFile(input: ToolExecution, result: ToolOutput): string | null {
-	if (input.tool.plugin !== "plume.tools" || (input.tool.name !== "edit" && input.tool.name !== "write")) return null;
+/**
+ * 只接声明了写、改文件（`kind` 是 `create`、`modify`，注册它的插件在工具定义上写的）、改成了的那次。`kind` 由调用方从工具表里查，
+ * 不认工具名。文件从参数的 `path` 取：没有这个参数的写文件工具不附诊断。
+ */
+export function editedFile(input: ToolExecution, result: ToolOutput, kind: ToolKind | undefined): string | null {
+	if (kind !== "create" && kind !== "modify") return null;
 	if (result.isError) return null;
 	const path = input.call.args.path;
 	return typeof path === "string" && path ? toAbsolute(input.cwd, path) : null;

@@ -46,6 +46,8 @@ const error = (output: string): ToolOutput => ({ output, isError: true });
 export function lspTool(deps: LspToolDeps): ToolDefinition {
 	return {
 		name: "lsp",
+		// 问语言服务器一个符号在哪、谁在用、文件里有什么错，归「探索」里的搜索。rename 只算出要改哪些地方、不动文件，所以整件工具只读。
+		kind: "search",
 		/*
 		 * Worded as a replacement for grep, not as an addition to the toolbox.
 		 *

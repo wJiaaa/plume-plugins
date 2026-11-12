@@ -37,7 +37,7 @@ export default {
 
 		ctx.hook("tool.execute", async (input, next) => {
 			const result = await next(input);
-			const file = editedFile(input, result);
+			const file = editedFile(input, result, ctx.tools.list().find((tool) => tool.name === input.call.name)?.kind);
 			return file ? withDiagnostics(managerFor(input.cwd, input.sessionId), input.cwd, file, result) : result;
 		});
 	},

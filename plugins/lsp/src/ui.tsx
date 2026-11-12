@@ -13,7 +13,6 @@ export default {
 			verb: (locale) => MESSAGES[locale].toolVerb,
 			// 有名字说名字，只给了行列的说文件。
 			subject: (args) => [args.symbol, args.path].find((value): value is string => typeof value === "string" && value !== ""),
-			like: "read",
 		});
 	},
 } satisfies UiPlugin;
