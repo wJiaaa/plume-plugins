@@ -2,7 +2,7 @@
  * 什么作为记忆进提示词，以及记下它进过。
  *
  * 两份来源、两种范围：人自己的偏好（用户记忆），这个项目的记忆（`learn` 写的、后台总结写的）。各占系统提示词的一段：
- * `userMemory`、`projectMemory`，插在项目指令前面（没有项目指令时插在工作目录前面）。两段都标 `category: "memory"`：
+ * `userMemory`、`projectMemory`，插在项目指令前面（没有项目指令时接在个人指令或准则后面，见 `insertSections`）。两段都标 `category: "memory"`：
  * 上下文用量、使用统计按类别把它们算进「记忆」，不认段名。
  *
  * 一个会话里冻结，压缩、撤回或重新载入时刷新：第一次组提示词时读一次磁盘，之后同一个会话一直用这份。每轮重读的话，每次 `learn`（和后台总结写 `MEMORY.md`）
@@ -78,12 +78,19 @@ export function createInjector(dataDir: string) {
 	};
 }
 
-/** 把记忆的段插在项目指令前面；没有项目指令时插在工作目录前面；都没有就接在最后。 */
+/**
+ * 把记忆的段插在项目指令（`conventions`）前面；没有项目指令时接在最后一段个人指令（`instructions`）后面，
+ * 也没有就接在准则（`guidelines`）后面；都没有接在最后。只按类别找，不认提供这些段的插件定的段名。
+ */
 export function insertSections(sections: PromptSection[], extra: PromptSection[]): PromptSection[] {
 	if (extra.length === 0) return sections;
+	const after = (category: string) => {
+		const index = sections.findLastIndex((section) => section.category === category);
+		return index < 0 ? -1 : index + 1;
+	};
 	let at = sections.findIndex((section) => section.category === "conventions");
-	// 工作目录那段没有类别可认，只能认 plume.prompt 的段名。
-	if (at < 0) at = sections.findIndex((section) => section.id === "workspace");
+	if (at < 0) at = after("instructions");
+	if (at < 0) at = after("guidelines");
 	if (at < 0) at = sections.length;
 	return [...sections.slice(0, at), ...extra, ...sections.slice(at)];
 }

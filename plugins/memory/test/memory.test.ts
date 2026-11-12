@@ -144,23 +144,19 @@ describe("提示词里的段", () => {
 		expect(projectMemorySection([], long).text.endsWith("</project_memory>")).toBe(true);
 	});
 
-	it("插在项目指令前面，没有时插在工作目录前面，都没有接在最后", () => {
+	it("按类别找位置：项目指令前面，没有时个人指令后面，再没有准则后面，都没有接在最后", () => {
 		const extra = [{ id: "userMemory", text: "U" }];
 		const ids = (sections: PromptSection[]) => insertSections(sections, extra).map((section) => section.id);
-		expect(
-			ids([
-				{ id: "identity", text: "" },
-				{ id: "projectInstructions", text: "", category: "conventions" },
-				{ id: "workspace", text: "" },
-			]),
-		).toEqual(["identity", "userMemory", "projectInstructions", "workspace"]);
-		expect(
-			ids([
-				{ id: "identity", text: "" },
-				{ id: "workspace", text: "" },
-			]),
-		).toEqual(["identity", "userMemory", "workspace"]);
-		expect(ids([{ id: "identity", text: "" }])).toEqual(["identity", "userMemory"]);
+		const guidelines: PromptSection = { id: "rules", text: "", category: "guidelines" };
+		const personal: PromptSection = { id: "mine", text: "", category: "instructions" };
+		const project: PromptSection = { id: "repo", text: "", category: "conventions" };
+		// 没有类别的段不认，哪怕它叫 workspace。
+		const plain: PromptSection = { id: "plain", text: "" };
+		const workspace: PromptSection = { id: "workspace", text: "" };
+		expect(ids([guidelines, plain, personal, project, workspace])).toEqual(["rules", "plain", "mine", "userMemory", "repo", "workspace"]);
+		expect(ids([guidelines, plain, personal, workspace])).toEqual(["rules", "plain", "mine", "userMemory", "workspace"]);
+		expect(ids([guidelines, plain, workspace])).toEqual(["rules", "userMemory", "plain", "workspace"]);
+		expect(ids([plain, workspace])).toEqual(["plain", "workspace", "userMemory"]);
 	});
 
 	it("一个会话里冻结；设置里改过以后重读；记下进过提示词的时间", async () => {
