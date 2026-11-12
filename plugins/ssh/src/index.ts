@@ -29,11 +29,10 @@ const MAX_SCRUB = 256 * 1024;
 
 export default {
 	name: "plume.ssh",
-	inject: ["secrets"],
 	async apply(ctx) {
 		const text = () => MESSAGES[ctx.locale()];
 		const errors = () => text().errors;
-		const vault = await Vault.open(ctx.dataDir, ctx.use("secrets"), errors, (aside) => ctx.log.warn(`主机库解不开，已挪到 ${aside}，从空的主机库开始`));
+		const vault = await Vault.open(ctx.dataDir, ctx.secrets, errors, (aside) => ctx.log.warn(`主机库解不开，已挪到 ${aside}，从空的主机库开始`));
 
 		/*
 		 * ssh2 在第一次连接时才加载，不在 apply 里：它带着可选的原生模块，万一加载出错，坏的只是连接这一件事，

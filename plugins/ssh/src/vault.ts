@@ -1,5 +1,5 @@
 /**
- * 主机库：主机（连同密码）、分组和核对过的主机指纹，整份经服务 `secrets` 加密存在插件数据目录的 `hosts.enc`。
+ * 主机库：主机（连同密码）、分组和核对过的主机指纹，整份经 `ctx.secrets` 加密存在插件数据目录的 `hosts.enc`。
  *
  * 挡的是备份、同步盘、搜文件时顺手带出去明文密码，不挡这台机器上同一个用户。密码只在逻辑入口里用，
  * 交给界面的视图只说存没存。
@@ -8,7 +8,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { SecretsService } from "@plume/contract";
+import type { PluginSecrets } from "@plume/contract";
 import type { HostGroup, HostInput, HostProfile } from "./api.ts";
 import type { Errors } from "./messages.ts";
 
@@ -88,7 +88,7 @@ export class Vault {
 
 	private constructor(
 		private readonly file: string,
-		private readonly secrets: SecretsService,
+		private readonly secrets: PluginSecrets,
 		private readonly t: () => Errors,
 		data: VaultData,
 	) {
@@ -99,7 +99,7 @@ export class Vault {
 	 * 打开主机库。解不开的（加密用的钥匙丢了、换过）挪到旁边、从空的开始，不在原处被新内容盖掉；
 	 * 钥匙文件读不出来时 `unseal` 抛错，插件加载失败，文件原样留着。
 	 */
-	static async open(dir: string, secrets: SecretsService, t: () => Errors, movedAside: (path: string) => void): Promise<Vault> {
+	static async open(dir: string, secrets: PluginSecrets, t: () => Errors, movedAside: (path: string) => void): Promise<Vault> {
 		const file = join(dir, "hosts.enc");
 		const sealed = await readFile(file, "utf8").catch((error: NodeJS.ErrnoException) => (error.code === "ENOENT" ? null : Promise.reject(error)));
 		if (sealed === null) return new Vault(file, secrets, t, structuredClone(EMPTY));

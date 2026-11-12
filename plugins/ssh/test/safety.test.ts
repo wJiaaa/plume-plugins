@@ -7,7 +7,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { SecretsService } from "@plume/contract";
+import type { PluginSecrets } from "@plume/contract";
 import { sameTarget, validateBatchInput } from "../src/batch.ts";
 import { MESSAGES } from "../src/messages.ts";
 import { cleanTerminalText, maskSecrets } from "../src/secrets.ts";
@@ -48,9 +48,9 @@ describe("maskSecrets", () => {
 
 describe("Vault", () => {
 	const host = { name: "web", host: "10.0.0.1", port: 22, username: "root", password: "s3cret-pass" };
-	/** 服务 `secrets` 的替身：前缀和真的一样，内容只做 base64；`lost` 时什么都解不开。 */
+	/** `ctx.secrets` 的替身：前缀和真的一样，内容只做 base64；`lost` 时什么都解不开。 */
 	const SEALED = "plume-sealed:v1:";
-	const fake = (lost = false): SecretsService => ({
+	const fake = (lost = false): PluginSecrets => ({
 		seal: async (value) => SEALED + Buffer.from(value).toString("base64"),
 		unseal: async (sealed) => (!lost && sealed.startsWith(SEALED) ? Buffer.from(sealed.slice(SEALED.length), "base64").toString() : null),
 		isSealed: (value) => value.startsWith(SEALED),
