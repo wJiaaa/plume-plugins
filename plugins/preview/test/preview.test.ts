@@ -73,6 +73,9 @@ async function setup(t: TestContext) {
 		permissionMode: async () => "ask",
 		tools: () => [],
 		calls: [],
+		shell: async () => assert.fail("preview 不跑命令"),
+		exec: async () => assert.fail("preview 不跑命令"),
+		escalate: async () => assert.fail("preview 不提权"),
 	};
 	const execute = (args: Record<string, unknown>, overrides: Partial<ToolRun> = {}) => tool.execute(args, { ...run, ...overrides });
 	const submit = (sessionId = run.sessionId, synthetic = false) => hook({ sessionId, synthetic } as PromptSubmit, async () => ({ block: false }));
