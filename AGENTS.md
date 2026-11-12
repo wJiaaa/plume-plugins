@@ -9,6 +9,7 @@ Plume 插件市场里的插件（`plume.` 开头的市场插件）：`plugins/` 
 - 这个仓库和本体仓库互不引用，放在哪都行。插件只依赖 npm 上的 `@plumeai/plugin-sdk`（类型、构建、检查、模板和 skill），版本统一写在 `pnpm-workspace.yaml` 的 `catalog`，各插件写 `"catalog:"`；`pnpm install` 就能开发。SDK 的版本跟 Plume 走，要用宿主新加的接口时把 catalog 升到带它的版本。
 - 写插件用 skill `plume-plugin`（`.claude/skills/plume-plugin` 链到 `node_modules/@plumeai/plugin-sdk/skill`，装好依赖才有），只靠它和公开接口（`@plume/contract` 的类型、`@plume/ui`、`@plume/styles`），不读宿主的实现。插件要的能力宿主没有，就到本体仓库提改动，不在插件里绕过。
 - 和本体联调：应用只读线上市场，这个仓库只是这些插件的源码，没有别的通道。试还没发布的改动和任何插件作者一样：`pnpm plugin dev plugins/<目录名>`（就是 `plume-plugin dev`）把这一个插件装进本机，用法见 skill `plume-plugin`。
+- 本体改了插件接口、npm 上的 SDK 还没发版时：在本体仓库跑 `pnpm market:local <这个仓库>`，拿本体的 SDK 构建这里的插件、打出本地市场给本体的冒烟用；`pnpm market:local <这个仓库> -- pnpm check` 换上本体的 SDK 跑这里的检查。两种都只临时改 `pnpm-workspace.yaml`、`pnpm-lock.yaml`，用完还原、按原锁文件重装；跑之前这两个文件要是干净的。
 
 ## 命令
 
