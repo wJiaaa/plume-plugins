@@ -48,6 +48,8 @@ async function indexFor(run: ToolRun, deps: SymbolToolDeps): Promise<SymbolIndex
 export function symbolTool(deps: SymbolToolDeps): ToolDefinition {
 	return {
 		name: "symbol",
+		// 在代码里按名字搜声明，归「探索」里的搜索：只读，只读的子智能体、侧边聊天也给它。
+		kind: "search",
 		description:
 			"Find where a symbol is declared: file:line for each matching function, class, interface, type or constant, best match first. " +
 			"More precise than grepping a name that appears at every call site.",

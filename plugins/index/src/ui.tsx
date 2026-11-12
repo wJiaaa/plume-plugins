@@ -34,7 +34,6 @@ export default {
 			// 模型有时把名字写在别的键上，和逻辑入口认的一样。
 			subject: (args) =>
 				["name", "query", "symbol", "pattern"].map((key) => args[key]).find((value): value is string => typeof value === "string" && value !== ""),
-			like: "read",
 		});
 		ui.settingsSection("index", () => <IndexSettings api={api} notify={notify} useProjects={() => ui.useProjects()} />, {
 			title: (locale) => MESSAGES[locale].title,
