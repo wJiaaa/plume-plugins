@@ -26,8 +26,8 @@ export default {
 		ctx.sessions.onEnded((sessionId) => leases.release(sessionId));
 		ctx.sessions.observe((observation) => {
 			if (observation.event.type !== "turnEnd") return;
-			void ctx.sessions.list().then((sessions) => {
-				if (sessions.find((session) => session.id === observation.sessionId)?.parentId) return leases.release(observation.sessionId);
+			void ctx.sessions.get(observation.sessionId).then((session) => {
+				if (session?.kind === "child") leases.release(observation.sessionId);
 			});
 		});
 

@@ -29,6 +29,7 @@ let root: string;
 function runFor(cwd: string, projectRoots: readonly string[] = []): ToolRun {
 	return {
 		sessionId: "s",
+		session: { id: "s", kind: "top" },
 		toolCallId: "call",
 		cwd,
 		projectRoots,
@@ -36,6 +37,7 @@ function runFor(cwd: string, projectRoots: readonly string[] = []): ToolRun {
 		signal: new AbortController().signal,
 		progress() {},
 		ask: async () => assert.fail("读取审批应由共享服务处理"),
+		request: async () => assert.fail("lsp 不问人要数据"),
 		permissionMode: async () => "auto",
 		tools: () => [],
 		calls: [],
