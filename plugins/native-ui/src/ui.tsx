@@ -1,5 +1,6 @@
 import type { CodeBlockProps, UiPlugin } from "@plume/contract/ui";
 import { Button, TabStrip, Text, useI18n } from "@plume/ui";
+import { BookOpen } from "@plume/ui/icons";
 import { Fragment, useMemo, useRef, useState, type CSSProperties, type ReactNode, type SyntheticEvent } from "react";
 import { Chart } from "./Chart.tsx";
 import { Callout, NativeCard, Progress, Stat, Table } from "./content.tsx";
@@ -348,6 +349,7 @@ export default {
 		style.textContent = css;
 		ui.codeBlock("ui", NativeBlock, { copyText });
 		// ui_help 只交回这门界面语言的说明，不碰本机文件和命令，工具定义上不标 `kind`：转录里自成一类。
-		ui.toolLine("ui_help", { verb: (locale) => MESSAGES[locale].help });
+		// 图标配一本书：读的是说明。
+		ui.toolLine("ui_help", { verb: (locale) => MESSAGES[locale].help, icon: BookOpen });
 	},
 } satisfies UiPlugin;
