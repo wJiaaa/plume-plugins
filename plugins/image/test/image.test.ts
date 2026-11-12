@@ -217,7 +217,7 @@ test("用法接在准则那段（按 category 找）后面，别的段原样", (
 		{ id: "rules", text: "Guidelines:\n- 一条", category: "guidelines" },
 		{ id: "workspace", text: "工作目录" },
 	];
-	const [identity, rules, workspace] = withImageGuidelines(sections, true);
+	const [identity, rules, workspace] = withImageGuidelines(sections);
 	assert.deepEqual([identity, workspace], [sections[0], sections[2]]);
-	assert.match(rules!.text, /^Guidelines:\n- 一条\n- When the user asks for a picture .+ or `preview`\.\n- The picture is shown/);
+	assert.match(rules!.text, /^Guidelines:\n- 一条\n- When the user asks for a picture .+ better done with code\.\n- The picture is shown/);
 });

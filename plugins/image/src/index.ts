@@ -20,10 +20,7 @@ export default {
 			if (!input.tools.some((tool) => tool.name === IMAGE_TOOL)) return next(input);
 			return next({
 				...input,
-				sections: withImageGuidelines(
-					input.sections,
-					input.tools.some((tool) => tool.name === "preview"),
-				),
+				sections: withImageGuidelines(input.sections),
 			});
 		});
 
