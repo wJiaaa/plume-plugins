@@ -155,31 +155,52 @@ function safeStoreError(token: string): (error: unknown) => boolean {
 	};
 }
 
-for (const state of ["lost", "unreadable"] as const) {
-	test(`令牌解不开（${state}）时，存活及重开的存储都拒绝解密和写入，不覆盖原数据`, async () => {
-		const dir = await mkdtemp(join(tmpdir(), "plume-pr-key-failure-"));
-		const token = "fixture-key-failure-credential";
-		try {
-			const secrets = fakeSecrets();
-			const store = new AccountStore(dir, secrets);
-			await store.saveIdentity(draft("a"), identity, token, signal());
-			const accountsPath = join(dir, "accounts.json");
-			const before = await readFile(accountsPath, "utf8");
-			secrets.state = state;
-			for (const instance of [store, new AccountStore(dir, secrets)]) {
-				await assert.rejects(instance.connect("a", signal()), safeStoreError(token));
-				await assert.rejects(instance.saveIdentity(draft("b"), identity, "fixture-replacement-credential", signal()), safeStoreError(token));
-				await assert.rejects(instance.update("a", { label: "Changed" }), safeStoreError(token));
-				await assert.rejects(instance.remove("a"), safeStoreError(token));
-			}
-			assert.equal(await readFile(accountsPath, "utf8"), before);
-			secrets.state = "ok";
-			assert.equal((await new AccountStore(dir, secrets).connect("a", signal())).token, token, "钥匙回来以后原样能用");
-		} finally {
-			await rm(dir, { recursive: true, force: true });
+test("钥匙读不出来时，存活及重开的存储都拒绝解密和写入，不覆盖原数据", async () => {
+	const dir = await mkdtemp(join(tmpdir(), "plume-pr-key-failure-"));
+	const token = "fixture-key-failure-credential";
+	try {
+		const secrets = fakeSecrets();
+		const store = new AccountStore(dir, secrets);
+		await store.saveIdentity(draft("a"), identity, token, signal());
+		const accountsPath = join(dir, "accounts.json");
+		const before = await readFile(accountsPath, "utf8");
+		secrets.unreadable = true;
+		for (const instance of [store, new AccountStore(dir, secrets)]) {
+			await assert.rejects(instance.connect("a", signal()), safeStoreError(token));
+			await assert.rejects(instance.saveIdentity(draft("b"), identity, "fixture-replacement-credential", signal()), safeStoreError(token));
+			await assert.rejects(instance.update("a", { label: "Changed" }), safeStoreError(token));
+			await assert.rejects(instance.remove("a"), safeStoreError(token));
 		}
-	});
-}
+		assert.equal(await readFile(accountsPath, "utf8"), before);
+		secrets.unreadable = false;
+		assert.equal((await new AccountStore(dir, secrets).connect("a", signal())).token, token, "钥匙读得出来以后原样能用");
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+	}
+});
+
+test("令牌解不开（钥匙换过）的账号当成没存过：列表里没有它，再登录时写盘去掉它", async () => {
+	const dir = await mkdtemp(join(tmpdir(), "plume-pr-key-rotated-"));
+	const token = "fixture-old-credential";
+	try {
+		const secrets = fakeSecrets();
+		await new AccountStore(dir, secrets).saveIdentity(draft("a"), identity, token, signal());
+		secrets.rotate();
+		const store = new AccountStore(dir, secrets);
+		assert.deepEqual(await store.list(), []);
+		await assert.rejects(store.connect("a", signal()), (error) => error instanceof ForgeError && error.key === "accountGone");
+		const account = await store.saveIdentity(draft("b", "https://gitlab.example/other"), identity, "fixture-new-credential", signal());
+		const reopened = new AccountStore(dir, secrets);
+		assert.deepEqual(
+			(await reopened.list()).map((a) => a.id),
+			[account.id],
+		);
+		assert.equal((await reopened.connect(account.id, signal())).token, "fixture-new-credential");
+		assert.equal(JSON.parse(await readFile(join(dir, "accounts.json"), "utf8")).entries.length, 1);
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+	}
+});
 
 test("旧明文记录不会被迁移或覆盖", async () => {
 	const dir = await mkdtemp(join(tmpdir(), "plume-pr-no-migration-"));

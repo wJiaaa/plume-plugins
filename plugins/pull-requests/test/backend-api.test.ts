@@ -65,7 +65,7 @@ test("插件只注册只读 PR 工具，没有绕过审批的外部写工具", a
 	plugin.apply({
 		dataDir: "/unused-plugin-test-directory",
 		locale: () => "en",
-		use: () => fakeSecrets(),
+		secrets: fakeSecrets(),
 		effect: (dispose: () => void | Promise<void>) => {
 			effects.push(dispose);
 		},

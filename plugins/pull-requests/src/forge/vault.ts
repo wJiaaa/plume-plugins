@@ -1,12 +1,12 @@
 import { join } from "node:path";
-import type { SecretsService } from "@plume/contract";
+import type { PluginSecrets } from "@plume/contract";
 import type { ForgeAccount } from "../api.ts";
 import { isKind, normalizeServer, signedIn } from "./accounts.ts";
 import { checkCancelled, ForgeError } from "./errors.ts";
 import { atomicPrivateWrite, privateDirectory, readPrivateFile } from "./private-files.ts";
 import type { ForgeConnection, ForgeIdentity } from "./types.ts";
 
-// 内存缓存和账号文件都只保留密文（经服务 `secrets` 加密），明文只在使用和校验时短暂存在。
+// 内存缓存和账号文件都只保留密文（经 `ctx.secrets` 加密），明文只在使用和校验时短暂存在。
 interface StoredEntry {
 	account: ForgeAccount;
 	token: string;
@@ -49,8 +49,8 @@ export class AccountStore {
 	private changing: Promise<unknown> = Promise.resolve();
 	private directory: string | null = null;
 	private readonly dataDir: string;
-	private readonly secrets: SecretsService;
-	constructor(dataDir: string, secrets: SecretsService) {
+	private readonly secrets: PluginSecrets;
+	constructor(dataDir: string, secrets: PluginSecrets) {
 		this.dataDir = dataDir;
 		this.secrets = secrets;
 	}
@@ -69,17 +69,20 @@ export class AccountStore {
 				return { account: parseAccount(e.account), token: e.token };
 			});
 			if (new Set(entries.map((e) => e.account.id)).size !== entries.length) throw new ForgeError("storeError");
-			await this.verify(entries);
-			return (this.entries = entries);
+			return (this.entries = await this.usable(entries));
 		} catch {
 			throw new ForgeError("storeError");
 		}
 	}
-	/** 解开一个令牌；解不开（加密用的钥匙丢了、换了）或钥匙读不出来都报存储错误，错误里不带令牌。 */
-	private async open(sealed: string): Promise<string> {
-		const token = await this.secrets.unseal(sealed).catch(() => null);
-		if (token === null) throw new ForgeError("storeError");
-		validateToken(token);
+	/**
+	 * 解开一个令牌。解不开（不是现在这把钥匙封的：钥匙丢了、换了）是 null，当成没存过；
+	 * 钥匙文件读不出来时报存储错误（这时不能当成没了），错误里不带令牌。
+	 */
+	private async open(sealed: string): Promise<string | null> {
+		const token = await this.secrets.unseal(sealed).catch(() => {
+			throw new ForgeError("storeError");
+		});
+		if (token !== null) validateToken(token);
 		return token;
 	}
 	private async seal(token: string): Promise<string> {
@@ -89,12 +92,14 @@ export class AccountStore {
 		});
 	}
 	/**
-	 * 写之前确认现有密文都还解得开：钥匙丢了或换了时拒绝写，原文件原样留着，等钥匙找回来；
-	 * 不让两把钥匙的密文混在一个文件里。
+	 * 只留令牌解得开的账号：解不开的当成没存过，人重新登录；下次写盘时一起去掉，文件里不混着两把钥匙的密文。
+	 * 钥匙文件读不出来时报存储错误、不写盘，原文件原样留着，等钥匙读得出来。
 	 */
-	private async verify(entries: StoredEntry[], signal?: AbortSignal): Promise<void> {
-		for (const entry of entries) await this.open(entry.token);
+	private async usable(entries: StoredEntry[], signal?: AbortSignal): Promise<StoredEntry[]> {
+		const kept: StoredEntry[] = [];
+		for (const entry of entries) if ((await this.open(entry.token)) !== null) kept.push(entry);
 		if (signal) checkCancelled(signal);
+		return kept;
 	}
 	private queue<T>(body: () => Promise<T>): Promise<T> {
 		const run = this.changing.then(body);
@@ -115,6 +120,7 @@ export class AccountStore {
 			const entry = entries.find((e) => e.account.id === id);
 			if (!entry) throw new ForgeError("accountGone");
 			const token = await this.open(entry.token);
+			if (token === null) throw new ForgeError("accountGone");
 			checkCancelled(signal);
 			return { account: structuredClone(entry.account), token, signal };
 		});
@@ -122,8 +128,7 @@ export class AccountStore {
 	saveIdentity(draft: ForgeAccount, identity: ForgeIdentity, token: string, signal: AbortSignal): Promise<ForgeAccount> {
 		return this.queue(async () => {
 			checkCancelled(signal);
-			const entries = await this.read();
-			await this.verify(entries, signal);
+			const entries = await this.usable(await this.read(), signal);
 			const account = signedIn(
 				entries.map((e) => e.account),
 				draft,
@@ -142,7 +147,7 @@ export class AccountStore {
 	update(id: string, patch: Partial<Pick<ForgeAccount, "label" | "enabled" | "lastError">>, signal?: AbortSignal): Promise<ForgeAccount | null> {
 		return this.queue(async () => {
 			if (signal) checkCancelled(signal);
-			const entries = await this.read();
+			const entries = await this.usable(await this.read(), signal);
 			const at = entries.findIndex((e) => e.account.id === id);
 			if (at < 0) return null;
 			const entry = entries[at]!;
@@ -150,7 +155,6 @@ export class AccountStore {
 			if (JSON.stringify(account) !== JSON.stringify(entry.account)) {
 				const next = [...entries];
 				next[at] = { ...entry, account };
-				await this.verify(entries, signal);
 				await this.write(next, signal);
 			}
 			return structuredClone(account);
@@ -159,10 +163,9 @@ export class AccountStore {
 	remove(id: string, signal?: AbortSignal): Promise<void> {
 		return this.queue(async () => {
 			if (signal) checkCancelled(signal);
-			const entries = await this.read();
+			const entries = await this.usable(await this.read(), signal);
 			const next = entries.filter((e) => e.account.id !== id);
 			if (next.length !== entries.length) {
-				await this.verify(entries, signal);
 				await this.write(next, signal);
 			}
 		});

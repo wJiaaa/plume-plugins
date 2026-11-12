@@ -3,13 +3,12 @@ import { createPullRequestsApi } from "./forge/index.ts";
 
 export default {
 	name: "plume.pull-requests",
-	inject: ["secrets"],
 	apply(ctx) {
 		const lifecycle = new AbortController();
 		ctx.effect(() => lifecycle.abort());
 		const api = createPullRequestsApi({
 			dataDir: ctx.dataDir,
-			secrets: ctx.use("secrets"),
+			secrets: ctx.secrets,
 			locale: () => ctx.locale(),
 			signal: lifecycle.signal,
 			fetch: ctx.fetch,

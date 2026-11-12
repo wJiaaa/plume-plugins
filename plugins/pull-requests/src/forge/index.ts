@@ -1,6 +1,6 @@
 /* oxlint-disable preserve-caught-error -- 见 failure 的注释：这里是不带原始错误出去的边界 */
 import { randomUUID } from "node:crypto";
-import type { CallContext, Locale, PluginFetch, SecretsService } from "@plume/contract";
+import type { CallContext, Locale, PluginFetch, PluginSecrets } from "@plume/contract";
 import type { ForgeAccount, ForgeKind, PullRequestsApi, PullRequestSummary, ReviewVerdict } from "../api.ts";
 import { backendText } from "../messages.ts";
 import { forgeKinds, isKind, normalizeServer, validateNumber, validateRepo } from "./accounts.ts";
@@ -18,7 +18,7 @@ import { AccountStore } from "./vault.ts";
 const DRIVERS: Record<ForgeKind, ForgeDriver> = { github, gitlab, gitee, gitea };
 export function createPullRequestsApi(options: {
 	dataDir: string;
-	secrets: SecretsService;
+	secrets: PluginSecrets;
 	locale: () => Locale;
 	signal: AbortSignal;
 	fetch?: PluginFetch;
