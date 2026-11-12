@@ -6,7 +6,9 @@
  * 问原会话修哪几条、修完交报告。子智能体、侧边聊天没有那件工具，在当前会话里跑完整条流水线——第 0 步按「有没有这件工具」分流。
  *
  * 审阅会话的第一句是交接单（人在气泡里看到的就是它），这份正文由 `prompt.submit` 接在它后面（`index.ts`），所以第 0 步
- * 说交接单在前。没装子智能体（没有 `task`）时各力度都按 low 自己审。并发写死成 4，跟着子智能体的默认名额。
+ * 说交接单在前。正文点名的别的插件的工具不写死名字：派子智能体的按工具声明的类别 `delegate`、问人的按 `question` 现找
+ * （`BodyTools`）。没有派子智能体的工具时各力度都按 low 自己审，力度那一节只剩 low；没有问人的工具时说成直接问人。
+ * `review`、`verify` 是子智能体的名字（人看得见、能用同名文件覆盖），照写。并发写死成 4，跟着子智能体的默认名额。
  */
 
 /** `--fix` 不在提示里：交给审阅会话时修不修由原会话定（第 H、F 步）；它只为在当前会话里跑的那条路留着。 */
@@ -15,8 +17,78 @@ export const REVIEW_ARGUMENT_HINT = "[PR | URL | path] [--effort low|medium|high
 /** 审阅会话里交接单的开头。第 0 步凭它认出自己是审阅会话，`prompt.submit` 也凭它认出审阅会话的第一句。 */
 export const REVIEW_SESSION_OPENING = "You are the review session for this `/review`.";
 
-// i18n-exempt：下面是发给模型的话。
-export const REVIEW_BODY = `# Code review
+/** 正文要点名的别的插件的工具，按工具声明的类别在工具表里现找；没有就不给。 */
+export interface BodyTools {
+	/** 派子智能体的工具（类别 `delegate`）。 */
+	delegate?: string;
+	/** 停下来问人的工具（类别 `question`）。 */
+	question?: string;
+}
+
+/** 正文都是发给模型的话。 */
+const LOW = `**low** — no sub-agents. Read the diff and the code around each hunk yourself and go through A, B and C, and E when it applies. Every finding is PLAUSIBLE: nothing gets a second look at this level, and the report says so.`;
+
+/** 第 4 步的力度：有派子智能体的工具时三档和子智能体的提示词；没有时只剩 low。 */
+function levels(delegate: string | undefined): string {
+	if (!delegate) return `There is no tool here for dispatching sub-agents, so run every level as **low** and say so in the report.\n\n${LOW}`;
+	return `If you do not have the \`${delegate}\` tool here, run every level as **low** and say so in the report.
+
+${LOW}
+
+**medium** — in one reply, dispatch three \`${delegate}\` calls to the \`review\` sub-agent, one each for A, B and C — four, with E, when it applies — using the finder prompt below. When they have reported, verify every finding yourself (step 5).
+
+**high** — dispatch at most four sub-agents per reply, and wait for a batch to report before sending the next.
+1. Batch one: four \`review\` finders, one each for A, B, C and D.
+2. Batch two: the E finder when it applies, one \`verify\` sub-agent (prompt below) — only when the working tree holds the code under review; for a PR that is not checked out, skip it and say so in the report — and one \`review\` checker per finding, up to four in all.
+3. Further batches of up to four checkers until every finding, E's included, has been checked.
+
+**Finder prompt** — fill in the brackets; the sub-agent knows nothing else:
+
+\`\`\`
+Review a code change for one dimension only: <dimension letter and name>.
+Change: <local uncommitted changes | PR #<n> "<title>", base <base> | these files>.
+Diff (read all of it first): <absolute path to review/diff.patch or review/files.txt>
+Project rules: <absolute path to review/rules.md, or "none">
+<review session only: Context (read before the diff): <absolute path to review/intent.md>. Background, constraints and intent for this dimension: <two or three sentences from the brief — why the change was made, the person's decisions that bear on it, what they wanted from this part>. The person's words and decisions outrank the plan; the author's notes in that file are claims to check, not facts.>
+Repository: <absolute path>. <The working tree is | is not> the reviewed version<; if not, read changed code from the diff and whole files with git show <sha>:<path>>.
+
+Look for: <the dimension's paragraph from these instructions, verbatim>
+
+Report only concrete defects you can tie to a line and a triggering scenario. No style, naming, formatting or "consider" suggestions; nothing about untouched code unless the change breaks it. Read the callers and surrounding code before reporting — a claim one more file would disprove is not a finding. Do not modify files, and do not run builds or tests.
+Return findings with file as path:line in the new version (for E, when nothing in the diff corresponds, the request, decision or plan item instead), a one-sentence problem, and failure: the concrete input or state and what goes wrong. Return no findings, and say so, if you found none.
+\`\`\`
+
+**Checker prompt** — one finding per checker:
+
+\`\`\`
+Someone claims this defect exists. Try to disprove it.
+Claim: <file:line> — <problem>
+Trigger: <failure>
+Diff: <absolute path>. Repository: <absolute path>. <Working tree note as above.>
+<review session only: Context: <absolute path to review/intent.md>, with the background, constraints and intent that bear on this claim in a sentence or two.>
+
+Read the code at that location and everything the claim depends on: callers, guards, types, configuration, tests. If a guard, invariant or caller makes the trigger impossible, return no findings and say in the summary exactly what prevents it. If the claim holds, return it as one finding, corrected: exact line, sharper trigger. Do not modify files.
+\`\`\`
+
+**Verify prompt**:
+
+\`\`\`
+Run this project's checks for a change and report the results. Do not fix anything.
+Repository: <absolute path>. Changed files: <list>. Project rules: <path or "none">.
+Work out the commands from the project rules and the package manifests: the typecheck of each affected package and the tests that cover the changed files. Prefer the narrowest commands that cover them over whole-repository runs.
+\`\`\``;
+}
+
+/** `/review` 的正文，`tools` 是此刻工具表里按类别找到的那几件。 */
+export function reviewBody({ delegate, question }: BodyTools): string {
+	// 正文是一整段模板字符串，分支先算好再填进去：里面再套反引号会把插件检查认字符串的那一步带偏。
+	const askRarely = question ? `use \`${question}\`` : "stop to ask the person";
+	const askWith = question ? ` with \`${question}\`` : "";
+	const askToPost = question
+		? `call \`${question}\` with the options "Post this comment" and "Do not post"`
+		: `ask whether to post it — "Post this comment" or "Do not post" — and end your turn`;
+	// i18n-exempt：正文发给模型；第 H 步举例的用户原话是中文。
+	return `# Code review
 
 You are running the \`/review\` pipeline. The person's arguments follow these instructions. Follow the steps in order; do not skip one because the change looks small.
 
@@ -29,7 +101,7 @@ The first case that applies decides.
    - The brief is in sections: background; the person's decisions and their own messages, verbatim; the approved plan, verbatim, if there was one; the implementation; the changed files; what is out of scope; what is unverified; the review focus; the target and effort (the arguments). Before step 4, write \`review/intent.md\` in the same sections, in the same order, with the same headings: every section from the background through the review focus, copied unchanged — the person's messages and the plan verbatim.
    - Weigh the sections by who wrote them. The person's own words and decisions are the highest authority on what was wanted; the plan comes next; the implementation, the file list and the unverified list are the author's account of their own work — claims to check against the code, never evidence. Where they disagree, the higher one wins, and the disagreement itself may be a finding.
    - Sub-agents start knowing nothing. Every finder and checker you dispatch gets the path to \`review/intent.md\` and, written into its prompt, the background, the constraints and the intent that bear on its task — what the person wanted from the part of the change it looks at (the prompts below have a place for them) — not just a path to the diff.
-   - Do not call \`review_session\` or \`spawn_session\`, and use \`ask_user\` only when you cannot go on without an answer.
+   - Do not call \`review_session\` or \`spawn_session\`, and ${askRarely} only when you cannot go on without an answer.
    - Your last reply is delivered as it stands to the implementing conversation: the step 6 report with step F's additions, nothing else — no offer to fix, no question at the end.
 2. **You have the \`review_session\` tool** (a conversation of your own in the app): do not review here. Hand the review off (step H) and stop. A reviewer that shares the reasoning that produced a change tends to agree with it, and the reading would fill this conversation's context.
 3. **Otherwise** — the command line, a sub-agent, a side chat: run steps 1 to 8 in this conversation.
@@ -50,7 +122,7 @@ The first case that applies decides.
 3. Call \`review_session\` with those fields, \`target\` (leave it out for local changes) and \`effort\` (leave it out when none was given). Your turn ends with the call. If it is refused, fill in what it names and call again.
 4. Before it reports, the review session asks you (a message from it) which of its findings to fix; it makes the fixes itself. Decide from this conversation — the person's own words and decisions first, then the plan and the scope:
    - Fix a CONFIRMED finding inside what the person asked for. Leave one the person ruled out or that falls outside the scope, and say so.
-   - A PLAUSIBLE finding, or one the conversation does not settle either way: ask the person with \`ask_user\`, about those findings only. Do not ask about what the conversation already settles.
+   - A PLAUSIBLE finding, or one the conversation does not settle either way: ask the person${askWith}, about those findings only. Do not ask about what the conversation already settles.
    - Answer with the numbers to fix and, for each one left, the reason in a few words. Do not fix anything yourself, and do not answer before you have decided every finding.
 5. The report comes back later as a message from that session (\`<session_result>\`), with what it fixed, what it left and the checks it ran. Do not fix again. Tell the person in a few lines: what was found, what was fixed, the checks and their results, and what was left and why.
    - With \`--comment\` on a PR, do step 8 with the report as it came back.
@@ -103,52 +175,7 @@ The dimensions:
 - **D. Cross-file and adversarial** (high only). Follow data from where it enters (user input, files, network, IPC) through the changed code to where it ends up. Then attack it: hostile or huge input, two calls at once, a different order of events, a different platform (Windows paths, case-insensitive file systems).
 - **E. Intent** (only with \`review/intent.md\`, in the review session). Hold the change against what was wanted — the person's own words and decisions first, then the plan: something they asked for or decided that the diff does not do, does only in part or does differently; and anything the change does that neither mentions — behaviour, files, public interfaces. The implementation notes are claims: check each against the code rather than accepting it. Something listed as out of scope is deliberate, not missed; a gap listed as unverified is not a finding unless it breaks something.
 
-Without a \`task\` tool (no sub-agents are installed), run every level as **low** and say so in the report.
-
-**low** — no sub-agents. Read the diff and the code around each hunk yourself and go through A, B and C, and E when it applies. Every finding is PLAUSIBLE: nothing gets a second look at this level, and the report says so.
-
-**medium** — in one reply, dispatch three \`task\` calls with \`subagent_type: "review"\`, one each for A, B and C — four, with E, when it applies — using the finder prompt below. When they have reported, verify every finding yourself (step 5).
-
-**high** — dispatch at most four sub-agents per reply, and wait for a batch to report before sending the next.
-1. Batch one: four \`review\` finders, one each for A, B, C and D.
-2. Batch two: the E finder when it applies, one \`verify\` sub-agent (prompt below) — only when the working tree holds the code under review; for a PR that is not checked out, skip it and say so in the report — and one \`review\` checker per finding, up to four in all.
-3. Further batches of up to four checkers until every finding, E's included, has been checked.
-
-**Finder prompt** — fill in the brackets; the sub-agent knows nothing else:
-
-\`\`\`
-Review a code change for one dimension only: <dimension letter and name>.
-Change: <local uncommitted changes | PR #<n> "<title>", base <base> | these files>.
-Diff (read all of it first): <absolute path to review/diff.patch or review/files.txt>
-Project rules: <absolute path to review/rules.md, or "none">
-<review session only: Context (read before the diff): <absolute path to review/intent.md>. Background, constraints and intent for this dimension: <two or three sentences from the brief — why the change was made, the person's decisions that bear on it, what they wanted from this part>. The person's words and decisions outrank the plan; the author's notes in that file are claims to check, not facts.>
-Repository: <absolute path>. <The working tree is | is not> the reviewed version<; if not, read changed code from the diff and whole files with git show <sha>:<path>>.
-
-Look for: <the dimension's paragraph from these instructions, verbatim>
-
-Report only concrete defects you can tie to a line and a triggering scenario. No style, naming, formatting or "consider" suggestions; nothing about untouched code unless the change breaks it. Read the callers and surrounding code before reporting — a claim one more file would disprove is not a finding. Do not modify files, and do not run builds or tests.
-Return findings with file as path:line in the new version (for E, when nothing in the diff corresponds, the request, decision or plan item instead), a one-sentence problem, and failure: the concrete input or state and what goes wrong. Return no findings, and say so, if you found none.
-\`\`\`
-
-**Checker prompt** — one finding per checker:
-
-\`\`\`
-Someone claims this defect exists. Try to disprove it.
-Claim: <file:line> — <problem>
-Trigger: <failure>
-Diff: <absolute path>. Repository: <absolute path>. <Working tree note as above.>
-<review session only: Context: <absolute path to review/intent.md>, with the background, constraints and intent that bear on this claim in a sentence or two.>
-
-Read the code at that location and everything the claim depends on: callers, guards, types, configuration, tests. If a guard, invariant or caller makes the trigger impossible, return no findings and say in the summary exactly what prevents it. If the claim holds, return it as one finding, corrected: exact line, sharper trigger. Do not modify files.
-\`\`\`
-
-**Verify prompt**:
-
-\`\`\`
-Run this project's checks for a change and report the results. Do not fix anything.
-Repository: <absolute path>. Changed files: <list>. Project rules: <path or "none">.
-Work out the commands from the project rules and the package manifests: the typecheck of each affected package and the tests that cover the changed files. Prefer the narrowest commands that cover them over whole-repository runs.
-\`\`\`
+${levels(delegate)}
 
 ## 5. Verify (medium and high)
 
@@ -211,13 +238,14 @@ Only where this conversation ran the whole pipeline itself (step 0, case 3), onl
 
 Done by the conversation that holds the report: this one when it ran the pipeline itself, the implementing one when the report came back from a review session. A comment on the PR is visible to other people, so nothing is posted without an explicit yes.
 1. Write the comment to \`review/comment.md\`: the report from step 6, findings labelled CONFIRMED or PLAUSIBLE.
-2. Show the person the full text, then call \`ask_user\` with the options "Post this comment" and "Do not post".
+2. Show the person the full text, then ${askToPost}.
 3. Only on "Post this comment": \`gh pr comment <n> --body-file <scratch>/review/comment.md\`, and give the URL it prints. A skip, a cancel or any other answer means nothing is posted; say so.
 `;
+}
 
 /** 人敲 `/review <参数>` 时发给模型的那条消息。没写参数就是审未提交的本地改动（第 1 步）。 */
-export function reviewRequest(rest: string): string {
-	return `${REVIEW_BODY}\n\n---\n\nArguments: ${rest || "none (the uncommitted local changes)"}`;
+export function reviewRequest(rest: string, tools: BodyTools): string {
+	return `${reviewBody(tools)}\n\n---\n\nArguments: ${rest || "none (the uncommitted local changes)"}`;
 }
 
 function attribute(value: string): string {

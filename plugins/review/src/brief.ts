@@ -2,7 +2,7 @@
  * 交给审阅会话的那份交接单：原会话填的字段、从记录里取的原文，排成审阅会话的第一句话。
  *
  * 写成必填字段、逐项卡长度，而不是一段自由的「实现总结」：一段总结模型一句话就能打发，而审阅者缺的正是那一句话没说的前因后果。
- * 缺哪项、哪项太短，退回去点名，让它补齐重发。计划和用户原话从记录里取原文，不让模型转述：转述会被改写、截短，漏写的约束审阅者就无从知道。
+ * 缺哪项、哪项太短，退回去点名，让它补齐重发。计划（向服务 `session.plan` 要）和用户原话（从记录里取）都用原文，不让模型转述：转述会被改写、截短，漏写的约束审阅者就无从知道。
  * 排版照任务说明的顺序——你是谁、背景、决定与原话、计划、实现、文件、不做的、没验证的、重点、目标、交付。
  */
 
@@ -176,22 +176,6 @@ export function userWords(messages: readonly Message[]): { words: { n: number; t
 		room -= size;
 	}
 	return { words: [first, ...recent], omitted: all.length - 1 - recent.length };
-}
-
-/**
- * 会话里最近批准的那份计划，带着批准时附上的注意事项；没有就是 null。计划是计划模式插件（plume.plan）的 `submit_plan`
- * 结果里的 details，这里照它的形状读，不引用那个插件。
- */
-export function latestApprovedPlan(messages: readonly Message[]): string | null {
-	for (let at = messages.length - 1; at >= 0; at--) {
-		const message = messages[at];
-		if (message?.role !== "toolResult" || message.toolName !== "submit_plan" || message.isError) continue;
-		const details = message.details as { kind?: unknown; plan?: unknown; approved?: unknown; notes?: unknown } | undefined;
-		if (details?.kind !== "plan" || details.approved !== true || typeof details.plan !== "string") continue;
-		// i18n-exempt：小标题跟着计划一起交给模型，和计划模式插件写的一样。
-		return typeof details.notes === "string" && details.notes ? `${details.plan}\n\n## 执行时注意\n${details.notes}` : details.plan;
-	}
-	return null;
 }
 
 /** 会话的地址，和会话互通插件（`ask_session`）认的一样：`名字 [id 前六位]`。 */

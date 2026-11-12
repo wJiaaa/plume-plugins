@@ -18,10 +18,10 @@ import type {
 	ToolRun,
 	TurnStop,
 } from "@plume/contract";
-import { latestApprovedPlan, reviewHandoff, reviewPrompt, reviewRequest, userWords } from "../src/brief.ts";
+import { reviewHandoff, reviewPrompt, reviewRequest, userWords } from "../src/brief.ts";
 import plugin from "../src/index.ts";
 import { MESSAGES } from "../src/messages.ts";
-import { REVIEW_BODY, REVIEW_SESSION_OPENING } from "../src/review.ts";
+import { REVIEW_SESSION_OPENING, reviewBody } from "../src/review.ts";
 
 const brief = MESSAGES.en.brief;
 const user = (text: string, extra: Partial<Message> = {}): Message => ({ role: "user", content: [{ type: "text", text }], timestamp: 1, ...extra }) as Message;
@@ -72,16 +72,7 @@ test("用户原话：只收人说的，太长时留首条和最近几条", () =>
 	assert.ok(omitted > 0);
 });
 
-test("计划取最近批准的那份，带着注意事项；交接单第一行认得出审阅会话", () => {
-	const result = (details: unknown, isError = false): Message =>
-		({ role: "toolResult", toolCallId: "p", toolName: "submit_plan", content: [], details, isError, timestamp: 1 }) as Message;
-	const messages = [
-		result({ kind: "plan", plan: "旧计划", approved: true }),
-		result({ kind: "plan", plan: "打回的", approved: false }),
-		result({ kind: "plan", plan: "新计划", approved: true, notes: "别动接口" }),
-	];
-	assert.equal(latestApprovedPlan(messages), "新计划\n\n## 执行时注意\n别动接口");
-	assert.equal(latestApprovedPlan([]), null);
+test("交接单第一行认得出审阅会话，计划、原话原样包进标签", () => {
 	const request = reviewRequest(complete, "改登录", brief);
 	assert.ok(!("error" in request));
 	const prompt = reviewPrompt(request, "新计划", [user("把登录改成 OAuth")], "改登录", "改登录 [abc123]", brief);
@@ -93,6 +84,25 @@ test("计划取最近批准的那份，带着注意事项；交接单第一行�
 	assert.ok(prompt.includes("Arguments: none (the uncommitted local changes)"));
 	// 没有 ask_session 时不问、不修。
 	assert.ok(reviewPrompt(request, null, [], "改登录", undefined, brief).includes("skip step F's question"));
+});
+
+test("正文按类别点名派子智能体、问人的工具；没有派子智能体的工具时只剩 low", () => {
+	const full = reviewBody({ delegate: "dispatch", question: "ask_person" });
+	assert.ok(full.includes("dispatch three `dispatch` calls to the `review` sub-agent"));
+	assert.ok(full.includes("If you do not have the `dispatch` tool here, run every level as **low**"));
+	assert.ok(full.includes("**Finder prompt**"));
+	assert.ok(full.includes("ask the person with `ask_person`, about those findings only"));
+	assert.ok(full.includes('call `ask_person` with the options "Post this comment" and "Do not post"'));
+	assert.doesNotMatch(full, /`task`|subagent_type|`ask_user`/);
+
+	const bare = reviewBody({});
+	assert.ok(bare.includes("There is no tool here for dispatching sub-agents, so run every level as **low**"));
+	assert.ok(bare.includes("**low** — no sub-agents."));
+	assert.ok(!bare.includes("**medium** —"));
+	assert.ok(!bare.includes("**Finder prompt**"));
+	assert.ok(bare.includes("ask the person, about those findings only"));
+	assert.ok(bare.includes('ask whether to post it — "Post this comment" or "Do not post" — and end your turn'));
+	assert.doesNotMatch(bare, /`undefined`/);
 });
 
 function deferred<T>() {
@@ -122,6 +132,8 @@ async function fixture(t: TestContext, tools: string[] = ["ask_session"]) {
 		["ops", summary("ops", { owner: "plume.ssh" })],
 	]);
 	const messages = new Map<string, Message[]>([["main", [user("把登录改成 OAuth")]]]);
+	// 计划向服务 session.plan 要，这里是假的那份。
+	const plans = new Map<string, string>([["main", "新计划\n\n## 执行时注意\n别动接口"]]);
 	const layers = new Map<string, unknown>();
 	let tool: ToolDefinition | undefined;
 	const launches: SessionLaunch[] = [];
@@ -134,6 +146,10 @@ async function fixture(t: TestContext, tools: string[] = ["ask_session"]) {
 		locale: () => "en",
 		log: { info() {}, warn() {}, error() {} },
 		hook: (name: string, layer: unknown) => void layers.set(name, layer),
+		use: (name: string) => {
+			assert.equal(name, "session.plan");
+			return { approved: async (sessionId: string) => plans.get(sessionId) ?? null };
+		},
 		tools: {
 			register: (definition: ToolDefinition) => {
 				tool = definition;
@@ -146,6 +162,9 @@ async function fixture(t: TestContext, tools: string[] = ["ask_session"]) {
 				{ name: "write", plugin: "plume.tools", kind: "create" },
 				{ name: "edit", plugin: "plume.tools", kind: "modify" },
 				{ name: "apply_patch", plugin: "example.patch", kind: "modify" },
+				// 正文点名的派子智能体、问人的工具按声明的类别找，名字随它们。
+				{ name: "dispatch", plugin: "example.agents", category: "delegate" },
+				{ name: "ask_person", plugin: "example.ask", category: "question" },
 			],
 		},
 		commands: { provide() {} },
@@ -227,13 +246,14 @@ test("review_session：开出审阅会话、第一轮接上正文和原会话的
 	assert.equal(launch!.model, "m1");
 	assert.deepEqual(launch!.spawnedFrom, { sessionId: "main", toolCallId: "call" });
 	assert.ok(launch!.message.startsWith(REVIEW_SESSION_OPENING));
+	assert.ok(launch!.message.includes("<approved_plan>\n新计划\n\n## 执行时注意\n别动接口\n</approved_plan>"), "计划取自服务 session.plan");
 
 	// 审阅会话的第一轮：正文接在交接单后面，挪进原会话的目录（工作树）。
 	const verdict = await f.submit(
 		{ sessionId: "review", cwd: "/w", text: launch!.message, attachments: [], synthetic: false, fresh: true } as unknown as PromptSubmit,
 		async () => ({ block: false }),
 	);
-	assert.deepEqual(verdict, { block: false, context: REVIEW_BODY, cwd: "/w/.worktrees/a" });
+	assert.deepEqual(verdict, { block: false, context: reviewBody({ delegate: "dispatch", question: "ask_person" }), cwd: "/w/.worktrees/a" });
 	// 审阅会话自己再交一次不行。
 	assert.match((await f.tool.execute(complete, f.run("review"))).output, /This conversation is the review session/);
 

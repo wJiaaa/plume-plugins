@@ -5,6 +5,7 @@
  * - 写代码的会话不审自己：它填一份交接单、调 `review_session`，这里当场在同一个项目里开一个审阅会话（`ctx.sessions.launch`，
  *   `spawnedFrom` 记着这次调用），第一句是交接单（`brief.ts`），这一轮以 `terminate` 停下。人敲 `/review` 就是同意，不经卡片。
  *   开不出来时这次调用报错，模型当场知道。
+ * - 交接单里的计划向服务 `session.plan`（内置插件 plume.plan 提供）要这个会话照着做的那份，不读交计划那次调用的结果。
  * - 审阅会话的第一轮开头（`prompt.submit`）：认出交接单，把流程正文接在它后面给模型（气泡里只有交接单），
  *   原会话在别的目录里跑（工作树）时把审阅会话也挪过去，未提交的改动只在那里。
  * - 只读：审阅会话和它派出的子会话写文件的调用一律拒绝（`tool.execute`），直到原会话答复了修哪几条——
@@ -16,9 +17,9 @@
 import { readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { LaunchedSession, Message, Plugin, SessionScope, ToolKind } from "@plume/contract";
-import { latestApprovedPlan, reviewPrompt, reviewRequest, sessionAddress } from "./brief.ts";
+import { reviewPrompt, reviewRequest, sessionAddress } from "./brief.ts";
 import { MESSAGES } from "./messages.ts";
-import { REVIEW_ARGUMENT_HINT, REVIEW_BODY, REVIEW_SESSION_OPENING, reportText, reviewRequest as commandText } from "./review.ts";
+import { type BodyTools, REVIEW_ARGUMENT_HINT, REVIEW_SESSION_OPENING, reportText, reviewBody, reviewRequest as commandText } from "./review.ts";
 import { REVIEW_SESSION, type ReviewSessionDetails } from "./types.ts";
 
 // i18n-exempt：工具说明、参数和结果是发给模型的话。
@@ -68,8 +69,16 @@ interface Review {
 
 export default {
 	name: "plume.review",
+	inject: ["session.plan"],
 	async apply(ctx) {
 		const text = () => MESSAGES[ctx.locale()];
+		const plans = ctx.use("session.plan");
+		/** 正文点名的别的插件的工具，按它们声明的类别现找，不认名字。 */
+		const bodyTools = (): BodyTools => {
+			const tools = ctx.tools.list();
+			const named = (category: "delegate" | "question") => tools.find((tool) => tool.category === category)?.name;
+			return { delegate: named("delegate"), question: named("question") };
+		};
 		// 哪些会话是审阅会话：重启以后只读照旧，所以存在数据目录里。
 		const reviewsFile = join(ctx.dataDir, "reviews.json");
 		const reviews = new Map<string, Review>(
@@ -122,7 +131,7 @@ export default {
 
 		ctx.commands.provide({
 			list: () => [{ name: "review", description: text().command, argumentHint: REVIEW_ARGUMENT_HINT }],
-			expand: (_name, rest) => ({ text: commandText(rest), displayText: rest ? `/review ${rest}` : "/review" }),
+			expand: (_name, rest) => ({ text: commandText(rest, bodyTools()), displayText: rest ? `/review ${rest}` : "/review" }),
 		});
 
 		ctx.hook("model.context", async (input, next) => {
@@ -138,9 +147,10 @@ export default {
 			if (!review) return verdict;
 			pending.delete(input.text);
 			remember(input.sessionId, review);
+			const body = reviewBody(bodyTools());
 			return {
 				block: false,
-				context: verdict.context ? `${verdict.context}\n\n${REVIEW_BODY}` : REVIEW_BODY,
+				context: verdict.context ? `${verdict.context}\n\n${body}` : body,
 				// 和原会话同一个目录：它在自己的工作树里时，未提交的改动只在那里。
 				...(verdict.cwd !== undefined ? { cwd: verdict.cwd } : review.cwd !== input.cwd ? { cwd: review.cwd } : {}),
 			};
@@ -185,7 +195,7 @@ export default {
 				if ("error" in request) return { output: request.error, isError: true };
 				const messages = await ctx.sessions.messages(parent.id);
 				const address = ctx.tools.names().includes("ask_session") ? sessionAddress(parent) : undefined;
-				const prompt = reviewPrompt(request, latestApprovedPlan(messages), messages, parent.title, address, brief);
+				const prompt = reviewPrompt(request, await plans.approved(parent.id), messages, parent.title, address, brief);
 				const review: Review = { parentId: parent.id, cwd: parent.cwd };
 				pending.set(prompt, review);
 				let launched: LaunchedSession;
