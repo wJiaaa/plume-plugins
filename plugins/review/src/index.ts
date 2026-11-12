@@ -48,8 +48,7 @@ const PARAMETERS = {
  * 会写文件的调用，为什么。写、改文件的工具按注册它的插件声明的种类（`ToolDefinition.kind` 的 `create`、`modify`）认，不认名字。
  * 跑命令的不在这里：审阅会话的命令留给权限档，它派的 `verify` 要跑测试、写缓存。
  */
-function edits(name: string, kind: ToolKind | undefined, args: Record<string, unknown>): string | undefined {
-	if (name === "lsp") return args.operation === "rename" ? "a rename edits files" : undefined;
+function edits(kind: ToolKind | undefined): string | undefined {
 	return kind === "create" || kind === "modify" ? "it edits files" : undefined;
 }
 
@@ -148,7 +147,7 @@ export default {
 		});
 
 		ctx.hook("tool.execute", async (input, next) => {
-			const why = edits(input.call.name, ctx.tools.list().find((tool) => tool.name === input.call.name)?.kind, input.call.args);
+			const why = edits(ctx.tools.list().find((tool) => tool.name === input.call.name)?.kind);
 			if (!why) return next(input);
 			const reviewId = reviewOf(input.session);
 			if (!reviewId || (await fixesAllowed(reviewId))) return next(input);
