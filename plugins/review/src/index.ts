@@ -15,7 +15,7 @@
 
 import { readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { LaunchedSession, Message, Plugin, SessionSummary } from "@plume/contract";
+import type { LaunchedSession, Message, Plugin, SessionScope } from "@plume/contract";
 import { latestApprovedPlan, reviewPrompt, reviewRequest, sessionAddress } from "./brief.ts";
 import { MESSAGES } from "./messages.ts";
 import { REVIEW_ARGUMENT_HINT, REVIEW_BODY, REVIEW_SESSION_OPENING, reportText, reviewRequest as commandText } from "./review.ts";
@@ -100,13 +100,10 @@ export default {
 			if (reviews.delete(sessionId)) save();
 		});
 
-		const summaryOf = async (sessionId: string): Promise<SessionSummary | undefined> => (await ctx.sessions.list()).find((summary) => summary.id === sessionId);
-
 		/** 这次调用受哪个审阅会话管：它自己，或派出它的那个（子 Agent）。 */
-		async function reviewOf(sessionId: string): Promise<string | undefined> {
-			if (reviews.has(sessionId)) return sessionId;
-			if (reviews.size === 0) return undefined;
-			const parentId = (await summaryOf(sessionId))?.parentId;
+		function reviewOf(session: SessionScope): string | undefined {
+			if (reviews.has(session.id)) return session.id;
+			const parentId = session.kind === "child" ? session.parentId : undefined;
 			return parentId && reviews.has(parentId) ? parentId : undefined;
 		}
 
@@ -127,9 +124,8 @@ export default {
 		});
 
 		ctx.hook("model.context", async (input, next) => {
-			// 子会话和插件的独立会话（`owner`）都不是侧栏里那段对话，交不出审阅。
-			const self = await summaryOf(input.sessionId);
-			if (self?.parentId || self?.owner) return next({ ...input, tools: input.tools.filter((tool) => tool.name !== REVIEW_SESSION) });
+			// 子会话和插件的独立会话都不是侧栏里那段对话，交不出审阅。
+			if (input.session.kind !== "top") return next({ ...input, tools: input.tools.filter((tool) => tool.name !== REVIEW_SESSION) });
 			return next(input);
 		});
 
@@ -151,7 +147,7 @@ export default {
 		ctx.hook("tool.execute", async (input, next) => {
 			const why = edits(input.call.name, input.call.args);
 			if (!why) return next(input);
-			const reviewId = await reviewOf(input.sessionId);
+			const reviewId = reviewOf(input.session);
 			if (!reviewId || (await fixesAllowed(reviewId))) return next(input);
 			return { output: refusal(input.call.name, why), isError: true };
 		});
@@ -163,7 +159,9 @@ export default {
 				const { stop, reply } = await launched.idle;
 				if (!stop || !reviews.has(id) || stop.reason === "aborted") return;
 				const status = stop.reason === "done" ? "done" : "failed";
-				launched.reportBack(reportText({ sessionId: id, title: (await summaryOf(id))?.title || title, status, reply }), status);
+				const shown = (await ctx.sessions.get(id))?.title || title;
+				// 对话里那一行由宿主画成「来自新会话 · 标题」，点了到审阅会话（宿主填它的 id）。
+				launched.reportBack(reportText({ sessionId: id, title: shown, status, reply }), { id, title: shown, status });
 			};
 			// i18n-exempt：日志
 			void report().catch((error: unknown) => ctx.log.warn(`审阅会话 ${id} 的报告没交回去：${String(error)}`));
@@ -174,10 +172,9 @@ export default {
 			description: DESCRIPTION,
 			parameters: PARAMETERS,
 			async execute(args, run) {
-				const parent = await summaryOf(run.sessionId);
+				const parent = run.session.kind === "top" ? await ctx.sessions.get(run.sessionId) : undefined;
 				// i18n-exempt：发给模型的话。
-				if (!parent || parent.parentId || parent.owner)
-					return { output: "Only the conversation itself can hand off its review; run the review here instead.", isError: true };
+				if (!parent) return { output: "Only the conversation itself can hand off its review; run the review here instead.", isError: true };
 				// 审阅会话自己也拿得到这件工具（工具表不变，前缀缓存才留得住）。再交一次就是一串互相转交、谁也不审的会话。
 				if (reviews.has(parent.id))
 					return { output: "This conversation is the review session. Run the review pipeline here; do not hand it off again.", isError: true };

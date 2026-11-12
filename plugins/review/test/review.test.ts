@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, type TestContext } from "node:test";
 import type {
+	DeliveryInput,
 	HookLayer,
 	LaunchedIdle,
 	LaunchedSession,
@@ -11,6 +12,7 @@ import type {
 	PluginContext,
 	PromptSubmit,
 	SessionLaunch,
+	SessionScope,
 	SessionSummary,
 	ToolDefinition,
 	ToolRun,
@@ -102,8 +104,18 @@ function deferred<T>() {
 async function fixture(t: TestContext, tools: string[] = ["ask_session"]) {
 	const directory = mkdtempSync(join(tmpdir(), "plume-review-"));
 	t.after(() => rmSync(directory, { recursive: true, force: true }));
+	// `kind` 和本体一样按 `parentId`、`owner` 算。
 	const summary = (id: string, extra: Partial<SessionSummary> = {}): SessionSummary =>
-		({ id, title: "改登录", cwd: "/w", running: false, createdAt: 0, updatedAt: 0, ...extra }) as SessionSummary;
+		({
+			id,
+			title: "改登录",
+			cwd: "/w",
+			running: false,
+			createdAt: 0,
+			updatedAt: 0,
+			kind: extra.parentId ? "child" : extra.owner ? "standalone" : "top",
+			...extra,
+		}) as SessionSummary;
 	const sessions = new Map([
 		["main", summary("main", { project: "p", model: "m1", cwd: "/w/.worktrees/a" })],
 		["side", summary("side", { parentId: "main", owner: "plume.side-chat" })],
@@ -113,7 +125,7 @@ async function fixture(t: TestContext, tools: string[] = ["ask_session"]) {
 	const layers = new Map<string, unknown>();
 	let tool: ToolDefinition | undefined;
 	const launches: SessionLaunch[] = [];
-	const reports: { text: string; status: string }[] = [];
+	const reports: { text: string; delivery: DeliveryInput }[] = [];
 	const done = deferred<TurnStop>();
 	const idle = deferred<LaunchedIdle>();
 	const ctx = {
@@ -131,7 +143,7 @@ async function fixture(t: TestContext, tools: string[] = ["ask_session"]) {
 		},
 		commands: { provide() {} },
 		sessions: {
-			list: async () => [...sessions.values()],
+			get: async (id: string) => sessions.get(id),
 			messages: async (id: string) => structuredClone(messages.get(id) ?? []),
 			observe() {},
 			onDeleted() {},
@@ -143,8 +155,8 @@ async function fixture(t: TestContext, tools: string[] = ["ask_session"]) {
 					session,
 					done: done.promise,
 					idle: idle.promise,
-					reportBack: (text, status) => {
-						reports.push({ text, status });
+					reportBack: (text, delivery) => {
+						reports.push({ text, delivery });
 						return true;
 					},
 				};
@@ -152,20 +164,27 @@ async function fixture(t: TestContext, tools: string[] = ["ask_session"]) {
 		},
 	} as unknown as PluginContext;
 	await plugin.apply(ctx);
-	const run = (sessionId: string) => ({ sessionId, toolCallId: "call" }) as ToolRun;
+	/** 钩子输入和 `run` 上的 `session`，照会话摘要填。 */
+	const scope = (sessionId: string): SessionScope => {
+		const self = sessions.get(sessionId)!;
+		return { id: sessionId, kind: self.kind, ...(self.parentId ? { parentId: self.parentId } : {}), ...(self.owner ? { owner: self.owner } : {}) };
+	};
+	const run = (sessionId: string) => ({ sessionId, session: scope(sessionId), toolCallId: "call" }) as ToolRun;
 	const submit = layers.get("prompt.submit") as HookLayer<"prompt.submit">;
 	const execute = layers.get("tool.execute") as HookLayer<"tool.execute">;
 	const call = (sessionId: string, name: string) =>
-		execute({ sessionId, call: { id: "c", name, args: {} } } as Parameters<typeof execute>[0], async () => ({ output: "ran" }));
+		execute({ sessionId, session: scope(sessionId), call: { id: "c", name, args: {} } } as Parameters<typeof execute>[0], async () => ({ output: "ran" }));
 	const context = layers.get("model.context") as HookLayer<"model.context">;
-	return { tool: tool!, run, submit, call, context, launches, reports, messages, sessions, done, idle };
+	return { tool: tool!, run, scope, submit, call, context, launches, reports, messages, sessions, done, idle };
 }
 
 test("review_session 只列给侧栏里的会话：子会话、插件的独立会话的工具表里没有", async (t) => {
 	const f = await fixture(t);
 	const names = async (sessionId: string) => {
 		let seen: string[] = [];
-		const input = { sessionId, tools: [{ name: "review_session" }, { name: "read" }] } as unknown as Parameters<typeof f.context>[0];
+		const input = { sessionId, session: f.scope(sessionId), tools: [{ name: "review_session" }, { name: "read" }] } as unknown as Parameters<
+			typeof f.context
+		>[0];
 		await f.context(input, async (next) => {
 			seen = next.tools.map((tool) => tool.name);
 			return next as never;
@@ -227,7 +246,8 @@ test("review_session：开出审阅会话、第一轮接上正文和原会话的
 	f.idle.resolve({ stop: { reason: "done" }, reply: "## Review: local changes\nNo defects found." });
 	await new Promise((resolve) => setTimeout(resolve, 10));
 	assert.equal(f.reports.length, 1);
-	assert.equal(f.reports[0]!.status, "done");
+	// 那一行由宿主按通用字段画：标题是审阅会话现在的标题，点了过去由宿主填 id。
+	assert.deepEqual(f.reports[0]!.delivery, { id: "review", title: "改登录", status: "done" });
 	assert.match(
 		f.reports[0]!.text,
 		/<session_result id="review" title="改登录" status="done">\n## Review: local changes\nNo defects found\.\n<\/session_result>/,
