@@ -41,6 +41,9 @@ function runFor(cwd: string, projectRoots: readonly string[] = []): ToolRun {
 		permissionMode: async () => "auto",
 		tools: () => [],
 		calls: [],
+		shell: async () => assert.fail("lsp 不跑命令"),
+		exec: async () => assert.fail("lsp 不跑命令"),
+		escalate: async () => assert.fail("lsp 不提权"),
 	};
 }
 
