@@ -64,6 +64,11 @@ export function symbolTool(deps: SymbolToolDeps): ToolDefinition {
 			required: ["name"],
 			additionalProperties: true,
 		},
+		// 导出会话成 Markdown 时这次调用写成的那一行（英文，和本体给自己工具的说法一样）；参数是模型给的，取名字和执行时同一个办法。
+		describe(args) {
+			const name = nameOf(args).trim();
+			return name ? `Find definition of ${name}` : "Find definition";
+		},
 
 		async execute(args, run): Promise<ToolOutput> {
 			const name = nameOf(args).trim();

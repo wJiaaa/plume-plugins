@@ -98,6 +98,15 @@ test("名字写在 query 上也认", async (t) => {
 	assert.match(found.output, /a\.ts:1 {2}\[class\]/);
 });
 
+test("导出 Markdown 时写成「Find definition of」加符号名，名字写在别的键上也认", () => {
+	const describe = symbolTool({ root: "/unused", listFiles: notInGit, cache: new Map<string, SymbolIndex>() }).describe!;
+	assert.equal(describe({ name: " parseConfig " }), "Find definition of parseConfig");
+	assert.equal(describe({ query: "Widget" }), "Find definition of Widget");
+	assert.equal(describe({ name: "", pattern: "render" }), "Find definition of render");
+	assert.equal(describe({ name: 42 }), "Find definition");
+	assert.equal(describe({}), "Find definition");
+});
+
 test("索引没建完时，找不到要说清楚是没建到，不是不存在", async (t) => {
 	const { dir, root } = await workspace(t);
 	await saveIndex(root, { cwd: dir, builtAt: Date.now(), fileCount: 1, symbols: [], skipped: 0, version: INDEX_VERSION, truncated: true });

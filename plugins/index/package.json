@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/index",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "给 agent 一个 symbol 工具：按项目建符号索引，直接查函数、类、接口、类型和常量定义在哪个文件哪一行，比 grep 一个名字少翻很多调用处；设置页里看索引状态、重建和试搜。",
   "author": "Plume",
   "keywords": [
