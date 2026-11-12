@@ -208,7 +208,7 @@ export interface AssistantSegment {
 /** 终端的输出：先回放攒下的，`ready` 之后是新来的；连接断了以 `end` 收尾。 */
 export type TerminalOutput = { type: "data"; data: string } | { type: "ready" } | { type: "end" };
 
-/** `ssh_run` 审批卡的正文：`ApprovalRequest.detail` 是它的 JSON。 */
+/** `ssh_run` 那张卡要画的：`run.request` 的 `payload`。 */
 export interface RunRequest {
 	connection: string;
 	label: string;
@@ -216,6 +216,11 @@ export interface RunRequest {
 	fingerprint: string;
 	timeoutSeconds: number;
 	reason: string;
+	command: string;
+}
+
+/** 人在 `ssh_run` 的卡上点「运行」交回的：要跑的那条命令，改过的就是改过的那条。 */
+export interface RunAnswer {
 	command: string;
 }
 
@@ -281,9 +286,6 @@ export interface SshApi {
 	discardImport(id: string): void;
 	/** 把导入模板写进「下载」文件夹，返回路径。 */
 	writeTemplate(): Promise<string>;
-
-	/** 审批卡上人改过的命令，先交过来再 respond。 */
-	editRun(toolCallId: string, command: string): void;
 
 	/** 对运维助手说一句，等这一轮结束；还没有这一段时照 `choice`（人在第一句之前选的模型和档位）开一段。 */
 	ask(message: string | AssistantMessage, choice?: SessionChoice): Promise<void>;

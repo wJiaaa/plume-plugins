@@ -2,14 +2,14 @@
  * 给运维助手的两个工具：`ssh_sessions` 列出主机页上连着的 SSH 连接，`ssh_run` 请求在其中一条上执行一条命令。
  * 只在运维助手的会话里有（见 assistant.ts）：别的对话里藏起来，调到了也不跑。
  *
- * 每条命令都弹审批卡，标着 `userOnly`：完全访问、帮我批准、「以后不再问」都不替人答——在别人的服务器上跑什么，
- * 只能由人一条一条决定。人可以在卡上改命令再运行，改过的照实告诉模型。批准以后、真正发出去之前再核对一次连接身份
- * （地址、账号、指纹），变了就不发。命令走独立的非交互 exec 通道：不继承终端的目录和环境，不能输密码、答提示。
- * 超时、断线、输出超限都算「结果未知」，不自动重试。
+ * 每条命令都经 `run.request` 弹卡等人：它不是权限，不经 tool.approve，完全访问、帮我批准、「以后不再问」都不替人答——
+ * 在别人的服务器上跑什么，只能由人一条一条决定。人可以在卡上改命令再运行：卡交回的就是要跑的那条，这里再核一遍，
+ * 改过的照实告诉模型。批准以后、真正发出去之前再核对一次连接身份（地址、账号、指纹），变了就不发。
+ * 命令走独立的非交互 exec 通道：不继承终端的目录和环境，不能输密码、答提示。超时、断线、输出超限都算「结果未知」，不自动重试。
  */
 
 import type { PluginContext } from "@plume/contract";
-import type { RunDetails, RunRequest } from "./api.ts";
+import type { RunAnswer, RunDetails, RunRequest } from "./api.ts";
 import { sameTarget } from "./batch.ts";
 import type { Connections } from "./connections.ts";
 import type { Messages } from "./messages.ts";
@@ -44,6 +44,13 @@ function text(value: unknown, max: number): string | undefined {
 	return typeof value === "string" && value.trim() && value.length <= max && !value.includes("\0") ? value : undefined;
 }
 
+/** 卡交回的要跑的命令。来自渲染进程、不可信：不是一条非空的字就当没回答；超长、带 NUL 的照实拦下（见调用处）。 */
+function answeredCommand(value: unknown): string | undefined {
+	if (!value || typeof value !== "object") return undefined;
+	const command = (value as Partial<RunAnswer>).command;
+	return typeof command === "string" && command.trim() ? command : undefined;
+}
+
 export function registerTools(
 	ctx: PluginContext,
 	deps: {
@@ -52,8 +59,6 @@ export function registerTools(
 		vault: Vault;
 		/** 交给模型、写进卡片前的清理：已存的密码、控制序列、常见密钥。 */
 		scrub(value: string): string;
-		/** 审批卡上人改过的命令，按 toolCallId 交过来。 */
-		edits: Map<string, string>;
 		/** 这个会话是不是运维助手的一段。 */
 		isAssistant(sessionId: string): Promise<boolean>;
 		t(): Messages;
@@ -95,6 +100,7 @@ export function registerTools(
 			required: ["connection", "command", "reason"],
 		},
 		mutating: true,
+		// 不要宿主在执行前替它问（那是可被权限模式放行的审批），自己经 run.request 问人。
 		asks: true,
 		async execute(args, run) {
 			const t = deps.t();
@@ -139,20 +145,12 @@ export function registerTools(
 				command,
 			};
 
-			// 上一张卡没答完就被停下留下的改动不算这一次的。
-			deps.edits.delete(run.toolCallId);
-			const decision = await run.ask({
-				kind: SSH_RUN,
-				title: t.runTitle(target.label),
-				detail: JSON.stringify(request),
-				reason,
-				userOnly: true,
-				waiting: t.runWaiting,
-			});
-			const edited = deps.edits.get(run.toolCallId);
-			deps.edits.delete(run.toolCallId);
-			if (run.signal.aborted) return { output: "Stopped by the user before the command ran.", isError: true };
-			if (decision === "reject") {
+			const reply = await run.request<RunAnswer>({ kind: SSH_RUN, title: t.runTitle(target.label), payload: request, waiting: t.runWaiting });
+			if (run.signal.aborted || (!reply.answered && reply.reason === "stopped"))
+				return { output: "Stopped by the user before the command ran.", isError: true };
+			const final = reply.answered ? answeredCommand(reply.value) : undefined;
+			// 人点了拒绝、没人答到过期、卡交回的不成样子，都算没批准：一条也不跑。
+			if (final === undefined) {
 				const details: RunDetails = { ...base, command: deps.scrub(command), edited: false, status: "rejected" };
 				return {
 					output:
@@ -160,7 +158,6 @@ export function registerTools(
 					details,
 				};
 			}
-			const final = edited !== undefined && edited.trim() ? edited : command;
 			const changed = final !== command;
 			const shown = { ...base, command: deps.scrub(final), edited: changed };
 			if (final.length > 32_000 || final.includes("\0") || deps.vault.redact(final) !== final) {

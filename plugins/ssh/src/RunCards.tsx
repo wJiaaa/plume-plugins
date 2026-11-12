@@ -1,29 +1,25 @@
 /**
- * `ssh_run` 的审批卡和工具卡片。
+ * `ssh_run` 等人批准的卡（`ui.requestCard`）和工具卡片。
  *
- * 审批卡写明在哪台机器（名字、账号地址、指纹）、为什么、超时多久，命令放在能改的框里：人改过再点「运行修改后的命令」，
- * 改过的那条先经 `editRun` 交给逻辑入口，再 `respond("once")`；逻辑入口照实告诉模型命令被改过。只有「拒绝」和「运行」，
+ * 卡上写明在哪台机器（名字、账号地址、指纹）、为什么、超时多久，命令放在能改的框里：点「运行」把框里那条经 `answer`
+ * 交回（改过的就是改过的那条），逻辑入口再核一遍、照实告诉模型命令被改过；点「拒绝」是 `decline`。只有这两个，
  * 没有「以后不再问」：在别人的服务器上跑什么，一条一条由人决定。
  */
 
-import type { ApprovalCardProps, Remote, ToolCardProps } from "@plume/contract/ui";
+import type { RequestCardProps, ToolCardProps } from "@plume/contract/ui";
 import { ApprovalFrame, Button, Card, CodeBlock, Text, TextArea, useI18n } from "@plume/ui";
 import { Play, Server, X } from "@plume/ui/icons";
 import { useEffect, useRef, useState } from "react";
-import type { RunDetails, RunRequest, SshApi } from "./api.ts";
+import type { RunAnswer, RunDetails, RunRequest } from "./api.ts";
 import { errorText } from "./client.ts";
 import { MESSAGES } from "./messages.ts";
 
-function readRequest(detail: string): RunRequest | null {
-	try {
-		const value = JSON.parse(detail) as Partial<RunRequest> | null;
-		if (!value || typeof value !== "object") return null;
-		const strings = [value.connection, value.label, value.target, value.fingerprint, value.reason, value.command];
-		if (strings.some((field) => typeof field !== "string") || typeof value.timeoutSeconds !== "number") return null;
-		return value as RunRequest;
-	} catch {
-		return null;
-	}
+function readRequest(payload: unknown): RunRequest | null {
+	if (!payload || typeof payload !== "object") return null;
+	const value = payload as Partial<RunRequest>;
+	const strings = [value.connection, value.label, value.target, value.fingerprint, value.reason, value.command];
+	if (strings.some((field) => typeof field !== "string") || typeof value.timeoutSeconds !== "number") return null;
+	return value as RunRequest;
 }
 
 function readDetails(value: unknown): RunDetails | null {
@@ -36,38 +32,34 @@ function readDetails(value: unknown): RunDetails | null {
 	return details as RunDetails;
 }
 
-export function runApproval(api: Remote<SshApi>) {
-	return function RunApproval({ request, queued, from, respond, fallback }: ApprovalCardProps) {
-		const text = MESSAGES[useI18n().resolvedLocale];
-		const run = readRequest(request.detail);
-		if (!run) return <>{fallback}</>;
-		return (
-			<ApprovalFrame
-				requestId={request.toolCallId}
-				icon={<Server size={15} strokeWidth={1.8} />}
-				title={request.title}
-				kind={text.runKind}
-				expiresAt={request.expiresAt}
-				queued={queued}
-			>
-				<RunForm key={request.toolCallId} run={run} from={from} toolCallId={request.toolCallId} api={api} respond={respond} />
-			</ApprovalFrame>
-		);
-	};
+export function RunRequestCard({ request, queued, from, answer, decline, fallback }: RequestCardProps) {
+	const text = MESSAGES[useI18n().resolvedLocale];
+	const run = readRequest(request.payload);
+	if (!run) return <>{fallback}</>;
+	return (
+		<ApprovalFrame
+			requestId={request.toolCallId}
+			icon={<Server size={15} strokeWidth={1.8} />}
+			title={request.title}
+			kind={text.runKind}
+			expiresAt={request.expiresAt}
+			queued={queued}
+		>
+			<RunForm key={request.toolCallId} run={run} from={from} answer={answer} decline={decline} />
+		</ApprovalFrame>
+	);
 }
 
 function RunForm({
 	run,
 	from,
-	toolCallId,
-	api,
-	respond,
+	answer: give,
+	decline,
 }: {
 	run: RunRequest;
 	from: string | undefined;
-	toolCallId: string;
-	api: Remote<SshApi>;
-	respond: ApprovalCardProps["respond"];
+	answer: RequestCardProps["answer"];
+	decline: RequestCardProps["decline"];
 }) {
 	const text = MESSAGES[useI18n().resolvedLocale];
 	const [command, setCommand] = useState(run.command);
@@ -80,12 +72,12 @@ function RunForm({
 	// 卡片一出来把焦点给它：键盘能直接答（Tab 到按钮），也不会误把字敲进输入框。
 	useEffect(() => form.current?.focus(), []);
 
-	const answer = async (decision: "once" | "reject") => {
+	const answer = async (decision: "run" | "reject") => {
 		setPending(true);
 		setError("");
 		try {
-			if (decision === "once" && edited) await api.editRun(toolCallId, command);
-			await respond(decision);
+			if (decision === "run") await give({ command } satisfies RunAnswer);
+			else await decline();
 		} catch (cause) {
 			setError(errorText(cause));
 			setPending(false);
@@ -100,7 +92,7 @@ function RunForm({
 			data-ssh-run=""
 			onSubmit={(event) => {
 				event.preventDefault();
-				if (!pending && !empty) void answer("once");
+				if (!pending && !empty) void answer("run");
 			}}
 		>
 			{from !== undefined && (

@@ -87,7 +87,6 @@ export default {
 		const scrub = (value: string) => maskSecrets(cleanTerminalText(vault.redact(value)));
 		const batch = new BatchCommands({ ssh, target: (id) => connections.target(id), scrub, changed, t: errors });
 		const imports = new HostImports({ exists: (fields) => vault.hasHost(fields), t: text });
-		const edits = new Map<string, string>();
 
 		ctx.effect(() => {
 			batch.stop();
@@ -99,7 +98,7 @@ export default {
 		});
 
 		const assistant = new Assistant(ctx, changed);
-		registerTools(ctx, { connections, ssh: () => ssh, vault, scrub, edits, isAssistant: (sessionId) => assistant.has(sessionId), t: text });
+		registerTools(ctx, { connections, ssh: () => ssh, vault, scrub, isAssistant: (sessionId) => assistant.has(sessionId), t: text });
 
 		const state = (): SshState => ({
 			hosts: vault.hosts(),
@@ -246,10 +245,6 @@ export default {
 			},
 			discardImport: (id) => imports.discard(id),
 			writeTemplate: () => writeTemplate(downloadsDir(), text()),
-
-			editRun: (toolCallId, command) => {
-				if (typeof toolCallId === "string" && typeof command === "string" && command.length <= 32_000) edits.set(toolCallId, command);
-			},
 
 			ask: (message, choice) => assistant.ask(message, choice),
 			stopAssistant: () => assistant.stop(),

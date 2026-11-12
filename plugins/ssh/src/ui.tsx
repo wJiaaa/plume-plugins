@@ -10,7 +10,7 @@ import type { SshApi } from "./api.ts";
 import { connectSsh } from "./client.ts";
 import { hostsPage } from "./HostsPage.tsx";
 import { MESSAGES } from "./messages.ts";
-import { RunCard, runApproval } from "./RunCards.tsx";
+import { RunCard, RunRequestCard } from "./RunCards.tsx";
 import sshCss from "./ssh.css";
 
 const PAGE = "hosts";
@@ -46,7 +46,7 @@ export default {
 				ui.pageBadge(PAGE, next ? { count: 1, label: (locale) => MESSAGES[locale].assistantAsking, attention: true } : null);
 			}),
 		);
-		ui.approvalCard("ssh_run", runApproval(api));
+		ui.requestCard("ssh_run", RunRequestCard);
 		ui.toolCard("ssh_run", RunCard);
 		ui.toolLine("ssh_sessions", { verb: (locale) => MESSAGES[locale].sessionsVerb, like: "read" });
 	},
