@@ -3,7 +3,7 @@
  *
  * 地址是 `名字 [ref]`：名字取会话标题，会变、会重名；ref 取 id 的前六位，不变。所以解析时 ref 说了算：模型拿着一个
  * 改名之前抄下的地址来，名字对不上、ref 对得上，照样认得。重名又没带 ref 的，不猜，把候选列出来让它挑——猜错一次
- * 就是读了另一个项目里的会话。计划插件写给新会话的地址也是这个写法。
+ * 就是读了另一个项目里的会话。
  *
  * 看得见的：侧栏里的会话（顶层、没归档的），不是自己，并且和自己在一处——同一个项目、目录相同或一个套着另一个
  * （会话目录是 git 工作树时，它的主工作树也算它的目录，见 `worktree.ts`），或者一个是从另一个开出来的（`spawnedFrom`：计划交出去执行的那个会话要读得到原会话，哪怕它开在别的目录）。
@@ -15,7 +15,7 @@ import type { SessionSummary } from "@plume/contract";
 
 const REF = /^(.*?)\s*\[([0-9a-f]{6,12})\]$/i;
 
-function sessionRef(id: string): string {
+export function sessionRef(id: string): string {
 	return id.replace(/-/g, "").slice(0, 6).toLowerCase();
 }
 

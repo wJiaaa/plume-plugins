@@ -5,6 +5,7 @@
  */
 
 import { PEER_CHAIN_LIMIT, PEER_DEDUP_MS, PEER_MAX_CHARS, type PaceRefusal } from "./pacing.ts";
+import { sessionRef } from "./peers.ts";
 
 // i18n-exempt：这个文件里的字都是发给模型的。
 
@@ -35,6 +36,20 @@ export const NOTIFY_SESSION_DESCRIPTION =
 	'Tell another conversation something that changes what it should do next, without asking for an answer. Three kinds: a hand-over ("done, the result is in …"), a block ("your change to x.ts breaks my build"), a release ("I have stopped the dev server, it is yours"). ' +
 	"Not for progress reports: it can read your conversation with read_session when it wants to know where you are. " +
 	"A busy conversation reads it between its steps; an idle one starts a turn to read it. Returns at once. Anything you need done or answered is ask_session, not this.";
+
+export const ORIGIN_SECTION = "plume.sessions.origin";
+
+/**
+ * 从别的会话开出来的会话，系统提示词里多的那一段。只写 ref 不写名字：标题会改，这段一变，冻结的系统提示词就多一条增量消息、
+ * 断一次缓存；ref 不变，`to` 只给 ref 也认得。
+ */
+export function originSection(originId: string): string {
+	return (
+		`This conversation was started from another one, \`[${sessionRef(originId)}]\` (use it as \`to\`), which holds the discussion that led here. ` +
+		"When its intent or a trade-off it settled is unclear, read it with read_session first; ask it with ask_session only for what is not written there. " +
+		"If it cannot be reached, ask your user instead of guessing."
+	);
+}
 
 export type Missed = { kind: "none" } | { kind: "self" } | { kind: "unreachable"; to: string } | { kind: "ambiguous"; candidates: string[] };
 

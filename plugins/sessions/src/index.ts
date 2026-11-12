@@ -12,6 +12,8 @@
  * 找人（`peers.ts`）、限速和链长（`pacing.ts`）、记账和代答（`router.ts`）。
  *
  * - 只给侧栏里的会话（顶层的）用：子 Agent、侧边聊天的工具表里藏起来（`model.context`），调到了也拒绝。
+ * - 从别的会话开出来的（`spawnedFrom`：计划交给新会话执行、建议开出的新会话），来源还在侧栏里时系统提示词多一段，
+ *   告诉它来源在哪、拿不准时先读再问。开出它的插件只说「来源里有讨论」，不点名这里的工具。
  * - 不查权限宽窄：Plume 的权限档是全局的，所有会话一样宽。
  */
 
@@ -26,6 +28,8 @@ import {
 	type Missed,
 	notified,
 	NOTIFY_SESSION_DESCRIPTION,
+	ORIGIN_SECTION,
+	originSection,
 	paced,
 	READ_SESSION_DESCRIPTION,
 	replied,
@@ -92,9 +96,12 @@ export default {
 		}
 
 		ctx.hook("model.context", async (input, next) => {
-			const self = (await ctx.sessions.list()).find((session) => session.id === input.sessionId);
+			const all = await ctx.sessions.list();
+			const self = all.find((session) => session.id === input.sessionId);
 			if (self?.parentId || self?.owner) return next({ ...input, tools: input.tools.filter((tool) => !TOOLS.has(tool.name)) });
-			return next(input);
+			const origin = self?.spawnedFrom && all.find((session) => session.id === self.spawnedFrom!.sessionId);
+			if (!origin || !listed(origin)) return next(input);
+			return next({ ...input, sections: [...input.sections, { id: ORIGIN_SECTION, text: originSection(origin.id) }] });
 		});
 
 		/** 寄信的三件共用的开头：校验参数、找人。 */

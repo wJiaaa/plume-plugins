@@ -182,6 +182,20 @@ test("read_session 读得到看得见的会话；看不见的、自己、子会�
 	assert.equal((await f.context(f.plan.id)).tools.length, 6);
 });
 
+test("从别的会话开出来的：系统提示词多一段，点名来源的 ref；来源归档了、不是开出来的都不加", async () => {
+	const f = fixture();
+	const sections = async (sessionId: string) => (await f.context(sessionId)).sections;
+	const [identity, origin] = await sections(f.exec.id);
+	assert.equal(identity?.id, "identity");
+	assert.equal(origin?.id, "plume.sessions.origin");
+	assert.match(origin?.text ?? "", /^This conversation was started from another one, `\[aaaaaa\]`/);
+	// 照着这段写的 `to` 认得出来源。
+	assert.equal((await f.call("read_session", f.exec.id, { to: "[aaaaaa]" })).isError, undefined);
+	assert.equal((await sections(f.near.id)).length, 1);
+	f.plan.archived = true;
+	assert.equal((await sections(f.exec.id)).length, 1);
+});
+
 test("ask_session 寄一封请求给对方：带地址、链和怎么回的说明，当场返回；空的、太长的、刚问过一模一样的不发", async () => {
 	const f = fixture();
 	const asked = await f.call("ask_session", f.exec.id, { to: "定计划 [aaaaaa]", message: "为什么选 SQLite？" });
