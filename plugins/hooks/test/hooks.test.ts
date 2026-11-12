@@ -63,7 +63,7 @@ async function harness(events: Record<string, unknown>): Promise<Harness> {
 		notice: (_session: string, text: string) => void notices.push(text),
 		sessions: {
 			messages: async (sessionId: string) => messages.get(sessionId) ?? [],
-			list: async () => [{ id: "s1", cwd: dir }],
+			get: async (id: string) => (id === "s1" ? { id: "s1", cwd: dir } : undefined),
 			observe: (listener: (observation: SessionObservation) => void) => void observers.push(listener),
 			onEnded: (listener: (sessionId: string, reason: SessionEndReason) => void | Promise<void>) => void ended.push(listener),
 			onDeleted: (listener: (sessionId: string) => void) => void deleted.push(listener),
@@ -107,6 +107,7 @@ function submit(h: Harness, text: string, overrides: { synthetic?: boolean } = {
 		"prompt.submit",
 		{
 			sessionId: "s1",
+			session: { id: "s1", kind: "top" },
 			cwd: h.dir,
 			text,
 			attachments: [],
@@ -122,6 +123,7 @@ function submit(h: Harness, text: string, overrides: { synthetic?: boolean } = {
 function approval(dir: string, overrides: Partial<ToolApproval> = {}): ToolApproval {
 	return {
 		sessionId: "s1",
+		session: { id: "s1", kind: "top" },
 		cwd: dir,
 		call: { id: "c1", name: "bash", args: { command: "ls" } },
 		tool: { name: "bash", mutating: true, plugin: "plume.tools" },
@@ -135,6 +137,7 @@ function approval(dir: string, overrides: Partial<ToolApproval> = {}): ToolAppro
 function execution(dir: string, overrides: Partial<ToolExecution> = {}): ToolExecution {
 	return {
 		sessionId: "s1",
+		session: { id: "s1", kind: "top" },
 		cwd: dir,
 		call: { id: "c1", name: "bash", args: { command: "ls" } },
 		tool: { name: "bash", mutating: true, plugin: "plume.tools" },
@@ -338,11 +341,10 @@ test("PermissionRequest：要弹卡时先问钩子；拒绝算数，放行只放
 		// 提权的放行由本体不认、照样弹卡（见 core/agent 的测试）；这里只看拒绝照样算。
 		const escalation = { kind: "bash", title: "Run ls", detail: "ls", escalation: "danger-full-access" as const };
 		assert.equal(await h.run("tool.approve", approval(h.dir, { call: { id: "c3", name: "write", args: {} }, request: escalation }), human), "reject");
-		// 只能由人答的、层自己要问的，钩子不碰；没配钩子的工具照常问人。
-		assert.equal(await h.run("tool.approve", approval(h.dir, { request: { kind: "plan", title: "Plan", detail: "", userOnly: true } }), human), "always");
+		// 层自己要问的，钩子不碰；没配钩子的工具照常问人。
 		assert.equal(await h.run("tool.approve", approval(h.dir, { byLayer: true }), human), "always");
 		assert.equal(await h.run("tool.approve", approval(h.dir, { call: { id: "c4", name: "read", args: {} } }), human), "always");
-		assert.equal(asked, 3);
+		assert.equal(asked, 2);
 	} finally {
 		await h.dispose();
 	}

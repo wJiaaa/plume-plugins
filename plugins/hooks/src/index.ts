@@ -173,7 +173,7 @@ export default {
 			return next;
 		};
 		const cwdOf = async (sessionId: string): Promise<string | undefined> =>
-			cwds.get(sessionId) ?? (await ctx.sessions.list().catch(() => [])).find((summary) => summary.id === sessionId)?.cwd;
+			cwds.get(sessionId) ?? (await ctx.sessions.get(sessionId).catch(() => undefined))?.cwd;
 
 		ctx.hook("prompt.submit", async (input, next) => {
 			const { sessionId } = input;
@@ -269,13 +269,13 @@ export default {
 
 		/*
 		 * 工具要人确认的时候，先让 PermissionRequest 钩子答：答了就不弹卡，没答（或者这条钩子坏了）才问人。
-		 * 只能由人答的（提问、批准计划）和 tool.execute 的层自己要问的（PreToolUse 的「要确认」）不归它。
+		 * tool.execute 的层自己要问的（PreToolUse 的「要确认」）不归它；提问、批准计划这些要人给答案的走 run.request，根本不到这里。
 		 * 提权只能由人在卡上批：钩子是一段脚本，项目钩子还可能是别人提交进来的，本体不认它的放行、照样弹卡，拒绝照样算。
 		 */
 		ctx.hook(
 			"tool.approve",
 			async (input, next) => {
-				if (input.request.userOnly || input.byLayer) return next(input);
+				if (input.byLayer) return next(input);
 				const runner = await runnerFor(input.sessionId, input.cwd);
 				if (!runner.has("PermissionRequest")) return next(input);
 				try {
