@@ -347,6 +347,7 @@ export default {
 		}
 		style.textContent = css;
 		ui.codeBlock("ui", NativeBlock, { copyText });
-		ui.toolLine("ui_help", { verb: (locale) => MESSAGES[locale].help, like: "read" });
+		// ui_help 只交回这门界面语言的说明，不碰本机文件和命令，工具定义上不标 `kind`：转录里自成一类。
+		ui.toolLine("ui_help", { verb: (locale) => MESSAGES[locale].help });
 	},
 } satisfies UiPlugin;
