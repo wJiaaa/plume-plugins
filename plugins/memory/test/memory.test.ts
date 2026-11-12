@@ -172,8 +172,12 @@ describe("提示词里的段", () => {
 		await recordLesson(project, { text: "learned mid session" });
 		expect(await injector.sections("s1", project, DEFAULT_SETTINGS)).toEqual(first);
 		expect(first.map((section) => section.id)).toEqual(["userMemory"]);
-		// 新会话读到新的。
-		expect((await injector.sections("s2", project, DEFAULT_SETTINGS)).map((section) => section.id)).toEqual(["userMemory", "projectMemory"]);
+		// 新会话读到新的；两段都标成记忆，上下文用量按类别认、不认段名。
+		const second = await injector.sections("s2", project, DEFAULT_SETTINGS);
+		expect(second.map((section) => [section.id, section.category])).toEqual([
+			["userMemory", "memory"],
+			["projectMemory", "memory"],
+		]);
 		injector.invalidate();
 		const fresh = await injector.sections("s1", project, DEFAULT_SETTINGS);
 		expect(fresh[0]?.text).toContain("第二条");

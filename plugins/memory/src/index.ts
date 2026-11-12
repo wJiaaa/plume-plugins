@@ -159,7 +159,7 @@ export default {
 			try {
 				const all = await ctx.sessions.list();
 				// 只总结开在项目里的会话：不属于项目的聊天共用一个目录，话题各不相干，总结不出「这个仓库」的约定。
-				const latest = all.find((session) => session.project && !session.parentId);
+				const latest = all.find((session) => session.project && session.kind === "top");
 				if (!latest) return;
 				const homes = new Map<string, string>();
 				const homeOf = (cwd: string) => homes.get(cwd) ?? homes.set(cwd, memoryHome(cwd)).get(cwd)!;
@@ -171,8 +171,8 @@ export default {
 				if (Date.now() - idleSince < IDLE_MS || handled === `${home}\0${idleSince}`) return;
 				handled = `${home}\0${idleSince}`;
 				const dir = await projectFor(home);
-				// 子会话（侧边聊天、子 Agent）是挂在会话下面的支线，读父会话就够了。
-				const sessions = mine.filter((session) => !session.parentId);
+				// 子会话（侧边聊天、子 Agent）是挂在会话下面的支线，读父会话就够了；插件的独立会话不是人在这个项目里的对话。
+				const sessions = mine.filter((session) => session.kind === "top");
 				const result = await runPass({
 					dir,
 					sessions,

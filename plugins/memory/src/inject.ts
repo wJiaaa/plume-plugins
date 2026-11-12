@@ -2,7 +2,8 @@
  * 什么作为记忆进提示词，以及记下它进过。
  *
  * 两份来源、两种范围：人自己的偏好（用户记忆），这个项目的记忆（`learn` 写的、后台总结写的）。各占系统提示词的一段：
- * `userMemory`、`projectMemory`，插在项目指令前面（没有项目指令时插在工作目录前面）。
+ * `userMemory`、`projectMemory`，插在项目指令前面（没有项目指令时插在工作目录前面）。两段都标 `category: "memory"`：
+ * 上下文用量、使用统计按类别把它们算进「记忆」，不认段名。
  *
  * 一个会话里冻结，压缩、撤回或重新载入时刷新：第一次组提示词时读一次磁盘，之后同一个会话一直用这份。每轮重读的话，每次 `learn`（和后台总结写 `MEMORY.md`）
  * 都改一次系统提示词，整段对话的缓存跟着重写；而会话里 `learn` 的调用和结果本来就在历史里，模型看得到自己刚记下了什么。
@@ -35,14 +36,15 @@ export function createInjector(dataDir: string) {
 			// 记忆坏了也不能开不了会话：读不出就当没有。
 			const entries = await loadMemory(dataDir).catch(() => []);
 			const text = formatMemoryForPrompt(entries);
-			if (text) sections.push({ id: "userMemory", text });
+			if (text) sections.push({ id: "userMemory", text, category: "memory" });
 			userKeys = entries.map((entry) => entry.id);
 		}
 		let projectKeys: string[] = [];
 		if (settings.project) {
 			const [lessons, extracted] = await Promise.all([readLessons(dir).catch(() => []), readExtractedMemory(dir).catch(() => "")]);
 			const { text, files } = projectMemorySection(lessons, extracted);
-			if (text) sections.push({ id: "projectMemory", text, files: files.map((file) => ({ path: join(dir, file.name), chars: file.chars })) });
+			if (text)
+				sections.push({ id: "projectMemory", text, category: "memory", files: files.map((file) => ({ path: join(dir, file.name), chars: file.chars })) });
 			projectKeys = [...lessons.map((lesson) => lesson.text), ...(extracted.trim() ? [EXTRACTED_KEY] : [])];
 		}
 		return { readFor, sections, userKeys, projectKeys };

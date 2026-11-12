@@ -100,7 +100,7 @@ it("后台总结要求完整回复，拒绝后原样保留 MEMORY.md、learned.m
 		throw new Error("模型回复不完整");
 	});
 	const host = await harness({
-		sessions: [{ id: "s1", title: "会话", project: "p1", cwd: dir, createdAt: 0, updatedAt: now - MIN_AGE_MS - 1, running: false }],
+		sessions: [{ id: "s1", title: "会话", kind: "top", project: "p1", cwd: dir, createdAt: 0, updatedAt: now - MIN_AGE_MS - 1, running: false }],
 		complete,
 		finished: () => finish!(),
 	});
@@ -120,9 +120,9 @@ it("后台总结只跑最近在用的项目，等它空闲满 5 分钟：有会�
 	await mkdir(other);
 	const old = now - MIN_AGE_MS - 1;
 	const sessions: SessionSummary[] = [
-		{ id: "s1", title: "正在跑", project: "p1", cwd: dir, createdAt: 0, updatedAt: now, running: true },
-		{ id: "s0", title: "早先的", project: "p1", cwd: dir, createdAt: 0, updatedAt: old, running: false },
-		{ id: "s2", title: "别的项目", project: "p2", cwd: other, createdAt: 0, updatedAt: old - 1, running: false },
+		{ id: "s1", title: "正在跑", kind: "top", project: "p1", cwd: dir, createdAt: 0, updatedAt: now, running: true },
+		{ id: "s0", title: "早先的", kind: "top", project: "p1", cwd: dir, createdAt: 0, updatedAt: old, running: false },
+		{ id: "s2", title: "别的项目", kind: "top", project: "p2", cwd: other, createdAt: 0, updatedAt: old - 1, running: false },
 	];
 	let finish: (() => void) | undefined;
 	const finished = new Promise<void>((resolve) => {
