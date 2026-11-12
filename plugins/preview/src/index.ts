@@ -80,7 +80,7 @@ export default {
 			const sensitive = /(?:^|[/\\])(?:\.env(?:\.[^/\\]*)?|\.ssh|\.aws|\.gnupg)(?:[/\\]|$)/i.test(absolute);
 			if (sensitive || (!within(cwd, absolute) && !within(scratch, absolute))) {
 				const words = MESSAGES[ctx.locale()];
-				if ((await run.ask({ kind: "read", title: words.read, detail: absolute, subject: absolute, reason: words.readReason })) === "reject")
+				if ((await run.ask({ kind: "view", title: words.read, detail: absolute, subject: absolute, reason: words.readReason })) === "reject")
 					throw new Error("Reading this page was declined");
 			}
 			const info = await stat(absolute);
