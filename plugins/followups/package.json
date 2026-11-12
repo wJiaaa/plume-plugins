@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/followups",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "回复写完后给出人多半会说的下一句：输入框空着时显示成灰字，按 Tab 填进去；回复里不显示这个标记，不额外发请求。",
   "author": "Plume",
   "keywords": [
