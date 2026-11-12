@@ -15,7 +15,7 @@
 
 import { readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { LaunchedSession, Message, Plugin, SessionScope } from "@plume/contract";
+import type { LaunchedSession, Message, Plugin, SessionScope, ToolKind } from "@plume/contract";
 import { latestApprovedPlan, reviewPrompt, reviewRequest, sessionAddress } from "./brief.ts";
 import { MESSAGES } from "./messages.ts";
 import { REVIEW_ARGUMENT_HINT, REVIEW_BODY, REVIEW_SESSION_OPENING, reportText, reviewRequest as commandText } from "./review.ts";
@@ -44,10 +44,13 @@ const PARAMETERS = {
 	additionalProperties: false,
 } as const;
 
-/** 会写文件的调用，为什么。`bash` 不在这里：审阅会话的命令留给权限档，它派的 `verify` 要跑测试、写缓存。 */
-function edits(name: string, args: Record<string, unknown>): string | undefined {
+/**
+ * 会写文件的调用，为什么。写、改文件的工具按注册它的插件声明的种类（`ToolDefinition.kind` 的 `create`、`modify`）认，不认名字。
+ * 跑命令的不在这里：审阅会话的命令留给权限档，它派的 `verify` 要跑测试、写缓存。
+ */
+function edits(name: string, kind: ToolKind | undefined, args: Record<string, unknown>): string | undefined {
 	if (name === "lsp") return args.operation === "rename" ? "a rename edits files" : undefined;
-	return name === "write" || name === "edit" ? "it edits files" : undefined;
+	return kind === "create" || kind === "modify" ? "it edits files" : undefined;
 }
 
 // i18n-exempt：发给模型的工具结果。
@@ -145,7 +148,7 @@ export default {
 		});
 
 		ctx.hook("tool.execute", async (input, next) => {
-			const why = edits(input.call.name, input.call.args);
+			const why = edits(input.call.name, ctx.tools.list().find((tool) => tool.name === input.call.name)?.kind, input.call.args);
 			if (!why) return next(input);
 			const reviewId = reviewOf(input.session);
 			if (!reviewId || (await fixesAllowed(reviewId))) return next(input);

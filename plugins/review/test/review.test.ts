@@ -140,6 +140,13 @@ async function fixture(t: TestContext, tools: string[] = ["ask_session"]) {
 				return () => {};
 			},
 			names: () => tools,
+			// 写、改文件的工具按声明的种类认（这里照 plume.tools 的声明），不认名字。
+			list: () => [
+				{ name: "read", plugin: "plume.tools", kind: "view" },
+				{ name: "write", plugin: "plume.tools", kind: "create" },
+				{ name: "edit", plugin: "plume.tools", kind: "modify" },
+				{ name: "apply_patch", plugin: "example.patch", kind: "modify" },
+			],
 		},
 		commands: { provide() {} },
 		sessions: {
@@ -234,6 +241,7 @@ test("review_session：开出审阅会话、第一轮接上正文和原会话的
 	f.sessions.set("worker", { ...f.sessions.get("side")!, id: "worker", parentId: "review", owner: "plume.subagents" });
 	assert.equal((await f.call("review", "write")).isError, true);
 	assert.equal((await f.call("worker", "edit")).isError, true);
+	assert.equal((await f.call("review", "apply_patch")).isError, true, "别的插件声明了改文件的工具同样拦");
 	assert.deepEqual(await f.call("review", "read"), { output: "ran" });
 	assert.deepEqual(await f.call("main", "write"), { output: "ran" });
 	f.messages.set("review", [user("修 1、2", { peer: [{ sessionId: "main", from: "改登录 [abc]", text: "修 1、2", answer: "dropped" }] })]);
