@@ -17,6 +17,8 @@ import { cleanSessionSummary, SUMMARY_MAX_TOKENS, SUMMARY_SYSTEM, SUMMARY_TIMEOU
 
 export default {
 	name: "plume.summary",
+	// 侧栏里的每个会话一轮干完都可能要写摘要，得知道每个会话什么时候在跑：要看全部会话。
+	observe: "all",
 	async apply(ctx) {
 		const store = new SummaryStore(ctx.dataDir);
 		const lifecycle = new AbortController();
