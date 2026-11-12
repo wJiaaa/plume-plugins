@@ -9,6 +9,7 @@ import type {
 	ModelContext,
 	PluginContext,
 	SessionObservation,
+	SessionScope,
 	SessionSummary,
 	ToolDefinition,
 	ToolRun,
@@ -19,8 +20,30 @@ import { PEER_DEDUP_MS } from "../src/pacing.ts";
 import { resolveSession, sessionAddress, together } from "../src/peers.ts";
 import { REPLY_LIMIT } from "../src/router.ts";
 
+/** 会话摘要；`kind` 和本体一样按 `parentId`、`owner` 算。 */
 const summary = (id: string, extra: Partial<SessionSummary> = {}): SessionSummary =>
-	({ id, title: id, cwd: "/w/app", running: false, createdAt: 0, updatedAt: 0, ...extra }) as SessionSummary;
+	({
+		id,
+		title: id,
+		cwd: "/w/app",
+		running: false,
+		createdAt: 0,
+		updatedAt: 0,
+		kind: extra.parentId ? "child" : extra.owner ? "standalone" : "top",
+		...extra,
+	}) as SessionSummary;
+
+/** 钩子输入和 `run` 上的 `session`，照会话摘要填。 */
+const scope = (session: SessionSummary | undefined, id: string): SessionScope =>
+	session
+		? {
+				id,
+				kind: session.kind,
+				...(session.parentId ? { parentId: session.parentId } : {}),
+				...(session.owner ? { owner: session.owner } : {}),
+				...(session.spawnedFrom ? { spawnedFrom: session.spawnedFrom } : {}),
+			}
+		: { id, kind: "top" };
 
 const said = (role: "user" | "assistant", text: string): Message =>
 	(role === "user"
@@ -86,6 +109,7 @@ function fixture() {
 		hook: (name: string, layer: unknown) => void layers.set(name, layer),
 		sessions: {
 			list: async () => structuredClone(sessions),
+			get: async (id: string) => structuredClone(sessions.find((session) => session.id === id)),
 			messages: async (id: string) => structuredClone(messages.get(id) ?? []),
 			observe: (listener: (observation: SessionObservation) => void) => void observers.push(listener),
 			onDeleted: (listener: (sessionId: string) => void) => void deleted.push(listener),
@@ -94,18 +118,23 @@ function fixture() {
 	void plugin.apply(ctx);
 	/** 调一件工具；顶层会话的调用拿得到寄信的口子，和本体一样。 */
 	const call = (name: string, sessionId: string, args: Record<string, unknown>) => {
-		const top = !sessions.find((session) => session.id === sessionId)?.parentId;
+		const self = sessions.find((session) => session.id === sessionId);
+		const top = !self?.parentId;
 		const letter = (to: string, input: LetterInput) => {
 			const entry = post(sessionId, to, input);
 			posted.push(entry);
 			return entry.receipt;
 		};
-		return (tools.get(name) as ToolDefinition).execute(args, { sessionId, ...(top ? { letter } : {}) } as unknown as ToolRun);
+		return (tools.get(name) as ToolDefinition).execute(args, { sessionId, session: scope(self, sessionId), ...(top ? { letter } : {}) } as unknown as ToolRun);
 	};
 	const context = (sessionId: string) =>
 		(layers.get("model.context") as HookLayer<"model.context">)(
 			{
 				sessionId,
+				session: scope(
+					sessions.find((session) => session.id === sessionId),
+					sessionId,
+				),
 				sections: [{ id: "identity", text: "Plume" }],
 				tools: ["read", "list_sessions", "read_session", "ask_session", "reply_session", "notify_session"].map((name) => ({ name })),
 			} as unknown as ModelContext,

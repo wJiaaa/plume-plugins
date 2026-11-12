@@ -88,18 +88,16 @@ export default {
 		}
 
 		/** 只给侧栏里的会话用；子会话、插件的独立会话里调到时的那句。 */
-		async function refusedHere(sessionId: string): Promise<ToolOutput | undefined> {
-			const self = (await ctx.sessions.list()).find((session) => session.id === sessionId);
-			return self?.parentId || self?.owner
+		function refusedHere(run: ToolRun): ToolOutput | undefined {
+			return run.session.kind !== "top"
 				? { output: "These tools only work in a main conversation, not in a sub-agent, side chat or plugin-owned session.", isError: true }
 				: undefined;
 		}
 
 		ctx.hook("model.context", async (input, next) => {
-			const all = await ctx.sessions.list();
-			const self = all.find((session) => session.id === input.sessionId);
-			if (self?.parentId || self?.owner) return next({ ...input, tools: input.tools.filter((tool) => !TOOLS.has(tool.name)) });
-			const origin = self?.spawnedFrom && all.find((session) => session.id === self.spawnedFrom!.sessionId);
+			if (input.session.kind !== "top") return next({ ...input, tools: input.tools.filter((tool) => !TOOLS.has(tool.name)) });
+			const spawnedFrom = input.session.spawnedFrom;
+			const origin = spawnedFrom && (await ctx.sessions.get(spawnedFrom.sessionId));
 			if (!origin || !listed(origin)) return next(input);
 			return next({ ...input, sections: [...input.sections, { id: ORIGIN_SECTION, text: originSection(origin.id) }] });
 		});
@@ -113,7 +111,7 @@ export default {
 			| { refused: ToolOutput }
 			| { message: string; found: Extract<Awaited<ReturnType<typeof lookup>>, { kind: "found" }>; letter: NonNullable<ToolRun["letter"]> }
 		> {
-			const refused = await refusedHere(run.sessionId);
+			const refused = refusedHere(run);
 			if (refused || !run.letter) return { refused: refused ?? { output: "These tools only work in a main conversation.", isError: true } };
 			const to = String(args.to ?? "").trim();
 			const message = typeof args.message === "string" ? args.message.trim() : "";
@@ -144,7 +142,7 @@ export default {
 			description: LIST_SESSIONS_DESCRIPTION,
 			parameters: { type: "object", properties: {} },
 			async execute(_args, run) {
-				const refused = await refusedHere(run.sessionId);
+				const refused = refusedHere(run);
 				if (refused) return refused;
 				const all = await ctx.sessions.list();
 				const from = all.find((session) => session.id === run.sessionId);
@@ -173,7 +171,7 @@ export default {
 			description: READ_SESSION_DESCRIPTION,
 			parameters: { type: "object", properties: { to: TO, ...HISTORY_PROPERTIES }, required: ["to"], additionalProperties: false },
 			async execute(args, run) {
-				const refused = await refusedHere(run.sessionId);
+				const refused = refusedHere(run);
 				if (refused) return refused;
 				const { to: wanted, ...page } = args;
 				const to = String(wanted ?? "").trim();

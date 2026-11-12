@@ -51,7 +51,7 @@ function pick(hits: SessionSummary[]): Resolution {
 
 /** 侧栏里的会话：能被读、能被问的只有这些。 */
 export function listed(session: SessionSummary): boolean {
-	return !session.parentId && !session.owner && !session.archived;
+	return session.kind === "top" && !session.archived;
 }
 
 function within(child: string, parent: string): boolean {
