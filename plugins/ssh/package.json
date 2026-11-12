@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/ssh",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "管理 SSH 主机、在面板里开 SSH 终端和 SFTP 文件；Agent 可以在你连上的服务器上请求执行命令，每一条都由你核对后才运行。",
   "author": "Plume",
   "keywords": [

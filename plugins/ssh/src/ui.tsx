@@ -48,6 +48,7 @@ export default {
 		);
 		ui.requestCard("ssh_run", RunRequestCard);
 		ui.toolCard("ssh_run", RunCard);
-		ui.toolLine("ssh_sessions", { verb: (locale) => MESSAGES[locale].sessionsVerb, like: "read" });
+		// 列的是主机页上连着的远程连接，不碰本机文件和命令，工具定义上不标 `kind`：转录里自成一类。
+		ui.toolLine("ssh_sessions", { verb: (locale) => MESSAGES[locale].sessionsVerb });
 	},
 } satisfies UiPlugin;
