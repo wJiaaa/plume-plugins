@@ -255,6 +255,65 @@ test("工具前后：拦下不执行；改参数、要确认；之后的上下�
 	}
 });
 
+test("照 Claude Code 写的脚本：读 tool_input.file_path、tool_input.command 的守卫拦得住；改 file_path 的 updatedInput 翻回 path", async () => {
+	const scripts = await mkdtemp(join(tmpdir(), "plume-hooks-cc-"));
+	const guard = join(scripts, "guard.mjs");
+	const move = join(scripts, "move.mjs");
+	const shout = join(scripts, "shout.mjs");
+	const stdin = 'let raw = ""; process.stdin.on("data", (c) => (raw += c)).on("end", () => main(JSON.parse(raw)));\n';
+	await writeFile(
+		guard,
+		`import { join } from "node:path";\n${stdin}function main({ cwd, tool_input: input }) {
+	if (input.file_path === join(cwd, ".env")) { process.stderr.write("no .env"); process.exit(2); }
+	if (String(input.command ?? "").includes("rm -rf")) { process.stderr.write("no rm"); process.exit(2); }
+}\n`,
+	);
+	// jq '.tool_input | .file_path = …' 那种写法：整份交回，只改 Claude Code 的名字。
+	await writeFile(
+		move,
+		`import { join } from "node:path";\n${stdin}function main({ cwd, tool_input: input }) {
+	const updatedInput = { ...input, file_path: join(cwd, "moved.txt") };
+	process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", updatedInput } }));
+}\n`,
+	);
+	// 同样整份交回，但只改了别的字段：file_path 没动，Plume 的 path 原样留着（还是相对路径）。
+	await writeFile(
+		shout,
+		`${stdin}function main({ tool_input: input }) {
+	const updatedInput = { ...input, new_string: input.new_string.toUpperCase() };
+	process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", updatedInput } }));
+}\n`,
+	);
+	const node = (file: string) => command(`"${process.execPath}" "${file}"`);
+	const h = await harness({
+		PreToolUse: [
+			{ matcher: "Write|Edit|Bash", hooks: [node(guard)] },
+			{ matcher: "Read", hooks: [node(move)] },
+			{ matcher: "Edit", hooks: [node(shout)] },
+		],
+	});
+	try {
+		const call = async (name: string, args: Record<string, unknown>) => {
+			let seen: Record<string, unknown> | undefined;
+			const result = await h.run("tool.execute", execution(h.dir, { call: { id: "c", name, args } }), async (input) => {
+				seen = input.call.args;
+				return { output: "ran" };
+			});
+			return { result, seen };
+		};
+		assert.deepEqual((await call("write", { path: ".env", content: "x" })).result, { output: "no .env", isError: true });
+		assert.deepEqual((await call("edit", { path: join(h.dir, ".env"), old_string: "a", new_string: "b" })).result, { output: "no .env", isError: true });
+		assert.deepEqual((await call("bash", { command: "rm -rf build" })).result, { output: "no rm", isError: true });
+		assert.deepEqual((await call("write", { path: "notes.txt", content: "x" })).seen, { path: "notes.txt", content: "x" });
+		// 交回的参数里 Claude Code 的名字翻回 Plume 的，不混进工具拿到的参数。
+		assert.deepEqual((await call("read", { path: "a.txt", offset: 3 })).seen, { path: join(h.dir, "moved.txt"), offset: 3 });
+		assert.deepEqual((await call("edit", { path: "a.ts", old_string: "a", new_string: "b" })).seen, { path: "a.ts", old_string: "a", new_string: "B" });
+	} finally {
+		await h.dispose();
+		await rm(scripts, { recursive: true, force: true });
+	}
+});
+
 test("一轮开始：SessionStart 只跑一次；UserPromptSubmit 拦下时下一轮重跑 SessionStart", async () => {
 	const h = await harness({
 		SessionStart: [{ hooks: [command(`echo '{"additionalContext":"start"}'`)] }],

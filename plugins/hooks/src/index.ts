@@ -34,7 +34,7 @@ import {
 	writeProjectHooks,
 } from "./config.ts";
 import { MESSAGES } from "./messages.ts";
-import { createHookRunner, type HookInput, type HookRun, type HookRunner, hookMatchValues } from "./runner.ts";
+import { createHookRunner, type HookInput, type HookRun, type HookRunner, hookMatchValues, plumeToolInput } from "./runner.ts";
 import { RunStore } from "./runs.ts";
 import { trustedHookDigests, trustHookDigests } from "./trust.ts";
 
@@ -239,7 +239,10 @@ export default {
 					);
 					contexts = result.additionalContexts;
 					if (result.decision === "deny") return appendHookContexts({ output: result.reason || `A hook blocked "${toolName}".`, isError: true }, contexts);
-					if (isPlainObject(result.updatedInput)) execution = { ...execution, call: { ...execution.call, args: result.updatedInput } };
+					if (isPlainObject(result.updatedInput)) {
+						const args = plumeToolInput(toolName, result.updatedInput, input.call.args, input.cwd);
+						execution = { ...execution, call: { ...execution.call, args } };
+					}
 					if (result.decision === "allow") execution = { ...execution, approved: "PreToolUse" };
 					if (result.decision === "ask") {
 						// 人答应了才算放行；停下时 ask 答的是 false，宿主按「停下」写结果。

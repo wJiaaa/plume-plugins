@@ -1,6 +1,6 @@
 # 钩子
 
-在会话开始、提交消息、调用工具前后、要你审批时、回答结束或失败时、会话结束时运行你写的命令：拦下危险的调用、替你答审批、给 agent 补充上下文、回答结束前再检查一遍。写法和 Claude Code 的钩子一样，那边的脚本搬过来就能用。
+在会话开始、提交消息、调用工具前后、要你审批时、回答结束或失败时、会话结束时运行你写的命令：拦下危险的调用、替你答审批、给 agent 补充上下文、回答结束前再检查一遍。写法和 Claude Code 的钩子一样，那边的配置和大多数脚本搬过来就能用，对不上的地方见[和 Claude Code 的差别](#和-claude-code-的差别)。
 
 ## 它做了什么
 
@@ -62,6 +62,19 @@ stdout 上的 JSON 能表达这些：
 命令里可以用 `${CLAUDE_PROJECT_DIR}`（或 `${PLUME_PROJECT_DIR}`）、`${CLAUDE_SESSION_ID}`，子进程环境里也有它们。钩子在当前项目目录里运行，环境变量和你的终端一样，包括 `PATH`。勾了「后台运行」的钩子不等它跑完，它的输出也不影响这一步。
 
 用户钩子存在本机这个插件的数据目录里（`hooks.json`），项目钩子存在项目的 `.plume/config.json` 的 `hooks` 键里（写法和 `hooks.json` 一样），改完下一次触发就生效。
+
+## 和 Claude Code 的差别
+
+匹配器、stdin 的字段名、退出码和输出的 JSON 都照 Claude Code 的约定，下面这些对不上：
+
+- **工具名**：匹配器认 Claude Code 的 `Bash`、`Read`、`Write`、`Edit`、`MultiEdit`、`Glob`、`Grep`、`LS`、`WebFetch`、`WebSearch`（`Edit` 和 `MultiEdit` 都对到 `edit`）。别的名字（`Task`、`NotebookEdit`、`mcp__…` 这类）不翻译，按 Plume 的工具名写。stdin 里的 `tool_name` 是 Plume 的名字（`bash`、`edit`），脚本里拿 `tool_name` 比 `"Edit"` 的要改。
+- **`tool_input`**：是 Plume 工具的原参数，再补上 Claude Code 叫法的字段，两种写法的脚本都读得到：
+  - `read`、`write`、`edit` 补 `file_path`，和 Claude Code 一样是绝对路径（Plume 的 `path` 可以是相对项目目录的，或 `~/` 开头）；`scratch://` 这类地址原样给。
+  - `grep` 补 `-i`（Plume 的 `case_insensitive`）和 `-C`（`context`）。
+  - 名字本来就一样的不用补：`command`、`description`、`timeout`、`run_in_background`，`content`、`old_string`、`new_string`、`replace_all`、`offset`、`limit`，`pattern`、`path`、`glob`，`url`、`query`。
+- **Plume 没有的参数**：`MultiEdit` 的 `edits`（Plume 的 `edit` 一次改一处，读 `file_path`、`old_string`、`new_string` 就行），`Grep` 的 `output_mode`（Plume 用 `files_only` 二选一，没有计数）、`head_limit`（Plume 的 `limit` 数的是匹配数）、`-A`、`-B`、`-n`、`type`、`multiline`，`WebFetch` 的 `prompt`，`WebSearch` 的 `allowed_domains`、`blocked_domains`，`Read` 的 `pages`，`LS` 的 `ignore`。读它们的脚本拿到空值。`LS` 的 `path` 在 Claude Code 里是绝对路径，Plume 的 `ls` 可以给相对路径或不给。
+- **`updatedInput`**：照 Claude Code 写法改了 `file_path`、`-i`、`-C` 的，翻回 Plume 的参数名再交给工具；只改了 Plume 名字的也认。
+- **`tool_response`**：是 Plume 的 `{ output, details }`，不是 Claude Code 各工具自己的结构。
 
 ## 项目钩子的信任
 

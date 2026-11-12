@@ -11,8 +11,8 @@
 import { execFile, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { devNull, tmpdir } from "node:os";
-import { join } from "node:path";
+import { devNull, homedir, tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { systemShell } from "./shell.ts";
 import {
 	DEFAULT_HOOK_MAX_OUTPUT_BYTES,
@@ -74,21 +74,79 @@ export interface HookRegistration {
  * 种类只说做哪种活。`web_fetch`、`web_search` 同属网页，按种类分不开；`Grep` 按 `search` 对会同时中 `grep`、`symbol`、`lsp`，
  * 一条读 `tool_input.pattern` 的守卫落到别的工具上拿到空值，就把本该拦的放过去了。
  * 等第二处也要翻 Claude Code 的工具名（比如导入智能体的 `tools:`、技能的 `allowed-tools`）时，再改由工具的主人在定义上声明别名。
+ *
+ * 名字对上了，参数也得对上：照 Claude Code 写的守卫读 `tool_input.file_path`，Plume 的文件工具叫 `path`，读到空值就把该拦的放过去。
+ * 所以同一张表还写着参数的对照（Plume 参数名 → Claude Code 参数名），交给脚本的 `tool_input` 两种名字都有。
+ * 只对照名字不同、值能一一对回去的；名字相同的（`command`、`content`、`old_string`、`pattern`……）不用写。
  */
-const TOOL_ALIASES: Record<string, string[]> = {
-	bash: ["Bash"],
-	read: ["Read"],
-	write: ["Write"],
-	edit: ["Edit", "MultiEdit"],
-	glob: ["Glob"],
-	grep: ["Grep"],
-	ls: ["LS"],
-	web_fetch: ["WebFetch"],
-	web_search: ["WebSearch"],
+interface ClaudeCodeTool {
+	/** Claude Code 里的工具名：matcher 写它也认。 */
+	names: string[];
+	/** Plume 参数名 → Claude Code 参数名。`absolute`：Claude Code 那边总是绝对路径，按会话目录换算。 */
+	params?: Record<string, { name: string; absolute?: true }>;
+}
+
+const FILE_PATH = { path: { name: "file_path", absolute: true } } as const;
+
+const CLAUDE_CODE_TOOLS: Record<string, ClaudeCodeTool> = {
+	bash: { names: ["Bash"] },
+	read: { names: ["Read"], params: FILE_PATH },
+	write: { names: ["Write"], params: FILE_PATH },
+	edit: { names: ["Edit", "MultiEdit"], params: FILE_PATH },
+	glob: { names: ["Glob"] },
+	grep: { names: ["Grep"], params: { case_insensitive: { name: "-i" }, context: { name: "-C" } } },
+	ls: { names: ["LS"] },
+	web_fetch: { names: ["WebFetch"] },
+	web_search: { names: ["WebSearch"] },
 };
 
 export function hookMatchValues(toolName: string): string[] {
-	return [toolName, ...(TOOL_ALIASES[toolName] ?? [])];
+	return [toolName, ...(CLAUDE_CODE_TOOLS[toolName]?.names ?? [])];
+}
+
+/** Plume 的路径可以是相对会话目录的、`~/` 开头的；`scratch://` 这类地址不是磁盘上的路径，原样给。 */
+function absolutePath(cwd: string, path: string): string {
+	if (/^[a-z][a-z0-9+.-]*:\/\//iu.test(path)) return path;
+	if (path === "~" || path.startsWith("~/")) return join(homedir(), path.slice(1));
+	return resolve(cwd, path);
+}
+
+/** 这次调用的参数换成 Claude Code 叫法的那几个字段；Plume 这边没给的不补。 */
+function claudeCodeFields(toolName: string, args: Record<string, unknown>, cwd: string): Record<string, unknown> {
+	const fields: Record<string, unknown> = {};
+	for (const [key, param] of Object.entries(CLAUDE_CODE_TOOLS[toolName]?.params ?? {})) {
+		const value = args[key];
+		if (value === undefined) continue;
+		fields[param.name] = param.absolute && typeof value === "string" ? absolutePath(cwd, value) : value;
+	}
+	return fields;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
+
+/** 交给脚本的 `tool_input`：Plume 的原参数不动，加上 Claude Code 叫法的字段。 */
+function claudeCodeInput(toolName: string, toolInput: unknown, cwd: string): unknown {
+	if (!CLAUDE_CODE_TOOLS[toolName]?.params || !isRecord(toolInput)) return toolInput;
+	return { ...toolInput, ...claudeCodeFields(toolName, toolInput, cwd) };
+}
+
+/**
+ * PreToolUse 交回的 `updatedInput` 翻回 Plume 的参数：宿主不按 schema 查多余的字段，照 Claude Code 写法改了 `file_path` 的脚本，
+ * 不翻回来就会被悄悄忽略，文件照旧写到原来那里。脚本改了（或只交回了）Claude Code 的名字就用它的值；没动它，留着 Plume 名字上的值——
+ * 那边可能是照 Plume 写法改的。Claude Code 的名字不留在参数里。绝对路径不必换回去，Plume 的路径参数本来就认。
+ */
+export function plumeToolInput(toolName: string, updated: Record<string, unknown>, original: unknown, cwd: string): Record<string, unknown> {
+	const params = CLAUDE_CODE_TOOLS[toolName]?.params;
+	if (!params) return updated;
+	const sent = isRecord(original) ? claudeCodeFields(toolName, original, cwd) : {};
+	const result = { ...updated };
+	for (const [key, param] of Object.entries(params)) {
+		if (!(param.name in result)) continue;
+		const value = result[param.name];
+		delete result[param.name];
+		if (value !== sent[param.name] || !(key in result)) result[key] = value;
+	}
+	return result;
 }
 
 const PREVIEW_MAX = 4000;
@@ -147,7 +205,7 @@ async function compatibleStdin(input: HookInput): Promise<{ value: string; clean
 	const compatible: Record<string, unknown> = { ...input, hook_event_name: input.hookEventName, session_id: input.sessionId };
 	if (typeof input.toolName === "string") {
 		compatible.tool_name = input.toolName;
-		compatible.tool_input = input.toolInput;
+		compatible.tool_input = claudeCodeInput(input.toolName, input.toolInput, input.cwd);
 		compatible.tool_use_id = input.toolCallId;
 	}
 	if (input.hookEventName === "PostToolUse") compatible.tool_response = input.toolResponse;
