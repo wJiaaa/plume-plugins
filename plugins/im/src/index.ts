@@ -5,9 +5,8 @@ import { createImStore } from "./config.ts";
 
 export default {
 	name: "plume.im",
-	inject: ["secrets"],
 	apply(ctx) {
-		const store = createImStore(join(ctx.dataDir, "settings.json"), ctx.use("secrets"));
+		const store = createImStore(join(ctx.dataDir, "settings.json"), ctx.secrets);
 		const api: ImApi = {
 			settings: () => store.view(),
 			setEnabled: (channel, enabled) => store.setEnabled(channel, enabled),

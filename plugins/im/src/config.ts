@@ -1,5 +1,5 @@
 import { chmod, readFile, rename, writeFile } from "node:fs/promises";
-import type { SecretsService } from "@plume/contract";
+import type { PluginSecrets } from "@plume/contract";
 import type { ChannelId, ConfigPatch, ImSettings, ImSettingsView } from "./api.ts";
 import { CHANNELS } from "./api.ts";
 
@@ -134,7 +134,7 @@ export interface ImStore {
 	setSecret(channel: ChannelId, secret: string): Promise<ImSettingsView>;
 }
 
-/** 三个渠道的凭据各在哪一格，读写时经服务 `secrets` 解开、加密。 */
+/** 三个渠道的凭据各在哪一格，读写时经 `ctx.secrets` 解开、加密。 */
 async function mapSecrets(settings: ImSettings, map: (value: string) => Promise<string>): Promise<ImSettings> {
 	return {
 		wechat: { ...settings.wechat, token: await map(settings.wechat.token) },
@@ -147,7 +147,7 @@ async function mapSecrets(settings: ImSettings, map: (value: string) => Promise<
  * 凭据在 `settings.json` 里是密文；解不开的（加密用的钥匙换过）当成没填。钥匙文件读不出来时 `unseal` 抛错，
  * 读设置跟着失败，不会带着空凭据写回去盖掉密文。
  */
-export function createImStore(file: string, secrets: SecretsService): ImStore {
+export function createImStore(file: string, secrets: PluginSecrets): ImStore {
 	let queue: Promise<unknown> = Promise.resolve();
 
 	async function read(): Promise<ImSettings> {

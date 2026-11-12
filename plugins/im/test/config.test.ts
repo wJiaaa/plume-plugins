@@ -13,11 +13,11 @@ import {
 	viewOf,
 } from "../src/config.ts";
 import type { ImSettings } from "../src/api.ts";
-import type { SecretsService } from "@plume/contract";
+import type { PluginSecrets } from "@plume/contract";
 
-/** 服务 `secrets` 的替身：前缀和真的一样，内容只做 base64。 */
+/** `ctx.secrets` 的替身：前缀和真的一样，内容只做 base64。 */
 const SEALED = "plume-sealed:v1:";
-const fakeSecrets: SecretsService = {
+const fakeSecrets: PluginSecrets = {
 	seal: async (value) => SEALED + Buffer.from(value).toString("base64"),
 	unseal: async (sealed) => (sealed.startsWith(SEALED) ? Buffer.from(sealed.slice(SEALED.length), "base64").toString() : null),
 	isSealed: (value) => value.startsWith(SEALED),

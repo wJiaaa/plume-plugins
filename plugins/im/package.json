@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/im",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "配置微信、飞书和 Telegram 机器人凭据，为后续聊天平台接入准备安全存储。",
   "author": "Plume",
   "keywords": [
