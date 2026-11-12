@@ -8,7 +8,7 @@ import { previewTheme } from "./theme.ts";
 import { isPreview, MAX_HEIGHT, stateJson, type Preview } from "./types.ts";
 import { Draft } from "./Draft.tsx";
 import { draftArguments, draftDocument } from "./draft.ts";
-import { placements } from "./placement.ts";
+import { inlineCall, placements } from "./placement.ts";
 import { Tweaks } from "./Tweaks.tsx";
 import { usePreviewTweaks } from "./useTweaks.ts";
 import { usePreviewCopy } from "./copy.ts";
@@ -318,7 +318,7 @@ export default {
 		function Panel({ session, tab, setTitle }: PanelProps) {
 			return session ? <Page sessionId={session.summary.id} id={tab} panel setTitle={setTitle} /> : null;
 		}
-		ui.toolCard("preview", Card);
+		ui.toolCard("preview", Card, { inline: inlineCall });
 		ui.toolLine("preview", {
 			verb: (locale) => MESSAGES[locale].title,
 			subject: (args) => (typeof args.title === "string" ? args.title : undefined),

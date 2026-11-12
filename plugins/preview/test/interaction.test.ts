@@ -6,7 +6,7 @@ import type { Message } from "@plume/contract";
 import { withBridge } from "../src/bridge.ts";
 import { draftArguments, draftDocument, draftPhase } from "../src/draft.ts";
 import { partialJson } from "../src/partial-json.ts";
-import { placements } from "../src/placement.ts";
+import { inlineCall, placements } from "../src/placement.ts";
 import { readTweaks, TWEAKS_MESSAGE, TWEAK_SET_MESSAGE, tweakValue } from "../src/tweaks.ts";
 
 test("流式 JSON 保留半截正文，忽略半截键及数字，限制深度且不污染原型", () => {
@@ -59,6 +59,18 @@ test("检查草稿在同轮发布时原地交接，切片重查、失败和跨�
 	assert.equal(map([...published, { role: "toolResult", toolCallId: "publish", isError: true }]).has("check"), false);
 	assert.equal(map(start, false).size, 0);
 	assert.equal(map([...start, { role: "user", content: [] }, call("publish", { id: "page" })]).size, 0);
+});
+
+test("不带页面内容的截图检查并进一段活，带内容的和发布单独一行；path 的检查不当发布的原位置", () => {
+	assert.equal(inlineCall({ path: "a.html", check: true }, undefined), true);
+	assert.equal(inlineCall({ id: "page", check: true, from: 720 }, undefined), true);
+	assert.equal(inlineCall({}, '{"title":"x","path":"a.ht'), true);
+	assert.equal(inlineCall({}, '{"title":"x","html":"<p'), false);
+	assert.equal(inlineCall({ html: "<p>ok", check: true }, undefined), false);
+	assert.equal(inlineCall({ path: "a.html" }, undefined), false);
+	assert.equal(inlineCall({ id: "page" }, undefined), false);
+	const fromPath = [call("check", { path: "a.html", check: true }), checked("check"), call("publish", { id: "page" })];
+	assert.equal(map(fromPath).size, 0);
 });
 
 test("旋钮只接收有效种类、数值、颜色与选项，数量受限", () => {

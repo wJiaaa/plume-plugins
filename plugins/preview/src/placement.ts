@@ -2,7 +2,20 @@ import type { Message } from "@plume/contract";
 
 export type Placement = { waiting: true } | { publishedBy: string } | { publishing: true };
 
-/** 同轮的检查和发布共用原位置；重查截图不抢走带 HTML 的草稿位置。 */
+/** 带着页面内容（html、files）：写的时候在这里画草稿，检查后同轮按 id 发布的网页也交接到这里。参数还在写时看原文里有没有这两个键。 */
+function carriesPage(args: Record<string, unknown>, raw: string | undefined): boolean {
+	return "html" in args || "files" in args || /(?<!\\)"(?:html|files)"\s*:/.test(raw ?? "");
+}
+
+/**
+ * 这次调用只画一行、并进前后的活（`ui.toolCard` 的 `inline`）：不带页面内容的截图检查（path、按 id 重查切片）。
+ * 参数还在写（`args` 还是空的）时先当作检查，写出页面内容就单独一行；写完了不是检查的（发布）也单独一行，画网页。
+ */
+export function inlineCall(args: Record<string, unknown>, raw: string | undefined): boolean {
+	return !carriesPage(args, raw) && (args.check === true || Object.keys(args).length === 0);
+}
+
+/** 同轮的检查和发布共用原位置；重查截图不抢走带 HTML 的草稿位置。path 的检查只画一行、并在一段活里，不当发布的原位置。 */
 export function placements(messages: readonly Message[], running: boolean): Map<string, Placement> {
 	const out = new Map<string, Placement>();
 	const checks = new Map<string, { call: string; turn: number }>();
@@ -30,10 +43,10 @@ export function placements(messages: readonly Message[], running: boolean): Map<
 			const partial = /(?<!\\)"id"\s*:\s*"([^"\\]*)("?)/.exec(raw);
 			const id = typeof args.id === "string" ? args.id : partial ? (partial[2] ? partial[1] : "") : undefined;
 			if (id === undefined) {
-				if (Object.keys(args).length || /"[^"\\]*"\s*:/.test(raw)) {
+				if (carriesPage(args, raw)) {
 					content.add(block.id);
 					latest = { call: block.id, check, over: false };
-				}
+				} else if (Object.keys(args).length || /"[^"\\]*"\s*:/.test(raw)) latest = undefined;
 				continue;
 			}
 			if (!id && latest?.check) {

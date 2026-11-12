@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/preview",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "在回复中展示 HTML 小工具、游戏和演示，支持发布前截图检查、错误反馈和页面状态。",
   "keywords": [
     "preview",
