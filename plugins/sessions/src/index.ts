@@ -52,6 +52,8 @@ const MESSAGE_PARAMETERS = (what: string) =>
 
 export default {
 	name: "plume.sessions",
+	// 任何会话都可能被问、在等人批准：要知道每个会话的一轮何时收场、有没有弹着卡，看全部会话。
+	observe: "all",
 	apply(ctx) {
 		const router = new PeerRouter((sessionId) => ctx.sessions.messages(sessionId), ctx.log);
 		/** 正弹着审批卡、等它的人批准或回答的会话：`list_sessions` 照实说它在等人，免得别的会话以为它卡住了。 */
