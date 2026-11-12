@@ -15,6 +15,7 @@ import type {
 	ToolRun,
 	TurnStop,
 } from "@plume/contract";
+import { currentStep } from "../src/history.ts";
 import plugin from "../src/index.ts";
 import { PEER_DEDUP_MS } from "../src/pacing.ts";
 import { resolveSession, sessionAddress, together } from "../src/peers.ts";
@@ -363,4 +364,18 @@ test("notify_session 寄一句通知；往来链只接叫起这一轮的信，�
 	f.turnEnd(f.near.id);
 	await f.call("notify_session", f.near.id, { to: "aaaaaa", message: "收场以后" });
 	assert.deepEqual(f.posted[4]!.input.chain, [f.near.id]);
+});
+
+test("正在做的那一项认最新一份成功的进度清单（details.checklist），不认是哪个工具记的", () => {
+	const result = (details: unknown, isError = false): Message =>
+		({ role: "toolResult", toolCallId: "c", toolName: "plan_steps", content: [], details, isError, timestamp: 0 }) as Message;
+	const items = (doing: string) => ({
+		checklist: [
+			{ content: "读代码", status: "completed" },
+			{ content: doing, status: "in_progress" },
+		],
+	});
+	assert.equal(currentStep([result(items("改路由")), result(items("写测试"))]), "写测试");
+	assert.equal(currentStep([result(items("改路由")), result(items("坏的"), true), result({ other: 1 })]), "改路由");
+	assert.equal(currentStep([result(items("改路由")), result({ checklist: [{ content: "读代码", status: "completed" }] })]), undefined);
 });

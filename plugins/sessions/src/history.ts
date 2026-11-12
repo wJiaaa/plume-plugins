@@ -4,7 +4,7 @@
  * 和侧边聊天的 `read_main_chat` 是同一种读法、同一套参数：插件之间不共用代码，这里各留一份，改了两边一起改。
  */
 
-import type { Message } from "@plume/contract";
+import type { ChecklistDetails, ChecklistItem, Message } from "@plume/contract";
 
 /** 一次最多带回多少字：和侧边聊天每一问附上的主会话一样多。 */
 export const READ_LIMIT = 12_000;
@@ -101,25 +101,21 @@ export function lastReply(messages: readonly Message[], since: number): string {
 	return "";
 }
 
-/** 它清单上正在做的那一项：最近一次 `todo_write` 里 `in_progress` 的那条。列出会话时据此说它在做什么。 */
+/**
+ * 它清单上正在做的那一项：最新一份进度清单里 `in_progress` 的那条。列出会话时据此说它在做什么。
+ * 清单认工具结果 `details` 里的 `checklist`（`ChecklistDetails`，会话里最新一条成功的那份算数），不认是哪个工具记的。
+ */
 export function currentStep(messages: readonly Message[]): string | undefined {
 	for (let index = messages.length - 1; index >= 0; index--) {
 		const message = messages[index];
-		if (message?.role !== "assistant") continue;
-		for (let part = message.content.length - 1; part >= 0; part--) {
-			const block = message.content[part];
-			if (block?.type !== "toolCall" || block.name !== "todo_write") continue;
-			const todos = (block.arguments as { todos?: unknown }).todos;
-			if (!Array.isArray(todos)) return undefined;
-			const step = todos.find(
-				(todo): todo is { content: string } =>
-					typeof todo === "object" &&
-					todo !== null &&
-					(todo as { status?: unknown }).status === "in_progress" &&
-					typeof (todo as { content?: unknown }).content === "string",
-			);
-			return step?.content;
-		}
+		if (message?.role !== "toolResult" || message.isError) continue;
+		const checklist = (message.details as Partial<ChecklistDetails> | undefined)?.checklist;
+		if (!Array.isArray(checklist)) continue;
+		const step = checklist.find(
+			(item): item is ChecklistItem =>
+				typeof item === "object" && item !== null && item.status === "in_progress" && typeof (item as { content?: unknown }).content === "string",
+		);
+		return step?.content;
 	}
 	return undefined;
 }
