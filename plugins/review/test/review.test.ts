@@ -55,7 +55,7 @@ test("用户原话：只收人说的，太长时留首条和最近几条", () =>
 		user("先做 A"),
 		user("继续", { synthetic: true }),
 		user("别的会话的信", { peer: [{ sessionId: "x", from: "x [1]", text: "hi" }] }),
-		user("侧边聊天交过来的", { origin: "side-chat" }),
+		user("子会话（比如侧边聊天）交过来的", { origin: "child" }),
 		user("/review", { displayText: "/review" }),
 	];
 	assert.deepEqual(
