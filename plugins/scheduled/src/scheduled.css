@@ -127,7 +127,7 @@
 	column-gap: 12px;
 }
 
-/* 卡片顶行的运行状态：14px 的记号槽，在跑是呼吸点，等批准是一个琥珀色的点。 */
+/* 卡片顶行的运行状态：14px 的记号槽，在跑是呼吸点，等人处理是一个琥珀色的点。 */
 .scheduled-status {
 	display: flex;
 	flex-shrink: 0;

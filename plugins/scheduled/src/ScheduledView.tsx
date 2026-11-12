@@ -28,7 +28,7 @@ import type { ScheduledClient } from "./client.ts";
 import { MESSAGES } from "./messages.ts";
 import { nextRunAt } from "./schedule.ts";
 
-/** 页面要宿主做的两件事：看一个会话在不在跑、在不在等批准，打开它。 */
+/** 页面要宿主做的两件事：看一个会话在不在跑、在不在等人处理，打开它。 */
 type Host = Pick<UiContext, "useSession" | "openSession">;
 
 export function ScheduledView({
@@ -181,8 +181,8 @@ function useFocusedCard(focused: boolean, onFocused: () => void) {
 }
 
 /**
- * 这个任务的一次运行在不在跑、在不在等批准。开跑以后看那个会话自己的状态；会话还没读到时，逻辑入口说开跑了就是在跑。
- * 等批准单独说：卡在审批上的任务自己不会往下走。
+ * 这个任务的一次运行在不在跑、在不在等人处理。开跑以后看那个会话自己的状态；会话还没读到时，逻辑入口说开跑了就是在跑。
+ * 等人处理单独说：卡在审批或提问（`approval` 里的两种请求）上的任务自己不会往下走。
  */
 function useTaskStatus(task: ScheduledTask, started: string | undefined, host: Host): { status: "running" | "waiting" | null; last: boolean } {
 	const view = host.useSession(started ?? task.lastSessionId);

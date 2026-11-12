@@ -30,7 +30,7 @@ const zhCN = {
 	nextRun: (time: string) => `下次运行：${time}`,
 	openLast: "打开上次会话",
 	running: "正在执行",
-	waiting: "等待你的批准",
+	waiting: "等待你处理",
 	failedBecause: (reason: string) => `失败：${reason}`,
 	unseenFailures: (n: number) => `${n} 个任务运行失败`,
 	otherFailures: (n: number) => `另有 ${n} 个`,
