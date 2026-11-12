@@ -13,6 +13,8 @@ import { CodeIntelLeases } from "./manager.ts";
 export default {
 	name: "plume.lsp",
 	inject: ["project.files", "file.read"],
+	// 哪个会话的子会话都可能借过语言服务器，要在它一轮跑完时还：看全部会话。
+	observe: "all",
 	apply(ctx) {
 		const files = ctx.use("project.files");
 		const reads = ctx.use("file.read");
