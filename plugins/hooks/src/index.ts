@@ -117,6 +117,8 @@ function checkDraft(raw: unknown): HookDraft | null {
 
 export default {
 	name: "plume.hooks",
+	// 用户的钩子对每个会话都生效（一轮没好好收场时跑 StopFailure、撤回时整理运行记录）：要看全部会话。
+	observe: "all",
 	apply(ctx) {
 		const text = () => MESSAGES[ctx.locale()];
 		const runs = new RunStore(join(ctx.dataDir, "runs"));
