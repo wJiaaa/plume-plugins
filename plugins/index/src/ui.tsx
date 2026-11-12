@@ -35,7 +35,7 @@ export default {
 			subject: (args) =>
 				["name", "query", "symbol", "pattern"].map((key) => args[key]).find((value): value is string => typeof value === "string" && value !== ""),
 		});
-		ui.settingsSection("index", () => <IndexSettings api={api} notify={notify} useProjects={() => ui.useProjects()} />, {
+		ui.settingsSection("index", () => <IndexSettings api={api} notify={notify} openPath={(path) => ui.openPath(path)} useProjects={() => ui.useProjects()} />, {
 			title: (locale) => MESSAGES[locale].title,
 			detail: (locale) => MESSAGES[locale].intro,
 			icon: Database,

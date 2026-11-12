@@ -5,7 +5,7 @@
  * 索引是目录的，两个项目开在同一个目录上时是同一份，只列一次，名字把这几个项目都写上。
  */
 
-import type { ProjectInfo, Remote } from "@plume/contract/ui";
+import type { ProjectInfo, Remote, UiContext } from "@plume/contract/ui";
 import { ActionSpinner, DialogAction, InlineSelect, Scroller, SearchField, SettingsCard, SettingsRow, SettingsSectionTitle, Text, useI18n } from "@plume/ui";
 import { Database, RefreshCw } from "@plume/ui/icons";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -37,7 +37,17 @@ function Empty({ children }: { children: React.ReactNode }) {
 	);
 }
 
-export function IndexSettings({ api, notify, useProjects }: { api: Remote<IndexApi>; notify: Notify; useProjects: () => readonly ProjectInfo[] }) {
+export function IndexSettings({
+	api,
+	notify,
+	openPath,
+	useProjects,
+}: {
+	api: Remote<IndexApi>;
+	notify: Notify;
+	openPath: UiContext["openPath"];
+	useProjects: () => readonly ProjectInfo[];
+}) {
 	const { resolvedLocale } = useI18n();
 	const text = MESSAGES[resolvedLocale];
 	const listed = useProjects();
@@ -183,7 +193,12 @@ export function IndexSettings({ api, notify, useProjects }: { api: Remote<IndexA
 										key={`${hit.file}:${hit.line}`}
 										type="button"
 										className="index-hit"
-										onClick={() => void api.open(path, hit.file).catch((error: unknown) => notify(text.openFailed(reasonOf(error)), "error"))}
+										onClick={() =>
+											void api
+												.file(path, hit.file)
+												.then(openPath)
+												.catch((error: unknown) => notify(text.openFailed(reasonOf(error)), "error"))
+										}
 									>
 										<Database size={12} strokeWidth={1.8} className="index-hit-icon" />
 										<Text size="label" mono className="index-hit-name">

@@ -20,6 +20,6 @@ export interface IndexApi {
 	rebuild(path: string): Promise<IndexStats>;
 	/** 按名字搜，最多 50 条；还没建过就先建一份（不存）。 */
 	search(path: string, query: string): Promise<SymbolHit[]>;
-	/** 用默认应用打开项目里的一个文件；只认项目目录里面的。 */
-	open(path: string, file: string): Promise<void>;
+	/** 项目里一个文件的绝对路径，界面经 `ui.openPath` 用默认应用打开；只认项目目录里面的。 */
+	file(path: string, file: string): Promise<string>;
 }
