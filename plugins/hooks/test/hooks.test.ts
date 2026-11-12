@@ -255,7 +255,7 @@ test("工具前后：拦下不执行；改参数、要确认；之后的上下�
 	}
 });
 
-test("照 Claude Code 写的脚本：读 tool_input.file_path、tool_input.command 的守卫拦得住；改 file_path 的 updatedInput 翻回 path", async () => {
+test("照 Claude Code 写的脚本：比 tool_name、读 tool_input.file_path、tool_input.command 的守卫拦得住；改 file_path 的 updatedInput 翻回 path", async () => {
 	const scripts = await mkdtemp(join(tmpdir(), "plume-hooks-cc-"));
 	const guard = join(scripts, "guard.mjs");
 	const move = join(scripts, "move.mjs");
@@ -263,7 +263,9 @@ test("照 Claude Code 写的脚本：读 tool_input.file_path、tool_input.comma
 	const stdin = 'let raw = ""; process.stdin.on("data", (c) => (raw += c)).on("end", () => main(JSON.parse(raw)));\n';
 	await writeFile(
 		guard,
-		`import { join } from "node:path";\n${stdin}function main({ cwd, tool_input: input }) {
+		`import { join } from "node:path";\n${stdin}function main({ cwd, tool_name, toolName, tool_input: input }) {
+	if (tool_name === "Edit" && input.old_string === "secret") { process.stderr.write("no secret from " + toolName); process.exit(2); }
+	if (tool_name === "ls") { process.stderr.write("ls stays ls"); process.exit(2); }
 	if (input.file_path === join(cwd, ".env")) { process.stderr.write("no .env"); process.exit(2); }
 	if (String(input.command ?? "").includes("rm -rf")) { process.stderr.write("no rm"); process.exit(2); }
 }\n`,
@@ -287,7 +289,7 @@ test("照 Claude Code 写的脚本：读 tool_input.file_path、tool_input.comma
 	const node = (file: string) => command(`"${process.execPath}" "${file}"`);
 	const h = await harness({
 		PreToolUse: [
-			{ matcher: "Write|Edit|Bash", hooks: [node(guard)] },
+			{ matcher: "Write|Edit|Bash|ls", hooks: [node(guard)] },
 			{ matcher: "Read", hooks: [node(move)] },
 			{ matcher: "Edit", hooks: [node(shout)] },
 		],
@@ -304,6 +306,9 @@ test("照 Claude Code 写的脚本：读 tool_input.file_path、tool_input.comma
 		assert.deepEqual((await call("write", { path: ".env", content: "x" })).result, { output: "no .env", isError: true });
 		assert.deepEqual((await call("edit", { path: join(h.dir, ".env"), old_string: "a", new_string: "b" })).result, { output: "no .env", isError: true });
 		assert.deepEqual((await call("bash", { command: "rm -rf build" })).result, { output: "no rm", isError: true });
+		// tool_name 是 Claude Code 的名字，Plume 的名字在 toolName；没有对照的工具两边都是 Plume 的名字。
+		assert.deepEqual((await call("edit", { path: "a.ts", old_string: "secret", new_string: "b" })).result, { output: "no secret from edit", isError: true });
+		assert.deepEqual((await call("ls", {})).result, { output: "ls stays ls", isError: true });
 		assert.deepEqual((await call("write", { path: "notes.txt", content: "x" })).seen, { path: "notes.txt", content: "x" });
 		// 交回的参数里 Claude Code 的名字翻回 Plume 的，不混进工具拿到的参数。
 		assert.deepEqual((await call("read", { path: "a.txt", offset: 3 })).seen, { path: join(h.dir, "moved.txt"), offset: 3 });

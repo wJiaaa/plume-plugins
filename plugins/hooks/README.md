@@ -21,7 +21,7 @@
 
 ## 钩子能做什么
 
-钩子从 stdin 读一段 JSON，里面有事件名、会话、目录，还有工具名、参数、结果等这个事件特有的字段。字段同时给出 camelCase 和 Claude Code 的 snake_case 两种写法。
+钩子从 stdin 读一段 JSON，里面有事件名、会话、目录，还有工具名、参数、结果等这个事件特有的字段。字段同时给出 camelCase 和 Claude Code 的 snake_case 两种写法：camelCase 的是 Plume 的叫法，snake_case 的照 Claude Code，工具名、参数名可能不同，见[和 Claude Code 的差别](#和-claude-code-的差别)。
 
 钩子的退出码决定结果：
 
@@ -67,12 +67,13 @@ stdout 上的 JSON 能表达这些：
 
 匹配器、stdin 的字段名、退出码和输出的 JSON 都照 Claude Code 的约定，下面这些对不上：
 
-- **工具名**：匹配器认 Claude Code 的 `Bash`、`Read`、`Write`、`Edit`、`MultiEdit`、`Glob`、`Grep`、`LS`、`WebFetch`、`WebSearch`（`Edit` 和 `MultiEdit` 都对到 `edit`）。别的名字（`Task`、`NotebookEdit`、`mcp__…` 这类）不翻译，按 Plume 的工具名写。stdin 里的 `tool_name` 是 Plume 的名字（`bash`、`edit`），脚本里拿 `tool_name` 比 `"Edit"` 的要改。
+- **工具名**：匹配器认 Claude Code 的 `Bash`、`Read`、`Write`、`Edit`、`Glob`、`Grep`、`WebFetch`、`WebSearch`，也认旧配置里的 `MultiEdit`（`Edit` 和 `MultiEdit` 都对到 `edit`）。别的名字（`Agent`、`NotebookEdit`、`mcp__…` 这类）不翻译，按 Plume 的工具名写；Claude Code 已经没有 `LS`，Plume 的 `ls` 按 `ls` 写。
+- **`tool_name` 和 `toolName`**：stdin 里的 `tool_name` 是 Claude Code 的名字，照 Claude Code 文档写的 `tool_name == "Edit"` 比得上；没有对照的工具是 Plume 的名字。Plume 的名字在 `toolName` 里（`bash`、`edit`），按 Plume 名字比的脚本读 `toolName`。`edit` 的 `tool_name` 是 `Edit`，不会是 `MultiEdit`。
 - **`tool_input`**：是 Plume 工具的原参数，再补上 Claude Code 叫法的字段，两种写法的脚本都读得到：
-  - `read`、`write`、`edit` 补 `file_path`，和 Claude Code 一样是绝对路径（Plume 的 `path` 可以是相对项目目录的，或 `~/` 开头）；`scratch://` 这类地址原样给。
-  - `grep` 补 `-i`（Plume 的 `case_insensitive`）和 `-C`（`context`）。
-  - 名字本来就一样的不用补：`command`、`description`、`timeout`、`run_in_background`，`content`、`old_string`、`new_string`、`replace_all`、`offset`、`limit`，`pattern`、`path`、`glob`，`url`、`query`。
-- **Plume 没有的参数**：`MultiEdit` 的 `edits`（Plume 的 `edit` 一次改一处，读 `file_path`、`old_string`、`new_string` 就行），`Grep` 的 `output_mode`（Plume 用 `files_only` 二选一，没有计数）、`head_limit`（Plume 的 `limit` 数的是匹配数）、`-A`、`-B`、`-n`、`type`、`multiline`，`WebFetch` 的 `prompt`，`WebSearch` 的 `allowed_domains`、`blocked_domains`，`Read` 的 `pages`，`LS` 的 `ignore`。读它们的脚本拿到空值。`LS` 的 `path` 在 Claude Code 里是绝对路径，Plume 的 `ls` 可以给相对路径或不给。
+  - `read`、`write`、`edit` 补 `file_path`，和 Claude Code 一样是展开后的绝对路径、用本机的分隔符：Plume 的 `path` 可以是相对项目目录的，或 `~/` 开头；Windows 上还认 `~\`、Git Bash 的 `/c/…`、`/cygdrive/c/…`、`/tmp/…`，换算成工具实际读写的 `C:\…`。`scratch://` 这类地址原样给。
+  - `grep` 补 `-i`（Plume 的 `case_insensitive`）和 `-C`（`context`；Claude Code 也认 `context` 这个名字，两个都有）。
+  - 名字本来就一样的不用补：`command`、`description`、`timeout`（都是毫秒）、`run_in_background`，`content`、`old_string`、`new_string`、`replace_all`、`offset`、`limit`，`pattern`、`path`、`glob`，`url`、`query`。
+- **Plume 没有的参数**：`Grep` 的 `output_mode`（Plume 用 `files_only` 二选一，没有计数）、`head_limit`（Plume 的 `limit` 数的是匹配数）、`offset`、`-A`、`-B`、`-n`、`-o`、`type`、`multiline`，`WebFetch` 的 `prompt`、`offset`，`WebSearch` 的 `allowed_domains`、`blocked_domains`，`Read` 的 `pages`、`allow_large`，`Bash` 的 `dangerouslyDisableSandbox`，旧版 `MultiEdit` 的 `edits`（Plume 的 `edit` 一次改一处，读 `file_path`、`old_string`、`new_string` 就行）。读它们的脚本拿到空值。
 - **`updatedInput`**：照 Claude Code 写法改了 `file_path`、`-i`、`-C` 的，翻回 Plume 的参数名再交给工具；只改了 Plume 名字的也认。
 - **`tool_response`**：是 Plume 的 `{ output, details }`，不是 Claude Code 各工具自己的结构。
 

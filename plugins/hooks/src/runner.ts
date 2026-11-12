@@ -12,7 +12,7 @@ import { execFile, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { devNull, homedir, tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, posix, win32 } from "node:path";
 import { systemShell } from "./shell.ts";
 import {
 	DEFAULT_HOOK_MAX_OUTPUT_BYTES,
@@ -78,9 +78,13 @@ export interface HookRegistration {
  * 名字对上了，参数也得对上：照 Claude Code 写的守卫读 `tool_input.file_path`，Plume 的文件工具叫 `path`，读到空值就把该拦的放过去。
  * 所以同一张表还写着参数的对照（Plume 参数名 → Claude Code 参数名），交给脚本的 `tool_input` 两种名字都有。
  * 只对照名字不同、值能一一对回去的；名字相同的（`command`、`content`、`old_string`、`pattern`……）不用写。
+ *
+ * 名字和参数照 Claude Code 的钩子参考（code.claude.com/docs/en/hooks 的「PreToolUse input」）和 Agent SDK 的工具输入类型
+ * （code.claude.com/docs/en/agent-sdk/typescript 的 `ToolInputSchemas`）。`MultiEdit` 那两处都已不列，留着是为了旧配置里的 matcher；
+ * `LS` 也不列了（Claude Code 改用 shell 的 `ls` 列目录），参数形状查不到，不对照。
  */
 interface ClaudeCodeTool {
-	/** Claude Code 里的工具名：matcher 写它也认。 */
+	/** Claude Code 里的工具名：matcher 写它也认。第一个是现行的名字，交给脚本的 `tool_name` 用它。 */
 	names: string[];
 	/** Plume 参数名 → Claude Code 参数名。`absolute`：Claude Code 那边总是绝对路径，按会话目录换算。 */
 	params?: Record<string, { name: string; absolute?: true }>;
@@ -95,7 +99,6 @@ const CLAUDE_CODE_TOOLS: Record<string, ClaudeCodeTool> = {
 	edit: { names: ["Edit", "MultiEdit"], params: FILE_PATH },
 	glob: { names: ["Glob"] },
 	grep: { names: ["Grep"], params: { case_insensitive: { name: "-i" }, context: { name: "-C" } } },
-	ls: { names: ["LS"] },
 	web_fetch: { names: ["WebFetch"] },
 	web_search: { names: ["WebSearch"] },
 };
@@ -104,11 +107,45 @@ export function hookMatchValues(toolName: string): string[] {
 	return [toolName, ...(CLAUDE_CODE_TOOLS[toolName]?.names ?? [])];
 }
 
-/** Plume 的路径可以是相对会话目录的、`~/` 开头的；`scratch://` 这类地址不是磁盘上的路径，原样给。 */
-function absolutePath(cwd: string, path: string): string {
-	if (/^[a-z][a-z0-9+.-]*:\/\//iu.test(path)) return path;
-	if (path === "~" || path.startsWith("~/")) return join(homedir(), path.slice(1));
-	return resolve(cwd, path);
+/**
+ * 交给脚本的 `tool_name`：有对照的给 Claude Code 的名字，没有的给 Plume 的。照 Claude Code 文档写的守卫比的是 `tool_name == "Edit"`，
+ * 给 Plume 的 `edit` 就比不上、该拦的被放过去；Plume 的名字留在 `toolName` 上。
+ */
+function claudeCodeToolName(toolName: string): string {
+	return CLAUDE_CODE_TOOLS[toolName]?.names[0] ?? toolName;
+}
+
+/** 换算路径要知道的本机情况。参数化是为了在别的系统上测 Windows 的换算。 */
+interface PathHost {
+	windows: boolean;
+	home: string;
+	temp: string;
+}
+
+const thisHost = (): PathHost => ({ windows: process.platform === "win32", home: homedir(), temp: tmpdir() });
+
+/**
+ * 工具参数里的路径换成工具实际读写的那个绝对路径，规则和本体文件工具的 `toAbsolute`（内置 tools 插件的 `paths.ts`）一致：
+ * 相对会话目录的、`~`、`~/` 开头的；Windows 上再认 Git Bash 的 `/c/…`、`/cygdrive/c/…`、`/tmp/…` 和 PowerShell 的 `~\`，
+ * 结果和 Claude Code 一样用本机的分隔符（Windows 上是反斜杠）。不解析符号链接：Claude Code 交给钩子的也是展开后的字面路径。
+ * `scratch://` 这类地址不是磁盘上的路径，原样给；协议名至少两个字母，`C://x` 这种盘符写法不算地址。
+ */
+export function absolutePath(cwd: string, path: string, host: PathHost = thisHost()): string {
+	if (/^[a-z][a-z0-9+.-]+:\/\//iu.test(path)) return path;
+	const { isAbsolute, resolve } = host.windows ? win32 : posix;
+	const native = host.windows ? windowsSpelling(path, host.home, host.temp) : path;
+	const expanded = native === "~" || native.startsWith("~/") ? `${host.home}${native.slice(1)}` : native;
+	return isAbsolute(expanded) ? resolve(expanded) : resolve(cwd, expanded);
+}
+
+/** Windows 上 shell 的写法换成它指的 Windows 路径；照搬本体 `paths.ts` 的 `windowsSpelling`。 */
+function windowsSpelling(input: string, home: string, temp: string): string {
+	const drive = /^(?:\/cygdrive)?\/([a-zA-Z])(?=\/|$)(.*)$/u.exec(input);
+	if (drive) return `${drive[1]!.toUpperCase()}:\\${drive[2]!.replace(/^[/]/u, "").replaceAll("/", "\\")}`;
+	const tmp = /^\/tmp(?=\/|$)(.*)$/u.exec(input);
+	if (tmp) return `${temp}${tmp[1]!.replaceAll("/", "\\")}`;
+	if (input === "~" || input.startsWith("~\\")) return `${home}${input.slice(1)}`;
+	return input;
 }
 
 /** 这次调用的参数换成 Claude Code 叫法的那几个字段；Plume 这边没给的不补。 */
@@ -197,14 +234,15 @@ function expandVariables(value: string, input: HookInput): string {
 }
 
 /**
- * stdin：Plume 自己的 camelCase 字段，加上 Claude Code 脚本认的 snake_case 别名。`transcript_path` 指向一份临时文件，
+ * stdin：Plume 自己的 camelCase 字段，加上 Claude Code 脚本认的 snake_case 字段——值照 Claude Code 的叫法，所以 `tool_name`
+ * 和 `toolName` 可以不同（`Edit` 和 `edit`），见 `claudeCodeToolName`。`transcript_path` 指向一份临时文件，
  * 只装着这次事件涉及的那条消息——只有 Stop（最后一条回复）和 UserPromptSubmit（刚发的那句）有这条消息；
  * 其余事件指向空设备，读到的和一份空文件一样，不必每次工具调用都建一个目录。
  */
 async function compatibleStdin(input: HookInput): Promise<{ value: string; cleanup: () => Promise<void> }> {
 	const compatible: Record<string, unknown> = { ...input, hook_event_name: input.hookEventName, session_id: input.sessionId };
 	if (typeof input.toolName === "string") {
-		compatible.tool_name = input.toolName;
+		compatible.tool_name = claudeCodeToolName(input.toolName);
 		compatible.tool_input = claudeCodeInput(input.toolName, input.toolInput, input.cwd);
 		compatible.tool_use_id = input.toolCallId;
 	}
