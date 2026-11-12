@@ -164,7 +164,7 @@ export function lspTool(deps: LspToolDeps): ToolDefinition {
 
 			if (operation === "definition") {
 				// i18n-exempt：交给模型的结果。
-				return { output: `${why ?? "没有语言服务器。"}用 \`symbol\` 工具查定义，或者用 \`grep\` 搜声明。` };
+				return { output: `${why ?? "没有语言服务器。"}改用按名字查符号定义的工具，或者用文本搜索找声明。` };
 			}
 
 			const name = args.symbol ?? position.word;
