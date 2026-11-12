@@ -67,6 +67,13 @@ export interface HookRegistration {
 
 /**
  * Plume 的工具名是小写的（`bash`、`edit`），照 Claude Code 写的 matcher 是 `Bash|Edit`。两种都认，同一份配置搬过来不用改。
+ *
+ * 这里认工具名是对的，不算「插件按名字认别的插件的工具」：matcher 是人在配置里写的，写的本来就是工具名，
+ * 这张表只是把 Claude Code 的叫法翻成 Plume 的基础工具名，键就是人在 Plume 里也会写的名字。
+ * 不改成按种类（`kind`/`category`）对照：matcher 指的是一件参数形状固定的工具，脚本读的是 `tool_input.command`、`tool_input.pattern` 这类字段，
+ * 种类只说做哪种活。`web_fetch`、`web_search` 同属网页，按种类分不开；`Grep` 按 `search` 对会同时中 `grep`、`symbol`、`lsp`，
+ * 一条读 `tool_input.pattern` 的守卫落到别的工具上拿到空值，就把本该拦的放过去了。
+ * 等第二处也要翻 Claude Code 的工具名（比如导入智能体的 `tools:`、技能的 `allowed-tools`）时，再改由工具的主人在定义上声明别名。
  */
 const TOOL_ALIASES: Record<string, string[]> = {
 	bash: ["Bash"],
