@@ -2,7 +2,8 @@
  * 画廊的数据：所有会话里画过的图，各自从哪来。
  *
  * 插件读不到会话库，只能一个个会话读消息：第一次打开画廊把会话都读一遍，之后只重读 `updatedAt` 变了的。
- * 子会话（子智能体、侧边聊天）不算：它们画的图在父会话里看不到，跳过去要打开插件的面板。
+ * 只算侧栏里的会话（`kind` 是 top）：子会话（子智能体、侧边聊天）画的图在父会话里看不到，跳过去要打开插件的面板；
+ * 插件的独立会话不在侧栏里，跳不过去。
  */
 
 import type { SessionAccess } from "@plume/contract";
@@ -16,7 +17,7 @@ export class GalleryReader {
 	constructor(private readonly sessions: Pick<SessionAccess, "list" | "messages">) {}
 
 	async list(): Promise<Gallery> {
-		const summaries = (await this.sessions.list()).filter((summary) => !summary.parentId);
+		const summaries = (await this.sessions.list()).filter((summary) => summary.kind === "top");
 		const live = new Set<string>();
 		for (const summary of summaries) {
 			live.add(summary.id);

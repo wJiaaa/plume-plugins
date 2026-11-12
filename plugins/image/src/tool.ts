@@ -223,6 +223,11 @@ export function imageTool(ctx: PluginContext): ToolDefinition {
 		},
 		mutating: false,
 		asks: true,
+		// 导出会话成 Markdown 时这次调用写成的那一行（英文，和本体给自己工具的说法一样）。
+		describe(args) {
+			const prompt = typeof args.prompt === "string" ? args.prompt.trim() : "";
+			return prompt ? `Generate image ${prompt.split("\n")[0]!.slice(0, 80)}` : "Generate image";
+		},
 		// i18n-exempt：下面交回的都是给模型的话
 		async execute(rawArgs, run): Promise<ToolOutput> {
 			const args = rawArgs as ImageArgs;

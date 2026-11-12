@@ -82,6 +82,14 @@ function fakeRun(cwd: string, decision: "approve" | "reject" = "approve"): ToolR
 	return run as unknown as ToolRun & { progressed: string[]; asked: number };
 }
 
+test("导出 Markdown 时写成「Generate image」加提示词第一行的前 80 个字", () => {
+	const describe = imageTool(fakeContext().ctx).describe!;
+	assert.equal(describe({ prompt: `  ${"狐".repeat(90)}\nin snow` }), `Generate image ${"狐".repeat(80)}`);
+	assert.equal(describe({ prompt: "a red fox\nin snow" }), "Generate image a red fox");
+	assert.equal(describe({ prompt: "  " }), "Generate image");
+	assert.equal(describe({}), "Generate image");
+});
+
 test("没有生图模型时交回一句给模型的话，不调接口", async () => {
 	const fake = fakeContext({ noModel: true });
 	const out = await imageTool(fake.ctx).execute({ prompt: "a cat" }, fakeRun("/work"));
