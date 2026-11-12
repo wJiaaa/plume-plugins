@@ -8,7 +8,7 @@
  *   翻旧会话只读存着的那份；一问一答连着来时不为每一轮各花一次。
  */
 
-import type { Message } from "@plume/contract";
+import type { Message, ToolKind } from "@plume/contract";
 
 /** 第一次给多少条；之后每次最多补多少条。 */
 const FIRST_MESSAGES = 6;
@@ -74,8 +74,13 @@ export function lastSpoken(messages: readonly Message[]): number | null {
 /**
  * 这一次要交给模型的材料；没有新东西时是 null，就不必花这一次。
  * 「新东西」只算人和 agent 说出来的话，人说的话还要够数：子 Agent 结果、后台送达这些运行时插进来的不算人说的。
+ * `kindOf`：一个工具名在工具表里声明的种类（`ToolDefinition.kind`），写、改文件的（`create`、`modify`）按它认，不认名字。
  */
-export function summaryMaterial(messages: readonly Message[], previous?: SessionSummaryText | null): { prompt: string; upto: number } | null {
+export function summaryMaterial(
+	messages: readonly Message[],
+	kindOf: (tool: string) => ToolKind | undefined,
+	previous?: SessionSummaryText | null,
+): { prompt: string; upto: number } | null {
 	const said: { message: Message; text: string }[] = [];
 	const files: string[] = [];
 	let humans = 0;
@@ -90,7 +95,9 @@ export function summaryMaterial(messages: readonly Message[], previous?: Session
 		if (earlier) continue;
 		if (message.role === "assistant") {
 			for (const block of message.content) {
-				if (block.type !== "toolCall" || (block.name !== "write" && block.name !== "edit")) continue;
+				if (block.type !== "toolCall") continue;
+				const kind = kindOf(block.name);
+				if (kind !== "create" && kind !== "modify") continue;
 				const path = block.arguments.path;
 				if (typeof path === "string" && path && !files.includes(path)) files.push(path);
 			}

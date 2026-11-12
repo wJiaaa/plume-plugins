@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, expect, it } from "vitest";
-import type { AssistantMessage, Message } from "@plume/contract";
+import type { AssistantMessage, Message, ToolKind } from "@plume/contract";
 import { SummaryStore } from "../src/store.ts";
 import { cleanSessionSummary, lastSpoken, SUMMARY_MAX_CHARS, summarizeAfterTurn, summaryMaterial } from "../src/summary.ts";
 
@@ -34,6 +34,10 @@ const assistant = (timestamp: number, content: AssistantMessage["content"]): Ass
 	timestamp,
 });
 
+/** 工具表里声明的种类，照 plume.tools 的声明。 */
+const KINDS: Record<string, ToolKind> = { read: "view", write: "create", edit: "modify" };
+const kindOf = (name: string): ToolKind | undefined => KINDS[name];
+
 it("摘要材料：只要人和 agent 说的话，工具调用里只捡改动过的文件；有上一份时只给之后的", () => {
 	const messages: Message[] = [
 		user(-2, "先看看列表"),
@@ -47,15 +51,15 @@ it("摘要材料：只要人和 agent 说的话，工具调用里只捡改动过
 		assistant(4, [{ type: "text", text: "改成按锚点恢复了" }]),
 		user(5, "运行时插进来的", true),
 	];
-	const material = summaryMaterial(messages);
+	const material = summaryMaterial(messages, kindOf);
 	expect(material?.upto).toBe(4);
 	expect(material?.prompt).toMatch(/\[用户\] 修一下滚动位置\n\[agent\] 改成按锚点恢复了/);
 	expect(material?.prompt).toMatch(/src\/scroll\.ts/);
 	expect(material?.prompt).not.toMatch(/src\/other\.ts|工具输出|运行时插进来的/);
 	expect(lastSpoken(messages)).toBe(4);
-	expect(summaryMaterial(messages, { text: "x", upto: 4 })).toBeNull();
+	expect(summaryMaterial(messages, kindOf, { text: "x", upto: 4 })).toBeNull();
 	// 人说得不够多就不要：两句不够。
-	expect(summaryMaterial([user(1, "一"), user(2, "二")])).toBeNull();
+	expect(summaryMaterial([user(1, "一"), user(2, "二")], kindOf)).toBeNull();
 });
 
 it("摘要清理：去前缀、引号、换行，超长截到卡片放得下", () => {
