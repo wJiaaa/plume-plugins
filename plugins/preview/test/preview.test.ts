@@ -62,12 +62,14 @@ async function setup(t: TestContext) {
 	} as unknown as PluginContext);
 	const run: ToolRun = {
 		sessionId: "session-a",
+		session: { id: "session-a", kind: "top" },
 		toolCallId: "call",
 		cwd: root,
 		scratchDir: join(root, "scratch"),
 		signal: new AbortController().signal,
 		progress: () => {},
 		ask: async () => "reject",
+		request: async () => ({ answered: false, reason: "declined" }),
 		permissionMode: async () => "ask",
 		tools: () => [],
 		calls: [],
