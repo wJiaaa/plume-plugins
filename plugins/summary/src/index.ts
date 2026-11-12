@@ -44,9 +44,9 @@ export default {
 
 		async function generate(id: string): Promise<StoredSummary | null> {
 			const previous = await store.read(id);
-			const meta = (await ctx.sessions.list()).find((entry) => entry.id === id);
-			// 子会话（子 Agent、侧边聊天）没有环境卡片，不为它们花钱。
-			if (!meta || meta.parentId) return previous;
+			const meta = await ctx.sessions.get(id);
+			// 只给侧栏里的会话写：子会话（子 Agent、侧边聊天）和插件的独立会话没有环境卡片，不为它们花钱。
+			if (!meta || meta.kind !== "top") return previous;
 			const material = summaryMaterial(await ctx.sessions.messages(id), previous);
 			// 没有新材料：不发请求，原来那份就是答案。
 			if (!material) return previous;
@@ -65,7 +65,7 @@ export default {
 			if (!text && !previous) return null;
 			const next: StoredSummary = { text: text || previous!.text, upto: material.upto, updatedAt: Date.now() };
 			// 生成的这几秒里会话可能被删了：不让一份摘要留下来。
-			if (!(await ctx.sessions.list()).some((entry) => entry.id === id)) return null;
+			if (!(await ctx.sessions.get(id))) return null;
 			await store.save(id, next);
 			return next;
 		}
@@ -148,7 +148,7 @@ export default {
 			},
 			async summarize(sessionId) {
 				const id = checked(sessionId);
-				if (!(await ctx.sessions.list()).some((entry) => entry.id === id)) throw new Error(`No such session: ${id}`);
+				if (!(await ctx.sessions.get(id))) throw new Error(`No such session: ${id}`);
 				return summarize(id);
 			},
 			model: async () => chosenModel,
