@@ -49,18 +49,20 @@ export function lspTool(deps: LspToolDeps): ToolDefinition {
 		// 问语言服务器一个符号在哪、谁在用、文件里有什么错，归「探索」里的搜索。rename 只算出要改哪些地方、不动文件，所以整件工具只读。
 		kind: "search",
 		/*
-		 * Worded as a replacement for grep, not as an addition to the toolbox.
+		 * Worded as a replacement for text search, not as an addition to the toolbox.
 		 *
 		 * The first version said "before changing an exported symbol, use lsp references", and in a
 		 * session with nineteen tools the model read that, reached for `grep`, and read the matching
 		 * files to work the rest out. On a three-file project that arrives at the right answer; on a
-		 * real one it is the silent-miss failure with extra steps. Naming the tool it should be used
-		 * *instead of* is what makes the choice concrete.
+		 * real one it is the silent-miss failure with extra steps. Naming what it should be used
+		 * *instead of* is what makes the choice concrete. That is said as "a text search" rather than
+		 * by tool name: the search tool belongs to another plugin, and the model can tell which of its
+		 * tools that is.
 		 */
 		description:
 			"Ask the language server about a symbol.\n" +
-			"- `references` — every use, including aliased imports (`import { a as b }`) and re-export chains that `grep` cannot see. " +
-			"Use this, not `grep`, to find callers before changing or renaming a symbol: a grep-driven rename looks complete and leaves callers broken.\n" +
+			"- `references` — every use, including aliased imports (`import { a as b }`) and re-export chains that a text search cannot see. " +
+			"Use this, not a text search, to find callers before changing or renaming a symbol: a rename driven by text search looks complete and leaves callers broken.\n" +
 			"- `definition` — where it comes from, through re-exports.\n" +
 			"- `diagnostics` — type errors in one file, without a build.\n" +
 			"- `rename` — every edit for a project-wide rename.\n" +
