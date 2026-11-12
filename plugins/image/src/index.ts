@@ -5,7 +5,7 @@
 import type { Plugin } from "@plume/contract";
 import type { ImageApi } from "./api.ts";
 import { GalleryReader } from "./gallery.ts";
-import { imageGuidelines, imageTool } from "./tool.ts";
+import { imageTool, withImageGuidelines } from "./tool.ts";
 import { IMAGE_TOOL } from "./types.ts";
 
 export default {
@@ -18,12 +18,12 @@ export default {
 			const found = await ctx.model.findImageModel();
 			if (!found.model && found.reason === "none") return next({ ...input, tools: input.tools.filter((tool) => tool.name !== IMAGE_TOOL) });
 			if (!input.tools.some((tool) => tool.name === IMAGE_TOOL)) return next(input);
-			const extra = imageGuidelines(input.tools.some((tool) => tool.name === "preview"))
-				.map((line) => `- ${line}`)
-				.join("\n");
 			return next({
 				...input,
-				sections: input.sections.map((section) => (section.id === "guidelines" ? { ...section, text: `${section.text}\n${extra}` } : section)),
+				sections: withImageGuidelines(
+					input.sections,
+					input.tools.some((tool) => tool.name === "preview"),
+				),
 			});
 		});
 

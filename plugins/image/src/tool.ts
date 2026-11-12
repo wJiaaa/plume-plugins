@@ -11,7 +11,7 @@
 
 import { readFile } from "node:fs/promises";
 import { basename, isAbsolute, relative, resolve } from "node:path";
-import type { ImageFailure, ImageInput, ImageModel, PluginContext, ToolDefinition, ToolOutput, ToolRun } from "@plume/contract";
+import type { ImageFailure, ImageInput, ImageModel, PluginContext, PromptSection, ToolDefinition, ToolOutput, ToolRun } from "@plume/contract";
 import { MESSAGES } from "./messages.ts";
 import { conversationPictures, type Picture } from "./pictures.ts";
 import { ASPECT_RATIOS, IMAGE_TOOL, type ImageGenerateDetails, PROGRESS_SEPARATOR, QUALITIES } from "./types.ts";
@@ -32,11 +32,19 @@ type ImageType = (typeof IMAGE_TYPES)[number];
  * 代码画得准的图交给代码；装了交互网页（`preview`）时也点它的名，没装就不提一个不存在的工具。
  */
 // i18n-exempt：发给模型的提示词
-export function imageGuidelines(hasPreview: boolean): string[] {
+function imageGuidelines(hasPreview: boolean): string[] {
 	return [
 		`When the user asks for a picture — an illustration, icon, poster, photo, logo, sticker — or asks to change one, use \`image_generate\`. A chart, diagram or UI that code can draw exactly is better done with code${hasPreview ? " or `preview`" : ""}.`,
 		"The picture is shown to the user as it arrives. Afterwards say at most a sentence; don't describe what was drawn unless asked.",
 	];
+}
+
+/** 把这两条接在准则那段后面。准则那段按类别（`PromptSection.category`）找，不认提供它的插件定的段名。 */
+export function withImageGuidelines(sections: PromptSection[], hasPreview: boolean): PromptSection[] {
+	const extra = imageGuidelines(hasPreview)
+		.map((line) => `- ${line}`)
+		.join("\n");
+	return sections.map((section) => (section.category === "guidelines" ? { ...section, text: `${section.text}\n${extra}` } : section));
 }
 
 /** 文件头认出来的图片类型；PNG、JPEG、WebP 以外的是 null。 */

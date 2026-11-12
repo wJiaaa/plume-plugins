@@ -3,12 +3,12 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import type { Message, ModelImageRequest, ModelImageResult, PluginContext, ToolRun } from "@plume/contract";
+import type { Message, ModelImageRequest, ModelImageResult, PluginContext, PromptSection, ToolRun } from "@plume/contract";
 import { imageCanvasState } from "../src/image-state.ts";
 import { drawingsIn } from "../src/lineage.ts";
 import { conversationPictures } from "../src/pictures.ts";
 import { ESTIMATE_CEILING, expectedMs, progressAt, stageAt } from "../src/progress.ts";
-import { imageTool } from "../src/tool.ts";
+import { imageTool, withImageGuidelines } from "../src/tool.ts";
 import { IMAGE_TOOL, lastProgress, readDetails } from "../src/types.ts";
 
 test("图片加载失败离开 pending，成功加载才进入 done", () => {
@@ -209,4 +209,15 @@ test("进度估计：先快后慢，到不了头；阶段跟着走", () => {
 	assert.equal(stageAt(0), "brief");
 	assert.equal(stageAt(0.5), "scene");
 	assert.equal(stageAt(0.99), "finish");
+});
+
+test("用法接在准则那段（按 category 找）后面，别的段原样", () => {
+	const sections: PromptSection[] = [
+		{ id: "identity", text: "身份", category: "identity" },
+		{ id: "rules", text: "Guidelines:\n- 一条", category: "guidelines" },
+		{ id: "workspace", text: "工作目录" },
+	];
+	const [identity, rules, workspace] = withImageGuidelines(sections, true);
+	assert.deepEqual([identity, workspace], [sections[0], sections[2]]);
+	assert.match(rules!.text, /^Guidelines:\n- 一条\n- When the user asks for a picture .+ or `preview`\.\n- The picture is shown/);
 });
