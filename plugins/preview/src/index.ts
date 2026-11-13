@@ -81,7 +81,7 @@ export default {
 			if (sensitive || (!within(cwd, absolute) && !within(scratch, absolute))) {
 				const words = MESSAGES[ctx.locale()];
 				if ((await run.ask({ kind: "view", title: words.read, detail: absolute, subject: absolute, reason: words.readReason })) === "reject")
-					throw new Error("Reading this page was declined");
+					throw new Error(`Reading ${absolute}: ${run.rejection}`);
 			}
 			const info = await stat(absolute);
 			if (!info.isFile() || info.size > MAX_BYTES) throw new Error("The page must be a file of at most 2 MB");
