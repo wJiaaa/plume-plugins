@@ -7,6 +7,7 @@ import type {
 	DeliveryInput,
 	HookLayer,
 	LaunchedIdle,
+	LetterInput,
 	LaunchedSession,
 	Message,
 	PluginContext,
@@ -75,15 +76,16 @@ test("用户原话：只收人说的，太长时留首条和最近几条", () =>
 test("交接单第一行认得出审阅会话，计划、原话原样包进标签", () => {
 	const request = reviewRequest(complete, "改登录", brief);
 	assert.ok(!("error" in request));
-	const prompt = reviewPrompt(request, "新计划", [user("把登录改成 OAuth")], "改登录", "改登录 [abc123]", brief);
+	const prompt = reviewPrompt(request, "新计划", [user("把登录改成 OAuth")], "改登录", brief);
 	assert.ok(prompt.startsWith(REVIEW_SESSION_OPENING));
 	assert.ok(prompt.includes("<approved_plan>\n新计划\n</approved_plan>"));
 	assert.ok(prompt.includes('<user_message n="1">\n把登录改成 OAuth\n</user_message>'));
-	assert.ok(prompt.includes("`改登录 [abc123]`"));
+	// 交付那一节点名审阅插件自己问原会话的工具，不靠别的插件。
+	assert.ok(prompt.includes("with `ask_implementer`"));
 	assert.ok(prompt.includes("- `src/index.ts` — adds the review_session tool"));
 	assert.ok(prompt.includes("Arguments: none (the uncommitted local changes)"));
-	// 没有 ask_session 时不问、不修。
-	assert.ok(reviewPrompt(request, null, [], "改登录", undefined, brief).includes("skip step F's question"));
+	assert.doesNotMatch(prompt, /ask_session/);
+	assert.ok(reviewBody({}).includes("call `ask_implementer` with the path to the report"));
 });
 
 test("正文按类别点名派子智能体、问人的工具；没有派子智能体的工具时只剩 low", () => {
@@ -111,7 +113,7 @@ function deferred<T>() {
 	return { promise, resolve };
 }
 
-async function fixture(t: TestContext, tools: string[] = ["ask_session"]) {
+async function fixture(t: TestContext) {
 	const directory = mkdtempSync(join(tmpdir(), "plume-review-"));
 	t.after(() => rmSync(directory, { recursive: true, force: true }));
 	// `kind` 和本体一样按 `parentId`、`owner` 算。
@@ -135,7 +137,10 @@ async function fixture(t: TestContext, tools: string[] = ["ask_session"]) {
 	// 计划向服务 session.plan 要，这里是假的那份。
 	const plans = new Map<string, string>([["main", "新计划\n\n## 执行时注意\n别动接口"]]);
 	const layers = new Map<string, unknown>();
-	let tool: ToolDefinition | undefined;
+	const tools = new Map<string, ToolDefinition>();
+	/** 经 `run.letter` 寄出的信；`unreachable` 时寄信抛错，和本体对方不在时一样。 */
+	const letters: { to: string; letter: LetterInput }[] = [];
+	let unreachable = false;
 	const launches: SessionLaunch[] = [];
 	const reports: { text: string; delivery: DeliveryInput }[] = [];
 	const done = deferred<TurnStop>();
@@ -152,10 +157,9 @@ async function fixture(t: TestContext, tools: string[] = ["ask_session"]) {
 		},
 		tools: {
 			register: (definition: ToolDefinition) => {
-				tool = definition;
+				tools.set(definition.name, definition);
 				return () => {};
 			},
-			names: () => tools,
 			// 写、改文件的工具按声明的种类认（这里照 plume.tools 的声明），不认名字。
 			list: () => [
 				{ name: "read", plugin: "plume.tools", kind: "view" },
@@ -195,31 +199,66 @@ async function fixture(t: TestContext, tools: string[] = ["ask_session"]) {
 		const self = sessions.get(sessionId)!;
 		return { id: sessionId, kind: self.kind, ...(self.parentId ? { parentId: self.parentId } : {}), ...(self.owner ? { owner: self.owner } : {}) };
 	};
-	const run = (sessionId: string) => ({ sessionId, session: scope(sessionId), toolCallId: "call" }) as ToolRun;
+	/** 顶层会话的调用拿得到寄信的口子，和本体一样。 */
+	const run = (sessionId: string) =>
+		({
+			sessionId,
+			session: scope(sessionId),
+			toolCallId: "call",
+			...(scope(sessionId).kind === "top"
+				? {
+						letter: (to: string, letter: LetterInput) => {
+							if (unreachable) throw new Error("gone");
+							letters.push({ to, letter });
+							return { id: "l", read: new Promise(() => {}), answered: 0, answer: () => undefined };
+						},
+					}
+				: {}),
+		}) as unknown as ToolRun;
 	const submit = layers.get("prompt.submit") as HookLayer<"prompt.submit">;
 	const execute = layers.get("tool.execute") as HookLayer<"tool.execute">;
 	const call = (sessionId: string, name: string) =>
 		execute({ sessionId, session: scope(sessionId), call: { id: "c", name, args: {} } } as Parameters<typeof execute>[0], async () => ({ output: "ran" }));
 	const context = layers.get("model.context") as HookLayer<"model.context">;
-	return { tool: tool!, run, scope, submit, call, context, launches, reports, messages, sessions, done, idle };
+	return {
+		tool: tools.get("review_session")!,
+		ask: tools.get("ask_implementer")!,
+		run,
+		scope,
+		submit,
+		call,
+		context,
+		launches,
+		reports,
+		messages,
+		sessions,
+		letters,
+		unreachable: () => void (unreachable = true),
+		done,
+		idle,
+	};
 }
 
-test("review_session 只列给侧栏里的会话：子会话、插件的独立会话的工具表里没有", async (t) => {
+/** 这个会话的模型看得到哪几件工具（经 `model.context`）。 */
+async function visible(f: Awaited<ReturnType<typeof fixture>>, sessionId: string): Promise<string[]> {
+	let seen: string[] = [];
+	const input = {
+		sessionId,
+		session: f.scope(sessionId),
+		tools: [{ name: "review_session" }, { name: "ask_implementer" }, { name: "read" }],
+	} as unknown as Parameters<typeof f.context>[0];
+	await f.context(input, async (next) => {
+		seen = next.tools.map((tool) => tool.name);
+		return next as never;
+	});
+	return seen;
+}
+
+test("review_session 只列给侧栏里的会话：子会话、插件的独立会话的工具表里没有；ask_implementer 只列给审阅会话", async (t) => {
 	const f = await fixture(t);
-	const names = async (sessionId: string) => {
-		let seen: string[] = [];
-		const input = { sessionId, session: f.scope(sessionId), tools: [{ name: "review_session" }, { name: "read" }] } as unknown as Parameters<
-			typeof f.context
-		>[0];
-		await f.context(input, async (next) => {
-			seen = next.tools.map((tool) => tool.name);
-			return next as never;
-		});
-		return seen;
-	};
-	assert.deepEqual(await names("main"), ["review_session", "read"]);
-	assert.deepEqual(await names("side"), ["read"]);
-	assert.deepEqual(await names("ops"), ["read"]);
+	assert.deepEqual(await visible(f, "main"), ["review_session", "read"]);
+	assert.deepEqual(await visible(f, "side"), ["read"]);
+	assert.deepEqual(await visible(f, "ops"), ["read"]);
 });
 
 test("review_session：开出审阅会话、第一轮接上正文和原会话的目录，只读到原会话答复为止，做完把报告交回", async (t) => {
@@ -256,6 +295,24 @@ test("review_session：开出审阅会话、第一轮接上正文和原会话的
 	assert.deepEqual(verdict, { block: false, context: reviewBody({ delegate: "dispatch", question: "ask_person" }), cwd: "/w/.worktrees/a" });
 	// 审阅会话自己再交一次不行。
 	assert.match((await f.tool.execute(complete, f.run("review"))).output, /This conversation is the review session/);
+
+	// 问原会话修哪几条：只有审阅会话看得到、用得了，寄给原会话一封署着双方地址的请求。
+	assert.deepEqual(await visible(f, "review"), ["review_session", "ask_implementer", "read"]);
+	assert.equal((await f.ask.execute({ message: "修哪几条？" }, f.run("main"))).isError, true);
+	assert.equal((await f.ask.execute({ message: " " }, f.run("review"))).isError, true);
+	const asked = await f.ask.execute({ message: "1 high a.ts:3 — 漏了空值。修哪几条？" }, f.run("review"));
+	assert.equal(asked.isError, undefined);
+	assert.match(asked.output, /^Sent to “改登录”/);
+	assert.equal(f.letters.length, 1);
+	assert.equal(f.letters[0]!.to, "main");
+	assert.deepEqual(
+		{ ...f.letters[0]!.letter, guide: undefined },
+		{ from: "改登录 [review]", text: "1 high a.ts:3 — 漏了空值。修哪几条？", request: true, recipient: "改登录 [main]", guide: undefined },
+	);
+	assert.match(f.letters[0]!.letter.guide!, /step H\.4/);
+	// 原会话不在了：寄不出去，照第 F 步什么都不修。
+	f.unreachable();
+	assert.match((await f.ask.execute({ message: "再问" }, f.run("review"))).output, /Fix nothing/);
 
 	// 只读：审阅会话和它的子 Agent 写不了文件，读照常；原会话答复以后放行。
 	f.sessions.set("worker", { ...f.sessions.get("side")!, id: "worker", parentId: "review", owner: "plume.subagents" });

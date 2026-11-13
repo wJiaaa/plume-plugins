@@ -1,6 +1,8 @@
 /** `review_session` 的结果 details：逻辑入口写进去，界面入口的那一行读出来。会话里存的可能是旧版本写的，读之前先校验。 */
 
 export const REVIEW_SESSION = "review_session";
+/** 审阅会话问原会话修哪几条的工具（`/review` 正文第 F 步）。只列给审阅会话。 */
+export const ASK_IMPLEMENTER = "ask_implementer";
 
 export type Effort = "low" | "medium" | "high";
 

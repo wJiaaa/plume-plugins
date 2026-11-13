@@ -9,7 +9,7 @@
 import type { Message, UserMessage } from "@plume/contract";
 import type { Messages } from "./messages.ts";
 import { REVIEW_SESSION_OPENING } from "./review.ts";
-import type { Effort, ReviewHandoff, ReviewSessionDetails } from "./types.ts";
+import { ASK_IMPLEMENTER, type Effort, type ReviewHandoff, type ReviewSessionDetails } from "./types.ts";
 
 /**
  * 每项的最短长度，按码点算。下限只为挡住一句话打发：背景和实现说明少于一两句话就说不清前因后果；
@@ -178,7 +178,7 @@ export function userWords(messages: readonly Message[]): { words: { n: number; t
 	return { words: [first, ...recent], omitted: all.length - 1 - recent.length };
 }
 
-/** 会话的地址，和会话互通插件（`ask_session`）认的一样：`名字 [id 前六位]`。 */
+/** 会话的地址：`名字 [id 前六位]`，和会话互通插件写的一样，对方装了它时照着就能回信。审阅会话问原会话时署在信上。 */
 export function sessionAddress(session: { id: string; title: string; cwd: string }): string {
 	const name = session.title.replace(/\s+/g, " ").replace(/[[\]]/g, "").trim() || session.cwd.split(/[\\/]/).findLast(Boolean) || "session";
 	return `${name} [${session.id.replace(/-/g, "").slice(0, 6).toLowerCase()}]`;
@@ -187,14 +187,12 @@ export function sessionAddress(session: { id: string; title: string; cwd: string
 /**
  * 审阅会话的第一句话。第一行让它认出自己（`/review` 正文第 0 步）；之后每一节都在，没填的写「未提供」，审阅者看得出是没有，
  * 而不是漏排了。计划、原话包在标签里（`<approved_plan>`、`<user_messages>`）：那是原文，边界要清楚。
- * `address` 为空是没有 `ask_session`：交付那一节改说不问、不修。
  */
 export function reviewPrompt(
 	details: Omit<ReviewSessionDetails, "sessionId">,
 	plan: string | null,
 	messages: readonly Message[],
 	parentTitle: string,
-	address: string | undefined,
 	text: Messages["brief"],
 ): string {
 	const handoff = details.handoff;
@@ -223,6 +221,6 @@ export function reviewPrompt(
 		section(text.unverified, handoff?.unverified ?? text.none),
 		section(text.focus, handoff?.focus ?? text.none),
 		section(text.target, `Arguments: ${args || "none (the uncommitted local changes)"}\n\n${text.pipeline}`),
-		section(text.deliver, address ? text.deliverText(parentTitle, address) : text.deliverNoAsk(parentTitle)),
+		section(text.deliver, text.deliverText(parentTitle, ASK_IMPLEMENTER)),
 	].join("\n\n");
 }

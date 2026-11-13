@@ -11,6 +11,8 @@
  * `review`、`verify` 是子智能体的名字（人看得见、能用同名文件覆盖），照写。并发写死成 4，跟着子智能体的默认名额。
  */
 
+import { ASK_IMPLEMENTER } from "./types.ts";
+
 /** `--fix` 不在提示里：交给审阅会话时修不修由原会话定（第 H、F 步）；它只为在当前会话里跑的那条路留着。 */
 export const REVIEW_ARGUMENT_HINT = "[PR | URL | path] [--effort low|medium|high] [--comment]";
 
@@ -217,7 +219,7 @@ Order by severity, CONFIRMED before PLAUSIBLE within one. **high**: data loss, a
 The implementing conversation decides what gets fixed — it knows what the person asked for — and you make the fixes, since you know the defects.
 
 1. Skip this step when there is nothing to fix: no findings, or a PR whose head is not checked out (say fixes cannot apply here).
-2. Write the step 6 report to \`review/report.md\`. Then call \`ask_session\` with the implementing conversation's address (the brief's last section gives it): the path to the report and one line per finding — its number, severity, \`file:line\`, the defect, CONFIRMED or PLAUSIBLE — and ask which numbers to fix. Then end your turn with one line saying you are waiting for its decision: \`ask_session\` returns at once, and the answer arrives as a message that starts your next turn. Edits stay refused until it has answered. If the answer only says it is asking its person first, end your turn again; the decision comes as another message.
+2. Write the step 6 report to \`review/report.md\`. Then call \`${ASK_IMPLEMENTER}\` with the path to the report and one line per finding — its number, severity, \`file:line\`, the defect, CONFIRMED or PLAUSIBLE — and ask which numbers to fix. Then end your turn with one line saying you are waiting for its decision: \`${ASK_IMPLEMENTER}\` returns at once, and the answer arrives as a message that starts your next turn. Edits stay refused until it has answered. If the answer only says it is asking its person first, end your turn again; the decision comes as another message.
 3. No answer — the message says your request was dropped or that session was closed: fix nothing, and list every finding under "Awaiting a decision".
 4. Fix exactly the findings it named — the smallest change that removes each defect, no refactoring around it, nothing it did not name. Then run the checks that cover the files you touched (reuse the commands \`verify\` ran, if it ran).
 5. Add to the step 6 report:

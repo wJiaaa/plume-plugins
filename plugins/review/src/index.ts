@@ -8,6 +8,8 @@
  * - 交接单里的计划向服务 `session.plan`（内置插件 plume.plan 提供）要这个会话照着做的那份，不读交计划那次调用的结果。
  * - 审阅会话的第一轮开头（`prompt.submit`）：认出交接单，把流程正文接在它后面给模型（气泡里只有交接单），
  *   原会话在别的目录里跑（工作树）时把审阅会话也挪过去，未提交的改动只在那里。
+ * - 审阅会话经自己的 `ask_implementer` 问原会话修哪几条：一封请求（`ToolRun.letter`），答复的配对、原会话没答时的代答归本体，
+ *   不靠别的插件；这件工具只列给审阅会话。
  * - 只读：审阅会话和它派出的子会话写文件的调用一律拒绝（`tool.execute`），直到原会话答复了修哪几条——
  *   审阅会话的记录里有原会话寄来、带 `answer`（`replied`、`unreplied`）的信。命令不压只读沙箱，留给权限档：`verify` 要写缓存。
  * - 审阅会话第一轮之后真闲下来（问出去的有了答复、修完了），把最后那段回复（报告）交回原会话；被人停下的不交。
@@ -20,7 +22,7 @@ import type { LaunchedSession, Message, Plugin, SessionScope, ToolKind } from "@
 import { reviewPrompt, reviewRequest, sessionAddress } from "./brief.ts";
 import { MESSAGES } from "./messages.ts";
 import { type BodyTools, REVIEW_ARGUMENT_HINT, REVIEW_SESSION_OPENING, reportText, reviewBody, reviewRequest as commandText } from "./review.ts";
-import { REVIEW_SESSION, type ReviewSessionDetails } from "./types.ts";
+import { ASK_IMPLEMENTER, REVIEW_SESSION, type ReviewSessionDetails } from "./types.ts";
 
 // i18n-exempt：工具说明、参数和结果是发给模型的话。
 const DESCRIPTION =
@@ -57,9 +59,23 @@ function edits(kind: ToolKind | undefined): string | undefined {
 function refusal(tool: string, why: string): string {
 	return (
 		`Review session: ${why}, so "${tool}" did not run. A review session reads until the conversation that wrote the ` +
-		"change has said which findings to fix: finish the report, ask it with `ask_session` (step F) and end your turn. Once its answer arrives, edits are allowed."
+		`change has said which findings to fix: finish the report, ask it with \`${ASK_IMPLEMENTER}\` (step F) and end your turn. Once its answer arrives, edits are allowed.`
 	);
 }
+
+// i18n-exempt：发给模型的话。
+const ASK_DESCRIPTION =
+	"Review session only: ask the conversation that wrote the change and handed you this review which findings to fix, as step F of the `/review` instructions says. " +
+	"Returns at once; its answer arrives here later as a message by itself and starts your next turn, so end your turn after asking.";
+
+/**
+ * 原会话读到这封请求时附的处理说明：请求没答会被代答这些本体的抬头说了，这里只说拿它怎么办。原会话未必装着能回信的工具，
+ * 所以说成把决定写进这一轮的回复——读到请求的那一轮收场时，本体把最后一段回复原样交回去当答复。
+ */
+// i18n-exempt：发给模型的话。
+const ASK_GUIDE =
+	"The request is from the review session you handed off with review_session: decide which of its findings to fix as step H.4 of the `/review` instructions says, " +
+	"and put the numbers to fix and a short reason for each one left in your reply.";
 
 /** 审阅会话记着从哪个会话交过来、原会话当时在哪个目录。 */
 interface Review {
@@ -135,9 +151,10 @@ export default {
 		});
 
 		ctx.hook("model.context", async (input, next) => {
-			// 子会话和插件的独立会话都不是侧栏里那段对话，交不出审阅。
-			if (input.session.kind !== "top") return next({ ...input, tools: input.tools.filter((tool) => tool.name !== REVIEW_SESSION) });
-			return next(input);
+			// 子会话和插件的独立会话都不是侧栏里那段对话，交不出审阅；问原会话只有审阅会话自己用得上。
+			// 一个会话是不是审阅会话在它第一轮开头（`prompt.submit`）就定了，工具表在会话里不变，前缀缓存留得住。
+			const hidden = new Set([...(input.session.kind !== "top" ? [REVIEW_SESSION] : []), ...(reviews.has(input.session.id) ? [] : [ASK_IMPLEMENTER])]);
+			return next({ ...input, tools: input.tools.filter((tool) => !hidden.has(tool.name)) });
 		});
 
 		ctx.hook("prompt.submit", async (input, next) => {
@@ -194,8 +211,7 @@ export default {
 				const request = reviewRequest(args, parent.title, brief);
 				if ("error" in request) return { output: request.error, isError: true };
 				const messages = await ctx.sessions.messages(parent.id);
-				const address = ctx.tools.names().includes("ask_session") ? sessionAddress(parent) : undefined;
-				const prompt = reviewPrompt(request, await plans.approved(parent.id), messages, parent.title, address, brief);
+				const prompt = reviewPrompt(request, await plans.approved(parent.id), messages, parent.title, brief);
 				const review: Review = { parentId: parent.id, cwd: parent.cwd };
 				pending.set(prompt, review);
 				let launched: LaunchedSession;
@@ -226,5 +242,48 @@ export default {
 				};
 			},
 		});
+
+		ctx.tools.register({
+			name: ASK_IMPLEMENTER,
+			description: ASK_DESCRIPTION,
+			parameters: {
+				type: "object",
+				properties: { message: { type: "string", description: "The path to the report, one line per finding, and the question which numbers to fix." } },
+				required: ["message"],
+				additionalProperties: false,
+			},
+			async execute(args, run) {
+				const review = reviews.get(run.sessionId);
+				// i18n-exempt：发给模型的话。
+				if (!review || !run.letter) return { output: "Only a review session started by review_session can ask the conversation it reviews.", isError: true };
+				const message = typeof args.message === "string" ? args.message.trim() : "";
+				// i18n-exempt：发给模型的话。
+				if (!message) return { output: "`message` is required.", isError: true };
+				const [self, parent] = await Promise.all([ctx.sessions.get(run.sessionId), ctx.sessions.get(review.parentId)]);
+				// 原会话删掉了、归档了：没人能答，照第 F 步第 3 条什么都不修。
+				if (!self || !parent || parent.archived) return { output: unreachable(), isError: true };
+				try {
+					run.letter(parent.id, {
+						from: sessionAddress(self),
+						text: message,
+						request: true,
+						// 本体代答时署这个名，和原会话自己回信时一样。
+						recipient: sessionAddress(parent),
+						guide: ASK_GUIDE,
+					});
+				} catch {
+					return { output: unreachable(), isError: true };
+				}
+				// i18n-exempt：发给模型的话。
+				return {
+					output: `Sent to “${parent.title}”. Its answer arrives here as a message by itself and starts your next turn — do not wait, poll or ask again. End your turn now with one line saying you are waiting for its decision.`,
+				};
+			},
+		});
 	},
 } satisfies Plugin;
+
+// i18n-exempt：发给模型的话。
+function unreachable(): string {
+	return 'The conversation that wrote the change is gone, so nobody can say which findings to fix. Fix nothing and list every finding under "Awaiting a decision" (step F, item 3).';
+}

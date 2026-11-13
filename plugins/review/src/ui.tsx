@@ -2,14 +2,15 @@
  * plume.review 的界面入口：一次 `review_session` 在对话里画成一行「审阅会话 · 审什么」。不经卡片——人敲 `/review` 就是同意，
  * 调用答完时审阅会话已经开出来了。行首是审阅的图标，它在跑时摘要上扫光，没跑完时行尾说一声，点了过去。
  * 报告交回来时本体另画一行「来自新会话」。调用被退回（交接单不全、开不出来）时交回通用的工具行。
+ * 审阅会话里问原会话修哪几条的 `ask_implementer` 画成一行「问原会话修哪几条」。
  */
 
 import type { ToolCardProps, UiContext, UiPlugin } from "@plume/contract/ui";
 import { FlowRow, Text, useI18n } from "@plume/ui";
-import { ChevronRight, FileSearch } from "@plume/ui/icons";
+import { ChevronRight, FileSearch, MessageCircleQuestion } from "@plume/ui/icons";
 import reviewCss from "./review.css";
 import { MESSAGES } from "./messages.ts";
-import { isReviewSession, REVIEW_SESSION } from "./types.ts";
+import { ASK_IMPLEMENTER, isReviewSession, REVIEW_SESSION } from "./types.ts";
 
 const NAME = "plume.review";
 
@@ -68,5 +69,6 @@ export default {
 			subject: (args) => (typeof args.target === "string" && args.target.trim() ? args.target.trim() : undefined),
 			icon: FileSearch,
 		});
+		context.toolLine(ASK_IMPLEMENTER, { verb: (locale) => MESSAGES[locale].askingImplementer, icon: MessageCircleQuestion });
 	},
 } satisfies UiPlugin;
