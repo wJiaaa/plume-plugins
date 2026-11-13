@@ -12,6 +12,7 @@
  */
 
 import { isAbsolute, join } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import type { Message, Plugin, ToolOutput, TurnStop } from "@plume/contract";
 import type { HookView, HooksApi, HooksView } from "./api.ts";
 import {
@@ -279,6 +280,10 @@ export default {
 		 * 工具要人确认的时候，先让 PermissionRequest 钩子答：答了就不弹卡，没答（或者这条钩子坏了）才问人。
 		 * tool.execute 的层自己要问的（PreToolUse 的「要确认」）不归它；提问、批准计划这些要人给答案的走 run.request，根本不到这里。
 		 * 提权只能由人在卡上批：钩子是一段脚本，项目钩子还可能是别人提交进来的，本体不认它的放行、照样弹卡，拒绝照样算。
+		 *
+		 * 放行带的 `updatedInput` 改了参数时不算放行、照常问人：tool.approve 只能答放不放，换不了这次调用的参数，
+		 * 照原参数放行等于放过了钩子没同意的那一版。原样交回的（`jq '.tool_input'`）还是放行。`updatedPermissions`（记规则、换权限模式）
+		 * 也没有地方落，不理它，只放这一次。
 		 */
 		ctx.hook(
 			"tool.approve",
@@ -300,7 +305,10 @@ export default {
 						{ matchValues: hookMatchValues(toolName), signal: input.signal },
 					);
 					if (result.decision === "deny") return "reject";
-					if (result.decision === "allow") return "once";
+					const changed =
+						isPlainObject(result.updatedInput) &&
+						!isDeepStrictEqual(plumeToolInput(toolName, result.updatedInput, input.call.args, input.cwd), input.call.args);
+					if (result.decision === "allow" && !changed) return "once";
 				} catch (error) {
 					failedHandling(input.sessionId, "PermissionRequest", error);
 				}

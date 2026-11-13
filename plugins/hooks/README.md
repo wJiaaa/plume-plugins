@@ -36,6 +36,8 @@ stdout 上的 JSON 能表达这些：
   - 「放」会跳过审批卡，但沙箱外运行（提权）仍然要你点头。
 - `PermissionRequest` 可以用 `hookSpecificOutput.decision.behavior` 说 `allow` 或 `deny`；要拒绝只能这样说，退出码 2 不算拒绝。
   - 拒绝就不弹卡、直接拒绝；放行只放这一次。
+  - 放行时用 `updatedInput` 改了参数的，Plume 换不了审批里的参数，不算放行，照常弹卡问你；原样交回的照样放行。
+  - `updatedPermissions`（记一条规则、换权限模式、加目录）不支持，不理它，只放这一次。
   - 申请沙箱外运行（提权）只能由你在卡上批，钩子的放行 Plume 不认，拒绝照样算。
   - 提问、批准计划这些只能由你答的卡，不问钩子。
 - `StopFailure` 和 `SessionEnd` 只是通知：这一轮或会话已经结束了，它们的输出不读。

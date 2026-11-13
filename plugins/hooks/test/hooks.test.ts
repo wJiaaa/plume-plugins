@@ -421,6 +421,43 @@ test("PermissionRequest：要弹卡时先问钩子；拒绝算数，放行只放
 	}
 });
 
+test("PermissionRequest：放行时改了参数的，Plume 改不了审批里的参数，交给人批；参数原样交回、带 updatedPermissions 的照样放行一次", async () => {
+	const allow = (decision: Record<string, unknown>) =>
+		command(`echo '${JSON.stringify({ hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "allow", ...decision } } })}'`);
+	const h = await harness({
+		PermissionRequest: [
+			{ matcher: "Bash", hooks: [allow({ updatedInput: { command: "npm run lint" } })] },
+			// 照 jq '.tool_input' 原样交回：file_path 是 Plume 补给脚本的，翻回去和原参数一样。
+			{
+				matcher: "Write",
+				hooks: [
+					command(
+						`"${process.execPath}" -e 'let r="";process.stdin.on("data",c=>r+=c).on("end",()=>{const {tool_input}=JSON.parse(r);process.stdout.write(JSON.stringify({hookSpecificOutput:{hookEventName:"PermissionRequest",decision:{behavior:"allow",updatedInput:tool_input}}}))})'`,
+					),
+				],
+			},
+			{
+				matcher: "Edit",
+				hooks: [allow({ updatedPermissions: [{ type: "addRules", rules: [{ toolName: "Edit" }], behavior: "allow", destination: "session" }] })],
+			},
+		],
+	});
+	try {
+		let asked = 0;
+		const human = async () => {
+			asked += 1;
+			return "reject" as const;
+		};
+		assert.equal(await h.run("tool.approve", approval(h.dir), human), "reject");
+		assert.equal(asked, 1);
+		assert.equal(await h.run("tool.approve", approval(h.dir, { call: { id: "c2", name: "write", args: { path: "a.txt", content: "x" } } }), human), "once");
+		assert.equal(await h.run("tool.approve", approval(h.dir, { call: { id: "c3", name: "edit", args: {} } }), human), "once");
+		assert.equal(asked, 1);
+	} finally {
+		await h.dispose();
+	}
+});
+
 test("StopFailure 和 SessionEnd：一轮没完成时跑、带上最后的回复；会话结束只给跑过 SessionStart 的、跑一次、排在 StopFailure 后面", async () => {
 	const log = `cat >> "$CLAUDE_PROJECT_DIR/events.log"; echo >> "$CLAUDE_PROJECT_DIR/events.log"`;
 	const h = await harness({

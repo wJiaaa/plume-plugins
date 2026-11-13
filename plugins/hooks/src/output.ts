@@ -10,7 +10,9 @@ import type { HookEventName } from "./config.ts";
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 
 type HookPermissionDecision = "allow" | "ask" | "deny";
-type PermissionRequestHookDecision = { behavior: "allow"; updatedInput?: unknown } | { behavior: "deny"; message?: string; interrupt?: boolean };
+type PermissionRequestHookDecision =
+	| { behavior: "allow"; updatedInput?: unknown; updatedPermissions?: unknown }
+	| { behavior: "deny"; message?: string; interrupt?: boolean };
 
 export interface HookJSONOutput {
 	continue?: boolean;
@@ -139,6 +141,7 @@ export function processHookOutput(event: HookEventName, output: HookJSONOutput |
 	}
 	if (event === "PermissionRequest" && specific.decision) {
 		decide(specific.decision.behavior, specific.decision.behavior === "deny" ? specific.decision.message : undefined);
+		if (specific.decision.behavior === "allow" && specific.decision.updatedInput !== undefined) result.updatedInput = specific.decision.updatedInput;
 	}
 	if (event !== "PermissionRequest" && specific.additionalContext) result.additionalContexts.push(specific.additionalContext);
 	return result;
