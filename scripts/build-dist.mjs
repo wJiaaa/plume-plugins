@@ -18,22 +18,7 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import {
-	chmodSync,
-	closeSync,
-	cpSync,
-	existsSync,
-	lstatSync,
-	mkdirSync,
-	mkdtempSync,
-	openSync,
-	readdirSync,
-	readFileSync,
-	readSync,
-	rmSync,
-	statSync,
-	writeFileSync,
-} from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -69,27 +54,6 @@ function fingerprint(dir) {
 			.update("\0")
 			.update(readFileSync(join(dir, file)));
 	return hash.digest("hex");
-}
-
-/** Mach-O（单架构的 32、64 位，两种字节序；通用二进制）和 ELF 的文件头。 */
-const NATIVE_MAGIC = new Set(["feedface", "feedfacf", "cefaedfe", "cffaedfe", "cafebabe", "7f454c46"]);
-
-/**
- * 包里的 macOS、Linux 原生二进制都带上执行位，不取决于构建机上的依赖是怎么装的。权限位是从 node_modules 原样复制来的：
- * node-pty 1.1.0 发布包里的 spawn-helper 本身没有执行位，靠终端插件的 postinstall 补；依赖按 `--ignore-scripts` 装时
- * （本体的 `pnpm market:local`）它没跑，打出的包里 spawn-helper 是 0644，装上后终端起 shell 报 `posix_spawnp failed.`。
- * 按文件头认、不按包名认：哪个插件带了要直接执行的预编译程序都一样。动态库（`.node`、`.dylib`、`.so`）一起加上无害，
- * 链接器产出它们时本来就是 0755；Windows 的包里不看执行位，也一样处理。只改权限、不改内容，指纹不变。
- */
-function markNativeExecutable(dir) {
-	const head = Buffer.alloc(4);
-	for (const file of files(dir)) {
-		const path = join(dir, file);
-		const fd = openSync(path, "r");
-		const read = readSync(fd, head, 0, 4, 0);
-		closeSync(fd);
-		if (read === 4 && NATIVE_MAGIC.has(head.toString("hex"))) chmodSync(path, statSync(path).mode | 0o111);
-	}
 }
 
 const sha256 = (file) => createHash("sha256").update(readFileSync(file)).digest("hex");
@@ -147,7 +111,6 @@ try {
 				writeFileSync(join(staging, PLUGIN_ENTRY), `export default { name: ${JSON.stringify(`plume.${name}`)}, apply() {} };\n`);
 			}
 			trimNative(join(staging, "dist", "node_modules"), target);
-			markNativeExecutable(join(staging, "dist", "node_modules"));
 			const path = `plugins/${name}/${version}/${target}.tgz`;
 			const archive = join(out, path);
 			mkdirSync(dirname(archive), { recursive: true });

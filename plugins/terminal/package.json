@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/terminal",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "在面板区开真正的终端：shell 起在会话的工作目录，一个标签一个 shell，切走再回来接着用。",
   "author": "Plume",
   "keywords": [
@@ -16,7 +16,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "postinstall": "node scripts/pty-helper.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run"
   },
