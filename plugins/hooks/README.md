@@ -85,6 +85,16 @@ stdout 上的 JSON 能表达这些：
 - **`permission_mode`**：照 Claude Code 的叫法，请求批准是 `default`，帮我批准是 `auto`，完全访问是 `bypassPermissions`，计划模式是 `plan`。工具前后、`PermissionRequest`、`Stop` 有，取的是发出这次调用（这次回答）的那次请求时的模式；`UserPromptSubmit` 时这一轮还没发过请求，Plume 拿不到这一刻的权限模式，不给。
 - **`duration_ms`、`is_interrupt`**：`PostToolUse`、`PostToolUseFailure` 有 `duration_ms`，和 Claude Code 一样不算等审批的时间；`PostToolUseFailure` 有 `is_interrupt`。
 - **不支持的字段**：`prompt_id`、`effort`（还有环境变量 `CLAUDE_EFFORT`）Plume 拿不到，不给；读它们的脚本拿到空值。
+- **`${CLAUDE_PROJECT_DIR}`**：是会话现在的工作目录，换进工作树后跟着变；Claude Code 的是会话开始时的项目根。
+- **超时**：默认 60 秒，每个事件都一样；Claude Code 默认 600 秒，`UserPromptSubmit` 30 秒，`SessionEnd` 合用 1.5 秒。
+- **钩子定义里不认的字段**：`if`（按权限规则再筛一次；写了也照跑）、`asyncRewake`、`onFailure`（坏了的钩子一律照常往下走）、`once`。`shell` 是 shell 程序的路径，不是 Claude Code 的 `"bash"`、`"powershell"` 两个名字。
+- **后台运行（`async`）**：输出只进运行记录，不像 Claude Code 那样在下一轮把 `additionalContext` 交给 agent；超时照算。
+- **`continue: false`**：在 `PreToolUse`、`PermissionRequest`、`UserPromptSubmit` 上算拦下这一步，不会像 Claude Code 那样让 agent 整个停下。
+- **给人看的输出不显示**：`systemMessage`、`stopReason`，`SessionStart`、`SessionEnd` 退出码 2 的 stderr。
+- **`Stop`**：每轮最多续三次，Claude Code 是连续八次、调过工具就重数；stdin 没有 `background_tasks`、`session_crons`。
+- **`StopFailure`**：出错、被停下、用满步数、原地打转、退出时被打断都跑，matcher 和 `reason` 是这几种收场原因；`error` 是出错时给人看的那句话，不是 Claude Code 的 `rate_limit` 这类错误类型。`SessionEnd` 的 `reason` 也是 Plume 自己的那几种。
+- **`PermissionRequest`**：stdin 没有 `permission_suggestions`；拒绝时的 `interrupt` 不支持，不会让 agent 停下。
+- **不读的输出**：`PostToolUse` 的 `updatedToolOutput`、`updatedMCPToolOutput`，`UserPromptSubmit` 的 `sessionTitle`、`suppressOriginalPrompt`，`SessionStart` 的 `initialUserMessage`、`sessionTitle`、`watchPaths`、`reloadSkills`。
 
 ## 项目钩子的信任
 
