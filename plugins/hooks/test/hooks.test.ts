@@ -386,11 +386,16 @@ test("设置页：新建、开关、删除写回 hooks.json；写坏了的文件
 	}
 });
 
-test("PermissionRequest：要弹卡时先问钩子；拒绝算数，放行只放一次，提权和只能人答的不归它", async () => {
+test("PermissionRequest：要弹卡时先问钩子；拒绝算数，放行只放一次，退出码 2 不改审批，提权和只能人答的不归它", async () => {
 	const h = await harness({
 		PermissionRequest: [
 			{ matcher: "Bash", hooks: [command(`echo '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"}}}'`)] },
-			{ matcher: "Write", hooks: [command("echo nope >&2; exit 2")] },
+			{
+				matcher: "Write",
+				hooks: [command(`echo '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"nope"}}}'`)],
+			},
+			// 照 Claude Code：退出码 2 不算拒绝，审批照常弹给人。
+			{ matcher: "Edit", hooks: [command("echo nope >&2; exit 2")] },
 		],
 	});
 	try {
@@ -409,6 +414,8 @@ test("PermissionRequest：要弹卡时先问钩子；拒绝算数，放行只放
 		assert.equal(await h.run("tool.approve", approval(h.dir, { byLayer: true }), human), "always");
 		assert.equal(await h.run("tool.approve", approval(h.dir, { call: { id: "c4", name: "read", args: {} } }), human), "always");
 		assert.equal(asked, 2);
+		assert.equal(await h.run("tool.approve", approval(h.dir, { call: { id: "c5", name: "edit", args: {} } }), human), "always");
+		assert.equal(asked, 3);
 	} finally {
 		await h.dispose();
 	}

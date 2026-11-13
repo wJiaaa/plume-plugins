@@ -26,7 +26,7 @@
 钩子的退出码决定结果：
 
 - **退出码 0**：读 stdout 上的 JSON。
-- **退出码 2**：拦下，原因取 stderr。
+- **退出码 2**：拦下，原因取 stderr。`PermissionRequest` 例外：退出码 2 不改变审批，照常弹卡问你，stderr 不用。
 - **其他退出码**：算这条钩子运行失败，记进运行记录，这一步照常往下走。
 
 stdout 上的 JSON 能表达这些：
@@ -34,7 +34,7 @@ stdout 上的 JSON 能表达这些：
 - `PreToolUse` 可以用 `hookSpecificOutput.permissionDecision` 说「拦（deny）/ 问（ask）/ 放（allow）」，也可以用 `updatedInput` 改参数。
   - 几条钩子说法不一时，取最严的。
   - 「放」会跳过审批卡，但沙箱外运行（提权）仍然要你点头。
-- `PermissionRequest` 可以用 `hookSpecificOutput.decision.behavior` 说 `allow` 或 `deny`（退出码 2 也是拒绝）。
+- `PermissionRequest` 可以用 `hookSpecificOutput.decision.behavior` 说 `allow` 或 `deny`；要拒绝只能这样说，退出码 2 不算拒绝。
   - 拒绝就不弹卡、直接拒绝；放行只放这一次。
   - 申请沙箱外运行（提权）只能由你在卡上批，钩子的放行 Plume 不认，拒绝照样算。
   - 提问、批准计划这些只能由你答的卡，不问钩子。

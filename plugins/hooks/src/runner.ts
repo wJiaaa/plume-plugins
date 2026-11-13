@@ -4,8 +4,8 @@
  * 一次 `run` 对应一个事件：挑出匹配的钩子，按配置顺序一条条跑（`async` 的放到后台），把它们交回来的决定并成一个。
  * 每条钩子的开始和结局各报一次（`report`），逻辑入口记成运行记录，回复底下那个按钮读的就是它们。
  *
- * 约定和 Claude Code 一致：退出码 0 读 stdout 上的 JSON；2 是拦，原因取 stderr；其他非零是这条钩子自己坏了——
- * 记为失败，不替它做拦截的决定。
+ * 约定和 Claude Code 一致：退出码 0 读 stdout 上的 JSON；2 是拦，原因取 stderr（PermissionRequest 例外：审批照常往下走）；
+ * 其他非零是这条钩子自己坏了——记为失败，不替它做拦截的决定。
  */
 
 import { execFile, spawn } from "node:child_process";
@@ -386,13 +386,15 @@ async function execute(entry: HookEntry, input: HookInput, stdin: string, timeou
 	});
 }
 
-/** 退出码 2 换成等价的「拦」的输出，原因取 stderr。 */
-function exitCodeBlock(event: HookEventName, result: ProcessResult): HookJSONOutput {
+/**
+ * 退出码 2 换成等价的「拦」的输出，原因取 stderr。PermissionRequest 不认退出码 2：Claude Code 文档写明它不改变审批流程、
+ * stderr 丢掉，要拒绝得在 stdout 的 `decision` 里说——当成没答，照常弹给人。
+ */
+function exitCodeBlock(event: HookEventName, result: ProcessResult): HookJSONOutput | undefined {
 	const reason = preview(result.stderr) ?? preview(result.stdout) ?? "Hook blocked execution";
 	if (event === "PreToolUse")
 		return { continue: false, reason, hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: reason } };
-	if (event === "PermissionRequest")
-		return { continue: false, reason, hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "deny", message: reason } } };
+	if (event === "PermissionRequest") return undefined;
 	if (event === "Stop") return { decision: "block", reason };
 	return { continue: false, reason };
 }
