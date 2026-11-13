@@ -25,6 +25,8 @@ export interface HookView {
 	custom?: Record<string, unknown>;
 	/** 只有项目钩子有：这一条的内容是否已被这台机器信任过。没信任的在会话里不运行。 */
 	trusted?: boolean;
+	/** 这台机器的命令会跑在 PowerShell 里，而这条的 matcher 中 `Bash` 不中 `PowerShell`：那时它不触发，设置页提示一句。 */
+	missesPowerShell?: true;
 }
 
 export interface HooksView {

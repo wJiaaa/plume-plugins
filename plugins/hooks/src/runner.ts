@@ -120,6 +120,18 @@ export function hookMatchValues(toolName: string, shell?: CommandShellKind): str
 	return [toolName, ...claudeCodeNames(toolName, shell)];
 }
 
+const TOOL_EVENTS: ReadonlySet<HookEventName> = new Set(["PreToolUse", "PermissionRequest", "PostToolUse", "PostToolUseFailure"]);
+
+/**
+ * 这条钩子管得到 posix shell 里的 bash、管不到 PowerShell 里的：照 Claude Code 只写了 `Bash` 的守卫，从 macOS 搬到 Windows 上，
+ * 受约束的档里一次也不跑、也不报错。设置页拿它提示人改成 `Bash|PowerShell`。和真跑时用的是同一份 matcher 判定。
+ */
+export function missesPowerShell(event: HookEventName, matcher: string | undefined): boolean {
+	if (!matcher || !TOOL_EVENTS.has(event)) return false;
+	const hits = (values: string[]) => values.some((value) => matchesHookMatcher(value, matcher, event));
+	return hits(hookMatchValues("bash")) && !hits(hookMatchValues("bash", "powershell"));
+}
+
 /**
  * 交给脚本的 `tool_name`：有对照的给 Claude Code 的名字，没有的给 Plume 的。照 Claude Code 文档写的守卫比的是 `tool_name == "Edit"`，
  * 给 Plume 的 `edit` 就比不上、该拦的被放过去；Plume 的名字留在 `toolName` 上。

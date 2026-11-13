@@ -35,7 +35,16 @@ import {
 	writeProjectHooks,
 } from "./config.ts";
 import { MESSAGES } from "./messages.ts";
-import { type CommandShellKind, createHookRunner, type HookInput, type HookRun, type HookRunner, hookMatchValues, plumeToolInput } from "./runner.ts";
+import {
+	type CommandShellKind,
+	createHookRunner,
+	type HookInput,
+	type HookRun,
+	type HookRunner,
+	hookMatchValues,
+	missesPowerShell,
+	plumeToolInput,
+} from "./runner.ts";
 import { RunStore } from "./runs.ts";
 import { trustedHookDigests, trustHookDigests } from "./trust.ts";
 
@@ -72,6 +81,12 @@ function replyText(messages: readonly Message[]): string {
 	return last?.role === "assistant" ? last.content.map((part) => (part.type === "text" ? part.text : "")).join("") : "";
 }
 
+/**
+ * 这台机器上的命令会不会跑在 PowerShell 里。设置页不在哪个会话里，拿不到 `ShellInfo`（只在 `ModelContext.shell`、`ToolRun.shell()` 上），
+ * 按平台判：照它的约定，Windows 上请求批准、帮我批准和计划模式的命令跑在 PowerShell 里，完全访问和别的平台都是 posix shell。
+ */
+const commandsRunInPowerShell = () => process.platform === "win32";
+
 function viewOf({ id, scope, event, matcher, definition }: HookEntry, trusted?: ReadonlySet<string>, digest?: string): HookView {
 	const { type, command, enabled, statusMessage, timeoutMs, ...rest } = definition;
 	const custom: Record<string, unknown> = {};
@@ -93,6 +108,7 @@ function viewOf({ id, scope, event, matcher, definition }: HookEntry, trusted?: 
 		enabled: enabled !== false,
 		...(Object.keys(custom).length > 0 ? { custom } : {}),
 		...(trusted && digest ? { trusted: trusted.has(digest) } : {}),
+		...(commandsRunInPowerShell() && missesPowerShell(event, matcher) ? { missesPowerShell: true as const } : {}),
 	};
 }
 

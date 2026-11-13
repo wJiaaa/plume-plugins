@@ -77,6 +77,7 @@ const zhCN = {
 	pending: (n: number) => `${n} 个项目钩子待审核，审核前不会运行`,
 	review: "去审核",
 	dismiss: "忽略",
+	missesPowerShell: "这台机器上，请求批准、帮我批准和计划模式下命令跑在 PowerShell 里，只写 Bash 的匹配器那时不触发；两边都要管就写成 Bash|PowerShell。",
 };
 
 export type Messages = typeof zhCN;
@@ -160,5 +161,7 @@ export const MESSAGES: Record<Locale, Messages> = {
 			n === 1 ? `${n} project hook awaiting review — it will not run until trusted` : `${n} project hooks awaiting review — they will not run until trusted`,
 		review: "Review",
 		dismiss: "Dismiss",
+		missesPowerShell:
+			"On this machine, commands run in PowerShell under Ask for approval, Auto approve and plan mode, where a matcher naming only Bash does not fire. Write Bash|PowerShell to cover both.",
 	},
 };

@@ -154,6 +154,14 @@
 	white-space: nowrap;
 }
 
+/* PowerShell 那边不触发的提示要读完整句才知道怎么改，不像标题和命令那样截成一行。 */
+.hook-row-body > .hook-row-warning {
+	display: flex;
+	align-items: flex-start;
+	gap: 6px;
+	white-space: normal;
+}
+
 .hook-row-title {
 	display: flex;
 	align-items: baseline;

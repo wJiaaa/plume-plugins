@@ -72,7 +72,7 @@ stdout 上的 JSON 能表达这些：
 匹配器、stdin 的字段名、退出码和输出的 JSON 都照 Claude Code 的约定，下面这些对不上：
 
 - **工具名**：匹配器认 Claude Code 的 `Bash`、`Read`、`Write`、`Edit`、`Glob`、`Grep`、`WebFetch`、`WebSearch`，也认旧配置里的 `MultiEdit`（`Edit` 和 `MultiEdit` 都对到 `edit`）。别的名字（`Agent`、`NotebookEdit`、`mcp__…` 这类）不翻译，按 Plume 的工具名写；Claude Code 已经没有 `LS`，Plume 的 `ls` 按 `ls` 写。
-- **`PowerShell`**：Plume 的 `bash` 在 PowerShell 里跑命令时（Windows 上请求批准、帮我批准和计划模式下），对的是 Claude Code 的 `PowerShell` 工具：`tool_name` 是 `PowerShell`，匹配器认 `PowerShell`，只写 `Bash` 的不中。和 Claude Code 一样，要两边都管写 `Bash|PowerShell`。参数和 `Bash` 一样。
+- **`PowerShell`**：Plume 的 `bash` 在 PowerShell 里跑命令时（Windows 上请求批准、帮我批准和计划模式下），对的是 Claude Code 的 `PowerShell` 工具：`tool_name` 是 `PowerShell`，匹配器认 `PowerShell`，只写 `Bash` 的不中。和 Claude Code 一样，要两边都管写 `Bash|PowerShell`。参数和 `Bash` 一样。从 macOS 搬来的守卫容易在这里悄悄失效：在 Windows 上，设置页给中 `Bash`、不中 `PowerShell` 的工具钩子标一句提示（设置页不在会话里，看不到某个会话这一刻用哪个 shell，按平台判）。
 - **`tool_name` 和 `toolName`**：stdin 里的 `tool_name` 是 Claude Code 的名字，照 Claude Code 文档写的 `tool_name == "Edit"` 比得上；没有对照的工具是 Plume 的名字。Plume 的名字在 `toolName` 里（`bash`、`edit`），按 Plume 名字比的脚本读 `toolName`。`edit` 的 `tool_name` 是 `Edit`，不会是 `MultiEdit`。
 - **`tool_input`**：是 Plume 工具的原参数，再补上 Claude Code 叫法的字段，两种写法的脚本都读得到：
   - `read`、`write`、`edit` 补 `file_path`，和 Claude Code 一样是展开后的绝对路径、用本机的分隔符：Plume 的 `path` 可以是相对项目目录的，或 `~/` 开头；Windows 上还认 `~\`、Git Bash 的 `/c/…`、`/cygdrive/c/…`、`/tmp/…`，换算成工具实际读写的 `C:\…`。`scratch://` 这类地址原样给。

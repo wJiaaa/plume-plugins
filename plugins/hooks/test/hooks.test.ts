@@ -538,6 +538,32 @@ test("命令跑在 PowerShell 里时（Windows 上受约束的档），bash 对�
 	}
 });
 
+test("设置页在 Windows 上标出中 Bash、不中 PowerShell 的工具钩子，别的平台不标", async (t) => {
+	const h = await harness({
+		PreToolUse: [
+			{ matcher: "Bash", hooks: [command("guard")] },
+			{ matcher: "Bash|PowerShell", hooks: [command("both")] },
+			{ matcher: "bash", hooks: [command("plume-name")] },
+			{ matcher: "Edit|Write", hooks: [command("edit")] },
+			{ hooks: [command("all")] },
+		],
+		PostToolUse: [{ matcher: "Ba.*", hooks: [command("regex")] }],
+		SessionStart: [{ matcher: "Bash", hooks: [command("not-a-tool")] }],
+	});
+	try {
+		const flagged = async () => (await h.api.list(null)).user.filter((hook) => hook.missesPowerShell).map((hook) => hook.command);
+		assert.deepEqual(await flagged(), []);
+		const platform = Object.getOwnPropertyDescriptor(process, "platform");
+		assert.ok(platform);
+		Object.defineProperty(process, "platform", { ...platform, value: "win32" });
+		t.after(() => Object.defineProperty(process, "platform", platform));
+		// 小写的 `bash` 对的是 Plume 的工具名，PowerShell 里也中，和真跑时一样不标。
+		assert.deepEqual(await flagged(), ["guard", "regex"]);
+	} finally {
+		await h.dispose();
+	}
+});
+
 test("一轮开始：SessionStart 只跑一次；UserPromptSubmit 拦下时下一轮重跑 SessionStart", async () => {
 	const h = await harness({
 		SessionStart: [{ hooks: [command(`echo '{"additionalContext":"start"}'`)] }],

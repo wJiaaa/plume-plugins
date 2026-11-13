@@ -414,6 +414,14 @@ function HookRow({
 				<Text size="detail" mono tone="faint">
 					{command}
 				</Text>
+				{hook.missesPowerShell && (
+					<span className="hook-row-warning" data-hook-powershell="">
+						<TriangleAlert size={12} strokeWidth={1.8} className="hook-notice-icon" aria-hidden />
+						<Text size="detail" tone="muted">
+							{text.missesPowerShell}
+						</Text>
+					</span>
+				)}
 			</span>
 			{/* 行上的控件不冒泡：点「信任」或开关不该顺便打开编辑表单。 */}
 			<span className="hook-row-side" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
