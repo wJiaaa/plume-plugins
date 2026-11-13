@@ -37,7 +37,7 @@ plugins/<name>/<version>/<平台>-<架构>.tgz   装下的文件
 .nojekyll                                   让 Pages 不按 Jekyll 处理
 ```
 
-平台是 Plume 发安装包的那几个：`darwin-arm64`、`darwin-x64`、`win32-arm64`、`win32-x64`。插件构建时带上了各平台的原生模块（node-pty、koffi 等），打包时每个平台只留自己那份。包里是插件目录下的 `package.json`、`README.md`、`images/`、`icon.png`、`dist/`、`skills/`、`.mcp.json`、`LICENSE`；源码和 `node_modules` 不发，符号链接不发。
+平台是 Plume 发安装包的那几个：`darwin-arm64`、`darwin-x64`、`win32-arm64`、`win32-x64`。插件构建时带上了各平台的原生模块（node-pty、koffi 等），打包时每个平台只留自己那份。包里是插件目录下的 `package.json`、`README.md`、`images/`、`icon.png`、`dist/`、`skills/`、`.mcp.json`、`LICENSE`；源码和 `node_modules` 不发，符号链接不发。包里 macOS、Linux 的原生二进制（Mach-O、ELF，如 node-pty 的 `spawn-helper`）一律带执行位，不取决于构建机装依赖时跑没跑安装脚本。
 
 `marketplace.json` 里一条：
 
