@@ -293,9 +293,12 @@ export default {
 						recipient: sessionAddress(parent),
 						guide: ASK_GUIDE,
 					});
-				} catch {
+				} catch (error) {
+					// 没寄出去，不算问过。原会话这时不在了、归档了，照第 F 步第 3 条什么都不修；还在就是本体拒寄（往来链太长），它的 message 是给模型的话。
 					asking.delete(run.sessionId);
-					return { output: unreachable(), isError: true };
+					const now = await ctx.sessions.get(parent.id);
+					if (!now || now.archived || !(error instanceof Error) || !error.message) return { output: unreachable(), isError: true };
+					return { output: error.message, isError: true };
 				}
 				// i18n-exempt：发给模型的话。
 				return {

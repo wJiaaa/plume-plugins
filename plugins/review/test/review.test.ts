@@ -138,9 +138,12 @@ async function fixture(t: TestContext) {
 	const plans = new Map<string, string>([["main", "新计划\n\n## 执行时注意\n别动接口"]]);
 	const layers = new Map<string, unknown>();
 	const tools = new Map<string, ToolDefinition>();
-	/** 经 `run.letter` 寄出的信；`unreachable` 时寄信抛错，和本体对方不在时一样。 */
+	/** 经 `run.letter` 寄出的信；`unreachable` 时寄信抛错，和本体对方不在时一样；`refusal` 是本体拒寄（往来链太长）时抛的话。 */
 	const letters: { to: string; letter: LetterInput }[] = [];
 	let unreachable = false;
+	let refusal: string | undefined;
+	/** 寄信时发现原会话没了（寄之前还在）：之后再查它就查不到。 */
+	let parentGone = false;
 	const launches: SessionLaunch[] = [];
 	const reports: { text: string; delivery: DeliveryInput }[] = [];
 	const done = deferred<TurnStop>();
@@ -173,7 +176,7 @@ async function fixture(t: TestContext) {
 		},
 		commands: { provide() {} },
 		sessions: {
-			get: async (id: string) => sessions.get(id),
+			get: async (id: string) => (parentGone && id === "main" ? undefined : sessions.get(id)),
 			messages: async (id: string) => structuredClone(messages.get(id) ?? []),
 			observe() {},
 			onDeleted() {},
@@ -208,7 +211,11 @@ async function fixture(t: TestContext) {
 			...(scope(sessionId).kind === "top"
 				? {
 						letter: (to: string, letter: LetterInput) => {
-							if (unreachable) throw new Error("gone");
+							if (unreachable) {
+								parentGone = true;
+								throw new Error("gone");
+							}
+							if (refusal) throw new Error(refusal);
 							letters.push({ to, letter });
 							return { id: "l", read: new Promise(() => {}), answered: 0, answer: () => undefined };
 						},
@@ -233,7 +240,11 @@ async function fixture(t: TestContext) {
 		messages,
 		sessions,
 		letters,
-		unreachable: (value = true) => void (unreachable = value),
+		unreachable: (value = true) => {
+			unreachable = value;
+			if (!value) parentGone = false;
+		},
+		refuse: (message?: string) => void (refusal = message),
 		done,
 		idle,
 	};
@@ -304,6 +315,10 @@ test("review_session：开出审阅会话、第一轮接上正文和原会话的
 	f.unreachable();
 	assert.match((await f.ask.execute({ message: "修哪几条？" }, f.run("review"))).output, /Fix nothing/);
 	f.unreachable(false);
+	// 原会话还在、本体拒寄（往来链太长）：交回本体的话，不说原会话不在了；同样不算问过。
+	f.refuse("Not sent: this exchange has gone back and forth too many times.");
+	assert.equal((await f.ask.execute({ message: "修哪几条？" }, f.run("review"))).output, "Not sent: this exchange has gone back and forth too many times.");
+	f.refuse();
 	// 同一步里并排调了两次：只寄一封，另一次说在等。
 	const [asked, twice] = await Promise.all([
 		f.ask.execute({ message: "1 high a.ts:3 — 漏了空值。修哪几条？" }, f.run("review")),

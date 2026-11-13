@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/review",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "写代码的对话不审自己：/review 把改动或 PR 交给一个只读的审阅会话，按力度派子智能体找问题、核实，问原对话修哪几条后再修，报告交回原对话。",
   "author": "Plume",
   "keywords": [
