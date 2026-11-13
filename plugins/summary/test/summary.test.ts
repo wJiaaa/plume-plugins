@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, expect, it } from "vitest";
-import type { AssistantMessage, Message, ToolKind } from "@plume/contract";
+import type { AssistantMessage, Message, ToolResultMessage } from "@plume/contract";
 import { SummaryStore } from "../src/store.ts";
 import { cleanSessionSummary, lastSpoken, SUMMARY_MAX_CHARS, summarizeAfterTurn, summaryMaterial } from "../src/summary.ts";
 
@@ -34,11 +34,19 @@ const assistant = (timestamp: number, content: AssistantMessage["content"]): Ass
 	timestamp,
 });
 
-/** 工具表里声明的种类，照 plume.tools 的声明。 */
-const KINDS: Record<string, ToolKind> = { read: "view", write: "create", edit: "modify" };
-const kindOf = (name: string): ToolKind | undefined => KINDS[name];
+const CWD = join(tmpdir(), "proj");
+const result = (timestamp: number, id: string, name: string, paths: string[] | undefined, isError = false): ToolResultMessage => ({
+	role: "toolResult",
+	toolCallId: id,
+	toolName: name,
+	content: [{ type: "text", text: "工具输出不该进材料" }],
+	isError,
+	...(paths ? { changes: { ids: paths.map((_, at) => `${id}${at}`), paths } } : {}),
+	timestamp,
+});
 
-it("摘要材料：只要人和 agent 说的话，工具调用里只捡改动过的文件；有上一份时只给之后的", () => {
+it("摘要材料：只要人和 agent 说的话，工具结果上只捡本体记下的改动；有上一份时只给之后的", () => {
+	const outside = join(tmpdir(), "elsewhere", "notes.md");
 	const messages: Message[] = [
 		user(-2, "先看看列表"),
 		user(-1, "再看看详情"),
@@ -46,20 +54,32 @@ it("摘要材料：只要人和 agent 说的话，工具调用里只捡改动过
 		assistant(2, [
 			{ type: "toolCall", id: "a", name: "edit", arguments: { path: "src/scroll.ts" } },
 			{ type: "toolCall", id: "b", name: "read", arguments: { path: "src/other.ts" } },
+			{ type: "toolCall", id: "c", name: "bash", arguments: { command: "pnpm fmt" } },
+			{ type: "toolCall", id: "d", name: "edit", arguments: { path: "src/missed.ts" } },
+			{ type: "toolCall", id: "e", name: "bash", arguments: { command: "sed -i … && false" } },
 		]),
-		{ role: "toolResult", toolCallId: "a", toolName: "edit", content: [{ type: "text", text: "工具输出不该进材料" }], isError: false, timestamp: 3 },
+		result(3, "a", "edit", [join(CWD, "src", "scroll.ts")]),
+		result(3, "b", "read", undefined),
+		// 命令改的文件在参数里看不出来，只在结果上；工作目录外的照原样写。
+		result(3, "c", "bash", [join(CWD, "src", "list.ts"), outside]),
+		// 参数写着路径、没改成的不算。
+		result(3, "d", "edit", undefined, true),
+		// 出了错、文件却真改了的也算。
+		result(3, "e", "bash", [join(CWD, "src", "broken.ts")], true),
 		assistant(4, [{ type: "text", text: "改成按锚点恢复了" }]),
 		user(5, "运行时插进来的", true),
 	];
-	const material = summaryMaterial(messages, kindOf);
+	const material = summaryMaterial(messages, CWD);
 	expect(material?.upto).toBe(4);
 	expect(material?.prompt).toMatch(/\[用户\] 修一下滚动位置\n\[agent\] 改成按锚点恢复了/);
-	expect(material?.prompt).toMatch(/src\/scroll\.ts/);
-	expect(material?.prompt).not.toMatch(/src\/other\.ts|工具输出|运行时插进来的/);
+	expect(material?.prompt).toContain(
+		`这段时间新建或改动的文件：\n${join("src", "scroll.ts")}\n${join("src", "list.ts")}\n${outside}\n${join("src", "broken.ts")}`,
+	);
+	expect(material?.prompt).not.toMatch(/other\.ts|missed\.ts|工具输出|运行时插进来的/);
 	expect(lastSpoken(messages)).toBe(4);
-	expect(summaryMaterial(messages, kindOf, { text: "x", upto: 4 })).toBeNull();
+	expect(summaryMaterial(messages, CWD, { text: "x", upto: 4 })).toBeNull();
 	// 人说得不够多就不要：两句不够。
-	expect(summaryMaterial([user(1, "一"), user(2, "二")], kindOf)).toBeNull();
+	expect(summaryMaterial([user(1, "一"), user(2, "二")], CWD)).toBeNull();
 });
 
 it("摘要清理：去前缀、引号、换行，超长截到卡片放得下", () => {

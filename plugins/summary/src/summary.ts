@@ -2,13 +2,13 @@
  * 会话摘要：一段话说清这个会话在做什么、做到哪了，画在环境卡片里。
  *
  * - **增量**。有上一份摘要时，只把它之后的几条消息连同上一份交给模型，在上一份上改：每次重读整段会话，长会话一次就是几万 token。
- * - **只看人和 agent 说的话**。工具调用是噪音，只从里面捡出新建和改动过的文件名，它们说得出「在哪一块干活」。
+ * - **只看人和 agent 说的话**。工具调用是噪音，只从工具结果上捡出改了哪些文件，它们说得出「在哪一块干活」。
  * - **覆盖到哪**用消息的 `timestamp` 记：撤回、编辑会让下标错位。
  * - **一轮结束、静下来一分钟后才生成**（`summarizeAfterTurn`），不管卡片开没开：花钱只跟「这个会话刚干完一段活」走，
  *   翻旧会话只读存着的那份；一问一答连着来时不为每一轮各花一次。
  */
 
-import type { Message, ToolKind } from "@plume/contract";
+import type { Message } from "@plume/contract";
 
 /** 第一次给多少条；之后每次最多补多少条。 */
 const FIRST_MESSAGES = 6;
@@ -74,13 +74,10 @@ export function lastSpoken(messages: readonly Message[]): number | null {
 /**
  * 这一次要交给模型的材料；没有新东西时是 null，就不必花这一次。
  * 「新东西」只算人和 agent 说出来的话，人说的话还要够数：子 Agent 结果、后台送达这些运行时插进来的不算人说的。
- * `kindOf`：一个工具名在工具表里声明的种类（`ToolDefinition.kind`），写、改文件的（`create`、`modify`）按它认，不认名字。
+ * 改了哪些文件只认本体记在工具结果上的（`ToolResultMessage.changes`），不从调用参数猜：命令改的也算，没写成的不算，
+ * 出错的结果上记着的也算（记下了就是真改了）。`cwd`：会话的工作目录，它里面的文件写成相对路径。
  */
-export function summaryMaterial(
-	messages: readonly Message[],
-	kindOf: (tool: string) => ToolKind | undefined,
-	previous?: SessionSummaryText | null,
-): { prompt: string; upto: number } | null {
+export function summaryMaterial(messages: readonly Message[], cwd: string, previous?: SessionSummaryText | null): { prompt: string; upto: number } | null {
 	const said: { message: Message; text: string }[] = [];
 	const files: string[] = [];
 	let humans = 0;
@@ -93,13 +90,10 @@ export function summaryMaterial(
 			if (!earlier) humansSince++;
 		}
 		if (earlier) continue;
-		if (message.role === "assistant") {
-			for (const block of message.content) {
-				if (block.type !== "toolCall") continue;
-				const kind = kindOf(block.name);
-				if (kind !== "create" && kind !== "modify") continue;
-				const path = block.arguments.path;
-				if (typeof path === "string" && path && !files.includes(path)) files.push(path);
+		if (message.role === "toolResult") {
+			for (const path of message.changes?.paths ?? []) {
+				const shown = shownPath(cwd, path);
+				if (!files.includes(shown)) files.push(shown);
 			}
 		}
 		if (message.role === "user" && message.synthetic) continue;
@@ -119,6 +113,16 @@ export function summaryMaterial(
 		...(files.length ? [`这段时间新建或改动的文件：\n${files.slice(-FILES).join("\n")}`] : []),
 	];
 	return { prompt: sections.join("\n\n"), upto: picked.at(-1)!.message.timestamp };
+}
+
+/**
+ * 工作目录里的文件写成相对路径：材料短，模型也照这个写进摘要。按前缀比、不用 `node:path`：界面入口也引这个文件（`lastSpoken`）。
+ * 本体记下的路径和会话的工作目录是同一种写法（命令改的也换回了工作目录下的写法），前缀对得上就是在里面。
+ */
+function shownPath(cwd: string, path: string): string {
+	const root = cwd.replace(/[\\/]+$/, "");
+	const rest = path.slice(root.length);
+	return path.startsWith(root) && /^[\\/][^\\/]/.test(rest) ? rest.slice(1) : path;
 }
 
 /** 去掉模型偶尔带上的思考标签、代码围栏、「摘要：」前缀和引号，压成一段，截到卡片放得下的长度。 */

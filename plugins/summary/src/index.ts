@@ -49,8 +49,7 @@ export default {
 			const meta = await ctx.sessions.get(id);
 			// 只给侧栏里的会话写：子会话（子 Agent、侧边聊天）和插件的独立会话没有环境卡片，不为它们花钱。
 			if (!meta || meta.kind !== "top") return previous;
-			const tools = ctx.tools.list();
-			const material = summaryMaterial(await ctx.sessions.messages(id), (name) => tools.find((tool) => tool.name === name)?.kind, previous);
+			const material = summaryMaterial(await ctx.sessions.messages(id), meta.cwd, previous);
 			// 没有新材料：不发请求，原来那份就是答案。
 			if (!material) return previous;
 			// 选的模型、会话记着的模型已经不在了就往下退，都不在就用默认模型。
