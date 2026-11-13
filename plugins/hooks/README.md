@@ -44,7 +44,7 @@ stdout 上的 JSON 能表达这些：
 - `PostToolUse`、`PostToolUseFailure` 时工具已经跑完了：`decision: "block"` 的 `reason`、退出码 2 的 stderr 接在工具结果后面给 agent 看，结果本身不变。
 - `StopFailure` 和 `SessionEnd` 只是通知：这一轮或会话已经结束了，它们的输出不读。
 - `UserPromptSubmit` 拦下时，这条消息不发给 agent，原因弹成提示条。
-- `Stop` 用 `decision: "block"` 加 `reason` 让 agent 接着干。每轮最多续三次。
+- `Stop` 用 `decision: "block"` 加 `reason`（或退出码 2 加 stderr）让 agent 接着干，只给 `hookSpecificOutput.additionalContext` 也一样；`continue: false` 压过它们，照常收尾。每轮最多续三次。`systemMessage` 不交给 agent。
 - 各事件的 `additionalContext` 会交给 agent 看。
   - `SessionStart`、`UserPromptSubmit`、`Stop` 的附在消息后面。
   - 工具前后的接在工具结果后面。

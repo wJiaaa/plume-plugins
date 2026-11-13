@@ -581,6 +581,33 @@ test("Stop：说了还差什么才接着干，一轮最多三次", async () => {
 	}
 });
 
+test("Stop：只给 additionalContext 也接着干；continue: false 压过 block；systemMessage 是给人看的，不交给 agent", async () => {
+	const out = (value: object) => command(`echo '${JSON.stringify(value)}'`);
+	const end = (dir: string) =>
+		({
+			sessionId: "s1",
+			cwd: dir,
+			step: 1,
+			stepsLeft: 10,
+			reply: { role: "assistant", content: [{ type: "text", text: "done" }] },
+			toolResults: [],
+			signal: new AbortController().signal,
+		}) as unknown as StepEnd;
+	const verdict = async (value: object) => {
+		const h = await harness({ Stop: [{ hooks: [out(value)] }] });
+		try {
+			return await h.run("step.end", end(h.dir), async () => ({ continue: false }));
+		} finally {
+			await h.dispose();
+		}
+	};
+	const feedback = await verdict({ hookSpecificOutput: { hookEventName: "Stop", additionalContext: "run the tests first" } });
+	assert.ok(feedback.continue && feedback.say?.includes("run the tests first"));
+	assert.deepEqual(await verdict({ continue: false, decision: "block", reason: "again" }), { continue: false });
+	const blocked = await verdict({ decision: "block", reason: "again", systemMessage: "for the user" });
+	assert.ok(blocked.continue && blocked.say?.includes("again") && !blocked.say.includes("for the user"));
+});
+
 test("设置页：新建、开关、删除写回 hooks.json；写坏了的文件不被冲掉", async () => {
 	const h = await harness({});
 	try {

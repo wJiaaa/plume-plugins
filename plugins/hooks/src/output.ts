@@ -122,12 +122,16 @@ export function processHookOutput(event: HookEventName, output: HookJSONOutput |
 	const decide = (decision: HookPermissionDecision, reason?: string) => mergeHookRunResult(result, { additionalContexts: [], decision, reason });
 
 	const said = output.stopReason ?? output.reason;
+	/**
+	 * Stop 照 Claude Code：`decision: "block"` 的 `reason`（退出码 2 的 stderr）和 `additionalContext` 都是让它接着干的话，
+	 * 有一句就接着干；`continue: false` 压过这些，照常收尾。`systemMessage` 是给人看的提示，不交给 agent。
+	 */
+	const finish = () => {
+		if (event === "Stop") result.continueStop = output.continue !== false && result.additionalContexts.length > 0;
+		return result;
+	};
 	if (event === "Stop") {
-		if (output.continue === true || output.decision === "block") result.continueStop = true;
-		if (output.decision === "block") {
-			if (output.systemMessage) result.additionalContexts.push(output.systemMessage);
-			if (output.reason) result.additionalContexts.push(output.reason);
-		}
+		if (output.decision === "block" && output.reason) result.additionalContexts.push(output.reason);
 	} else {
 		if (output.continue === false) decide("deny", said);
 		if (output.decision === "block") decide("deny", said ?? output.systemMessage);
@@ -140,7 +144,7 @@ export function processHookOutput(event: HookEventName, output: HookJSONOutput |
 	if (output.additional_context) result.additionalContexts.push(output.additional_context);
 
 	const specific = output.hookSpecificOutput;
-	if (!specific) return result;
+	if (!specific) return finish();
 	if (specific.hookEventName !== event) throw new HookOutputError(`hookSpecificOutput is for ${specific.hookEventName}, not ${event}`);
 	if (event === "PreToolUse") {
 		// Claude Code 文档：说 defer 时 updatedInput、additionalContext 都不用。
@@ -153,7 +157,7 @@ export function processHookOutput(event: HookEventName, output: HookJSONOutput |
 		if (specific.decision.behavior === "allow" && specific.decision.updatedInput !== undefined) result.updatedInput = specific.decision.updatedInput;
 	}
 	if (event !== "PermissionRequest" && specific.additionalContext) result.additionalContexts.push(specific.additionalContext);
-	return result;
+	return finish();
 }
 
 function strictest(current: HookPermissionDecision | undefined, next: HookPermissionDecision): HookPermissionDecision {
