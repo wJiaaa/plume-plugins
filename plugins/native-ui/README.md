@@ -81,7 +81,7 @@
 
 ## 验证和冒烟
 
-本目录的 Node 纯测试覆盖表达式安全、增量解析、严格回退、表格与图表数据、初始状态、动态派生、按钮状态更新、实际消息和值、同步发送锁与失败重试、模型提示和帮助示例。运行 `pnpm --filter @plume-plugins/native-ui test`；类型、样式及接口检查由 `pnpm check` 覆盖，`pnpm smoke` 包含真实 Electron 界面验证，也可用 `PLUME_SMOKE_ONLY=native-ui pnpm smoke` 运行本功能链。
+本目录的 Node 纯测试覆盖表达式安全、增量解析、严格回退、表格与图表数据、初始状态、动态派生、按钮状态更新、实际消息和值、同步发送锁与失败重试、模型提示和帮助示例。运行 `pnpm --filter @plume-plugins/native-ui test`；类型、样式及接口检查由 `pnpm check` 覆盖，真实 Electron 界面验证是本体仓库的冒烟（这个仓库没有 `pnpm smoke`），在本体仓库用 `PLUME_SMOKE_ONLY=native-ui pnpm smoke` 只跑本功能链。
 
 冒烟可直接使用上面的示例，依次填写人数、切城市、选择附加项目、切换远程，核对读数、显示条件和发送预览；同时检查两种图表和表格。点击发送后核对所属会话收到的完整值、回执和防双击。失败测试可让宿主发送入口第一次拒绝、第二次成功，确认输入不变且能重试。
 
