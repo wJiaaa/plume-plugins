@@ -20,7 +20,7 @@ export function toAbsolute(cwd: string, input: string): string {
 
 /**
  * `dir` 下扩展名对得上的文件。`null` 是目录不在，和它是空的不一样，所以不直接给 `[]`。
- * 只在不是 git 仓库时用：仓库里的文件清单向服务 `project.files` 要，git 忽略的不看。
+ * 只在不是 git 仓库时用：仓库里的文件清单向本体的 `ctx.workspace.files` 要，git 忽略的不看。
  */
 export async function walkFiles(dir: string, extensions: string[], maxDepth: number): Promise<string[] | null> {
 	const entries = await readdir(dir, { withFileTypes: true }).catch(() => null);

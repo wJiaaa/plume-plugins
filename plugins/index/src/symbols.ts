@@ -44,7 +44,7 @@ export interface IndexStats {
 	bytes?: number;
 }
 
-/** 文件清单：git 认为该看的文件（绝对路径），不在 git 仓库里时是 null。由服务 `project.files` 给。 */
+/** 文件清单：git 认为该看的文件（绝对路径），不在 git 仓库里时是 null。由本体的 `ctx.workspace.files` 给。 */
 export type ListFiles = (root: string) => Promise<string[] | null>;
 
 const MAX_FILE_BYTES = 800_000;

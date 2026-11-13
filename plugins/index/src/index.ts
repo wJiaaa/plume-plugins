@@ -1,7 +1,7 @@
 /**
  * plume.index 的逻辑入口：`symbol` 工具，和设置页「索引库」用的接口。
  *
- * 索引按目录存在插件数据目录的 `index/` 下，文件清单向服务 `project.files` 要（git 忽略的不进）；
+ * 索引按目录存在插件数据目录的 `index/` 下，文件清单向本体的 `ctx.workspace.files` 要（git 忽略的不进）；
  * 每个会话在内存里留一份，会话删掉时丢掉。加载时顺手删掉目录已经不在了的索引。
  * 打开搜到的文件只在这里算出路径，交给系统打开由界面经 `ui.openPath` 做。
  */
@@ -14,11 +14,9 @@ import { buildIndex, indexStats, loadIndex, pruneIndexes, saveIndex, searchIndex
 
 export default {
 	name: "plume.index",
-	inject: ["project.files"],
 	apply(ctx) {
 		const root = join(ctx.dataDir, "index");
-		const files = ctx.use("project.files");
-		const listFiles = (dir: string) => files.list(dir);
+		const listFiles = (dir: string) => ctx.workspace.files(dir);
 		const cache = new Map<string, SymbolIndex>();
 
 		ctx.tools.register(symbolTool({ root, listFiles, cache }));

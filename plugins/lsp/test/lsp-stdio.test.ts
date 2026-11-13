@@ -9,7 +9,7 @@
 import assert from "node:assert/strict";
 import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { after, before, test } from "node:test";
 import type { ToolOutput, ToolRun } from "@plume/contract";
 import { lspTool } from "../src/lsp-tool.ts";
@@ -71,9 +71,9 @@ function askMissingGo(args: Record<string, unknown>): Promise<ToolOutput> {
 	const tool = lspTool({
 		managerFor: () => manager,
 		listFiles: async () => null,
-		authorizeRead: async (run, path) => ({ ok: true, absolute: resolve(run.cwd, path) }),
 	});
-	return tool.execute(args, { cwd: root, sessionId: "s", signal: new AbortController().signal } as ToolRun);
+	const files = { read: async (target: string) => ({ ok: true as const, path: target }) } as ToolRun["files"];
+	return tool.execute(args, { cwd: root, sessionId: "s", signal: new AbortController().signal, files } as ToolRun);
 }
 
 test("没装服务器：references 退回文本搜索，并说清楚缺的是哪一台、怎么装", async () => {

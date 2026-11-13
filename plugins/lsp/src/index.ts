@@ -12,12 +12,9 @@ import { CodeIntelLeases } from "./manager.ts";
 
 export default {
 	name: "plume.lsp",
-	inject: ["project.files", "file.read"],
 	// 哪个会话的子会话都可能借过语言服务器，要在它一轮跑完时还：看全部会话。
 	observe: "all",
 	apply(ctx) {
-		const files = ctx.use("project.files");
-		const reads = ctx.use("file.read");
 		const leases = new CodeIntelLeases();
 		const managerFor = (cwd: string, sessionId: string) => leases.borrow(sessionId, cwd);
 		ctx.effect(() => leases.dispose());
@@ -33,7 +30,7 @@ export default {
 			});
 		});
 
-		ctx.tools.register(lspTool({ managerFor, listFiles: (root) => files.list(root), authorizeRead: (run, path) => reads.authorize(run, path) }));
+		ctx.tools.register(lspTool({ managerFor, listFiles: (root) => ctx.workspace.files(root) }));
 
 		ctx.hook("tool.execute", async (input, next) => {
 			const result = await next(input);

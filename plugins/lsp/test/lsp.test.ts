@@ -17,7 +17,7 @@ import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { after, before, test } from "node:test";
-import type { ToolOutput, ToolRun } from "@plume/contract";
+import type { RunFiles, ToolOutput, ToolRun } from "@plume/contract";
 import { textualReferences, TEXTUAL_CAVEAT } from "../src/fallback.ts";
 import { lspTool } from "../src/lsp-tool.ts";
 import { CodeIntelLeases, CodeIntelManager } from "../src/manager.ts";
@@ -26,7 +26,10 @@ import type { CodeIntelBackend } from "../src/types.ts";
 
 let root: string;
 
-function runFor(cwd: string, projectRoots: readonly string[] = []): ToolRun {
+/** 本体的读边界在这里放行一切，按收到的路径交回；要看工具怎么经它读的测试自己给 `read`。 */
+const allowAll: RunFiles["read"] = async (target) => ({ ok: true, path: target });
+
+function runFor(cwd: string, projectRoots: readonly string[] = [], read: RunFiles["read"] = allowAll): ToolRun {
 	return {
 		sessionId: "s",
 		session: { id: "s", kind: "top" },
@@ -44,6 +47,8 @@ function runFor(cwd: string, projectRoots: readonly string[] = []): ToolRun {
 		shell: async () => assert.fail("lsp 不跑命令"),
 		exec: async () => assert.fail("lsp 不跑命令"),
 		escalate: async () => assert.fail("lsp 不提权"),
+		files: { read, readCommand: async () => assert.fail("lsp 不跑命令") },
+		track: () => assert.fail("lsp 不登记后台任务"),
 	};
 }
 
@@ -52,7 +57,6 @@ function ask(args: Record<string, unknown>, manager = new CodeIntelManager([])):
 	const tool = lspTool({
 		managerFor: () => manager,
 		listFiles: async () => null,
-		authorizeRead: async (run, path) => ({ ok: true, absolute: resolve(run.cwd, path) }),
 	});
 	return tool.execute(args, runFor(root));
 }
@@ -252,15 +256,13 @@ test("an unknown symbol is refused with advice rather than an empty list", async
 	assert.match(textOf(result), /找不到符号/);
 });
 
-test("四种查询都先经共享读取授权，拒绝时不启动服务器或读取文件", async () => {
-	const run = runFor(root, ["/other-project"]);
+test("四种查询都先经本体的读边界，拒绝时不启动服务器或读取文件", async () => {
 	const asked: string[] = [];
+	const run = runFor(root, ["/other-project"], async (target) => {
+		asked.push(target);
+		return { ok: false, message: "用户拒绝了这次读取" };
+	});
 	const tool = lspTool({
-		authorizeRead: async (context, path) => {
-			assert.equal(context, run, "原样交给服务，保留审批、附件和项目目录环境");
-			asked.push(path);
-			return { ok: false, message: "用户拒绝了这次读取" };
-		},
 		managerFor: () => assert.fail("拒绝读取后不能启动语言服务器"),
 		listFiles: async () => assert.fail("拒绝读取后不能列文件"),
 	});
@@ -268,9 +270,20 @@ test("四种查询都先经共享读取授权，拒绝时不启动服务器或�
 		const path = `../other-project/${operation}.ts`;
 		const result = await tool.execute({ operation, path, symbol: "parse", newName: "read" }, run);
 		assert.deepEqual(result, { isError: true, output: "用户拒绝了这次读取" });
-		assert.equal(asked.at(-1), path, "不自行裁掉相对路径或替服务解析符号链接");
+		assert.equal(asked.at(-1), resolve(root, path), "只换成绝对路径，不替本体解析符号链接");
 	}
 	assert.equal(asked.length, 4);
+});
+
+test("本体交回的是资源内容而不是磁盘上的文件时拒掉，不启动服务器", async () => {
+	const run = runFor(root, [], async () => ({ ok: true, resource: { url: "skill://x", content: "", contentType: "text/plain" } }));
+	const tool = lspTool({
+		managerFor: () => assert.fail("不是文件时不能启动语言服务器"),
+		listFiles: async () => assert.fail("不是文件时不能列文件"),
+	});
+	const result = await tool.execute({ operation: "references", path: "skill://x", symbol: "parse" }, run);
+	assert.ok(result.isError);
+	assert.match(result.output, /不是磁盘上的文件/);
 });
 
 test("其他源目录和符号链接能经 tsserver 查询，服务器根仍是 cwd，重命名只列建议", { timeout: 20_000 }, async () => {
@@ -292,17 +305,13 @@ test("其他源目录和符号链接能经 tsserver 查询，服务器根仍是 
 		await writeFile(join(cwd, "use.ts"), 'import { parseConfig as pc } from "../shared/index.ts";\nexport const value = pc("{}");\n');
 		await writeFile(join(shared, "broken.ts"), 'export const count: number = "bad";\n');
 		await symlink(shared, join(cwd, "linked"), process.platform === "win32" ? "junction" : "dir");
-		const run = runFor(cwd, [cwd, shared]);
+		const run = runFor(cwd, [cwd, shared], async (target) => ({ ok: true, path: await realpath(target) }));
 		const tool = lspTool({
 			managerFor: (root) => {
 				assert.equal(root, cwd, "附加源目录不切换服务器工作目录");
 				return manager;
 			},
 			listFiles: async () => null,
-			authorizeRead: async (context, path) => {
-				assert.equal(context, run);
-				return { ok: true, absolute: await realpath(resolve(context.cwd, path)) };
-			},
 		});
 		const refs = await tool.execute({ operation: "references", path: "../shared/core.ts", symbol: "parseConfig" }, run);
 		assert.equal((refs.details as { confidence: string }).confidence, "exact");
@@ -312,7 +321,7 @@ test("其他源目录和符号链接能经 tsserver 查询，服务器根仍是 
 		assert.match(definition.output, /shared[/\\]core\.ts:1:17/, "从别名穿过重导出回到另一个源目录里的定义");
 		const diagnostics = await tool.execute({ operation: "diagnostics", path: "linked/broken.ts" }, run);
 		assert.equal((diagnostics.details as { count: number }).count, 1);
-		assert.match(diagnostics.output, /shared[/\\]broken\.ts:1:/, "使用共享授权解析后的目标路径");
+		assert.match(diagnostics.output, /shared[/\\]broken\.ts:1:/, "用本体读边界交回的目标路径");
 		const rename = await tool.execute({ operation: "rename", path: core, symbol: "parseConfig", newName: "parseSettings" }, run);
 		const edits = (rename.details as { edits: { path: string; newText: string }[] }).edits;
 		const realCore = await realpath(core);

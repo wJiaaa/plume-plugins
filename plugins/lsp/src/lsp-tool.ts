@@ -14,10 +14,10 @@
 
 import { readFile } from "node:fs/promises";
 import { extname, relative, resolve } from "node:path";
-import type { Services, ToolDefinition, ToolOutput } from "@plume/contract";
+import type { ToolDefinition, ToolOutput } from "@plume/contract";
 import { textualReferences, TEXTUAL_CAVEAT } from "./fallback.ts";
 import type { CodeIntelManager } from "./manager.ts";
-import { walkFiles } from "./paths.ts";
+import { toAbsolute, walkFiles } from "./paths.ts";
 import type { CodeLocation } from "./types.ts";
 
 const OPERATIONS = ["references", "definition", "diagnostics", "rename"] as const;
@@ -33,8 +33,6 @@ interface LspArgs {
 }
 
 export interface LspToolDeps {
-	/** 和文件工具共用读取授权，项目源目录、附件、密钥和符号链接只判断一次。 */
-	authorizeRead: Services["file.read"]["authorize"];
 	/** 这个会话在这个工作目录借的那一套语言服务器：`lsp` 工具和编辑后的诊断共用，同一个目录的会话也共用。 */
 	managerFor(cwd: string, sessionId: string): CodeIntelManager;
 	/** `root` 之下 git 认为该看的文件；不在 git 仓库里时是 null，自己走目录。 */
@@ -88,9 +86,15 @@ export function lspTool(deps: LspToolDeps): ToolDefinition {
 			const operation = args.operation as Operation;
 			const cwd = run.cwd;
 
-			const authorized = await deps.authorizeRead(run, args.path);
+			/*
+			 * 读边界归本体（run.files），和文件工具同一个答案、同一份批准记录。只认路径：先换成绝对路径，本体就不会把它当资源地址；
+			 * 万一交回的是读到的内容而不是磁盘上的文件，语言服务器没法查它，拒掉。
+			 */
+			const authorized = await run.files.read(toAbsolute(cwd, args.path));
 			if (!authorized.ok) return error(authorized.message);
-			const absolute = authorized.absolute;
+			// i18n-exempt：交给模型的结果。
+			if (authorized.path === undefined) return error(`${args.path} 不是磁盘上的文件，语言服务器查不了。`);
+			const absolute = authorized.path;
 
 			const manager = deps.managerFor(cwd, run.sessionId);
 			const backend = await manager.acquire(absolute, cwd).catch(() => null);
@@ -172,7 +176,7 @@ export function lspTool(deps: LspToolDeps): ToolDefinition {
 			if (!name) return error("没有语言服务器时，需要 `symbol` 才能做文本搜索。");
 			/*
 			 * 只搜同一种语言的文件：负责这个文件的服务器认哪些扩展名，就搜哪些；没有服务器认领的，就搜同扩展名的。
-			 * 文件清单在 git 仓库里向 `project.files` 要（被忽略的 node_modules、dist 不搜），不在仓库里才自己走目录。
+			 * 文件清单在 git 仓库里向本体的 `ctx.workspace.files` 要（被忽略的 node_modules、dist 不搜），不在仓库里才自己走目录。
 			 */
 			const searchable = manager.backendFor(absolute)?.extensions ?? [extname(absolute).toLowerCase()];
 			const listed = await deps.listFiles(cwd).catch(() => null);

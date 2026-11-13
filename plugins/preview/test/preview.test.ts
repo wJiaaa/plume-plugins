@@ -76,6 +76,8 @@ async function setup(t: TestContext) {
 		shell: async () => assert.fail("preview 不跑命令"),
 		exec: async () => assert.fail("preview 不跑命令"),
 		escalate: async () => assert.fail("preview 不提权"),
+		files: { read: async () => assert.fail("preview 不经读边界"), readCommand: async () => assert.fail("preview 不跑命令") },
+		track: () => assert.fail("preview 不登记后台任务"),
 	};
 	const execute = (args: Record<string, unknown>, overrides: Partial<ToolRun> = {}) => tool.execute(args, { ...run, ...overrides });
 	const submit = (sessionId = run.sessionId, synthetic = false) => hook({ sessionId, synthetic } as PromptSubmit, async () => ({ block: false }));
