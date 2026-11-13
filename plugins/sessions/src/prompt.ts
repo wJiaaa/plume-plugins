@@ -4,7 +4,7 @@
  * 每一种退回都说清楚下一步该怎么做——「失败」两个字不会让模型改做法，「写进文件发路径」「回去问你的用户」才会。
  */
 
-import { PEER_CHAIN_LIMIT, PEER_DEDUP_MS, PEER_MAX_CHARS, type PaceRefusal } from "./pacing.ts";
+import { PEER_DEDUP_MS, PEER_MAX_CHARS, type PaceRefusal } from "./pacing.ts";
 import { sessionRef } from "./peers.ts";
 
 // i18n-exempt：这个文件里的字都是发给模型的。
@@ -67,14 +67,20 @@ export function missed(outcome: Missed, wanted: string): string {
 	}
 }
 
-/** 限速拦下的那几种。 */
-export function paced(reason: PaceRefusal, to: string, length: number, chain: number): string {
+/** 请求怎么回：标记是什么意思、没答会被代答，本体的抬头已经说了，这里只说用哪件工具。 */
+// i18n-exempt：发给模型的话。
+export const REQUESTS_GUIDE =
+	"请求用 reply_session 回给发件方，`to` 写标签里 from 的地址。" +
+	"答得上来的现在就答；要花一阵子做的，先回一句打算怎么办，做完再用 reply_session 交回结果。你手上原来的事照常做完。";
+
+// i18n-exempt：发给模型的话。
+export const NOTICES_GUIDE = "没有 reply、answer 标记的是通知，不需要专门回复：和你手上的事有关就据此调整，然后接着做。";
+
+/** 限速拦下的那几种。往来链太长、太绕由本体拦，它的话随 `ToolRun.letter` 抛的错交回来。 */
+export function paced(reason: PaceRefusal, to: string, length: number): string {
 	switch (reason) {
 		case "too-long":
 			return `The message is ${length} characters; the limit is ${PEER_MAX_CHARS}. Write the bulk into a file the other conversation can read and send the path.`;
-		case "chain-runaway":
-		case "chain-loop":
-			return `This would continue a chain of ${chain} hand-offs between conversations (at most ${PEER_CHAIN_LIMIT}, and few through the same one). Stop relaying and report to your user instead.`;
 		case "duplicate":
 			return `You sent the same message to ${to} less than ${PEER_DEDUP_MS / 1000} seconds ago; it was not sent again.`;
 		case "paced":

@@ -80,6 +80,8 @@ function fixture() {
 	const layers = new Map<string, unknown>();
 	const observers: Array<(observation: SessionObservation) => void> = [];
 	const posted: Posted[] = [];
+	/** 给了就让寄信抛这句错，和本体拒寄（往来链太长）时一样。 */
+	const refuse: { reason?: string } = {};
 	let letters = 0;
 	/** 和本体一样配对：一封答复答掉收件方问发件方、已经读到、还没答的全部请求。代答归本体，这里不做。 */
 	const post = (from: string, to: string, input: LetterInput): Posted => {
@@ -119,6 +121,7 @@ function fixture() {
 		const self = sessions.find((session) => session.id === sessionId);
 		const top = !self?.parentId;
 		const letter = (to: string, input: LetterInput) => {
+			if (refuse.reason) throw new Error(refuse.reason);
 			const entry = post(sessionId, to, input);
 			posted.push(entry);
 			return entry.receipt;
@@ -142,12 +145,7 @@ function fixture() {
 		const event = { type: "approval", sessionId, approval: waiting ? { toolCallId: "t" } : undefined } as unknown as SessionObservation["event"];
 		for (const listener of observers) listener({ sessionId, at: 0, timestamp: 0, event });
 	};
-	const turnEnd = (sessionId: string) => {
-		for (const listener of observers) listener({ sessionId, at: 0, timestamp: 0, event: { type: "turnEnd", stop: { reason: "done" } } });
-	};
-	const speak = (sessionId: string, synthetic = false) =>
-		(layers.get("prompt.submit") as HookLayer<"prompt.submit">)({ sessionId, synthetic } as never, async () => ({ block: false }));
-	return { plan, exec, near, far, side, posted, call, context, approval, turnEnd, speak };
+	return { plan, exec, near, far, side, posted, refuse, call, context, approval };
 }
 
 /** 等读到这些 `then` 跑完。 */
@@ -216,7 +214,7 @@ test("从别的会话开出来的：系统提示词多一段，点名来源的 r
 	assert.equal((await sections(f.exec.id)).length, 1);
 });
 
-test("ask_session 寄一封请求给对方：带双方的地址、链和怎么回的说明，当场返回；空的、太长的、刚问过一模一样的不发", async () => {
+test("ask_session 寄一封请求给对方：带双方的地址和怎么回的说明，当场返回；空的、太长的、刚问过一模一样的不发", async () => {
 	const f = fixture();
 	const asked = await f.call("ask_session", f.exec.id, { to: "定计划 [aaaaaa]", message: "为什么选 SQLite？" });
 	assert.match(asked.output, /^Sent to 定计划 \[aaaaaa\]\. It is idle, so it starts a turn to read it\./);
@@ -226,7 +224,7 @@ test("ask_session 寄一封请求给对方：带双方的地址、链和怎么�
 	assert.deepEqual(
 		{ ...letter.input, guide: undefined },
 		// `recipient` 是本体代答时署的名：对方的地址，照着它能再问。
-		{ from: "执行 [bbbbbb]", text: "为什么选 SQLite？", request: true, recipient: "定计划 [aaaaaa]", chain: [f.exec.id], guide: undefined },
+		{ from: "执行 [bbbbbb]", text: "为什么选 SQLite？", request: true, recipient: "定计划 [aaaaaa]", guide: undefined },
 	);
 	assert.match(letter.input.guide!, /reply_session/);
 	assert.match((await f.call("ask_session", f.plan.id, { to: "旁边", message: "x" })).output, /It reads it between its steps/);
@@ -246,8 +244,8 @@ test("reply_session 一律寄成答复，答掉几封看回执；一封也没对
 	await f.call("ask_session", f.exec.id, { to: "aaaaaa", message: "第一问" });
 	await f.call("ask_session", f.exec.id, { to: "aaaaaa", message: "第二问" });
 	await f.call("ask_session", f.exec.id, { to: "aaaaaa", message: "还没读到的第三问" });
-	f.posted[0]!.settle({ status: "read", opened: true });
-	f.posted[1]!.settle({ status: "read", opened: true });
+	f.posted[0]!.settle({ status: "read" });
+	f.posted[1]!.settle({ status: "read" });
 	await settled();
 	const reply = await f.call("reply_session", f.plan.id, { to: "执行 [bbbbbb]", message: "因为单机。" });
 	assert.equal(reply.output, "执行 [bbbbbb] gets your answer as a message.");
@@ -255,8 +253,8 @@ test("reply_session 一律寄成答复，答掉几封看回执；一封也没对
 	assert.equal(answer.to, f.exec.id);
 	assert.deepEqual(
 		{ ...answer.input, guide: undefined },
-		// 对着哪几封、`re` 写什么由本体定；这一轮是 exec 的信叫起来的：plan 寄出的信接着那条链。
-		{ from: "定计划 [aaaaaa]", text: "因为单机。", answer: "replied", chain: [f.exec.id, f.plan.id], guide: undefined },
+		// 对着哪几封、`re` 写什么由本体定。
+		{ from: "定计划 [aaaaaa]", text: "因为单机。", answer: "replied", guide: undefined },
 	);
 	assert.match(answer.input.guide!, /通知/);
 
@@ -265,28 +263,19 @@ test("reply_session 一律寄成答复，答掉几封看回执；一封也没对
 	assert.equal(f.posted[4]!.input.answer, "replied");
 });
 
-test("notify_session 寄一句通知；往来链只接叫起这一轮的信，人开口、这一轮收场就从头算", async () => {
+test("notify_session 寄一句通知；本体拒寄（往来链太长）时把它的话原样交给模型，不算发过", async () => {
 	const f = fixture();
 	const notice = await f.call("notify_session", f.exec.id, { to: "aaaaaa", message: "dev server 停了，归你了。" });
 	assert.match(notice.output, /^Delivered to 定计划 \[aaaaaa\]\. .*There is no answer to a notice\.$/);
 	assert.equal(f.posted[0]!.input.request, undefined);
 	assert.match(f.posted[0]!.input.guide!, /通知/);
-	f.posted[0]!.settle({ status: "read", opened: true });
-	await settled();
-	await f.call("notify_session", f.plan.id, { to: "旁边", message: "接着" });
-	assert.deepEqual(f.posted[1]!.input.chain, [f.exec.id, f.plan.id]);
-	await f.speak(f.plan.id, true);
-	await f.call("notify_session", f.plan.id, { to: "旁边", message: "合成的不算人开口" });
-	assert.deepEqual(f.posted[2]!.input.chain, [f.exec.id, f.plan.id]);
-	await f.speak(f.plan.id);
-	await f.call("notify_session", f.plan.id, { to: "旁边", message: "人开口以后" });
-	assert.deepEqual(f.posted[3]!.input.chain, [f.plan.id]);
 
-	f.posted[1]!.settle({ status: "read", opened: true });
-	await settled();
-	f.turnEnd(f.near.id);
-	await f.call("notify_session", f.near.id, { to: "aaaaaa", message: "收场以后" });
-	assert.deepEqual(f.posted[4]!.input.chain, [f.near.id]);
+	f.refuse.reason = "没有寄出：往来链太长了。";
+	assert.deepEqual(await f.call("ask_session", f.exec.id, { to: "aaaaaa", message: "再问一次" }), { output: "没有寄出：往来链太长了。", isError: true });
+	// 没寄出去的不记作发过：同一句之后照样寄得出去，不算重复。
+	delete f.refuse.reason;
+	assert.equal((await f.call("ask_session", f.exec.id, { to: "aaaaaa", message: "再问一次" })).isError, undefined);
+	assert.equal(f.posted.length, 2);
 });
 
 test("正在做的那一项认最新一份成功的进度清单（details.checklist），不认是哪个工具记的", () => {

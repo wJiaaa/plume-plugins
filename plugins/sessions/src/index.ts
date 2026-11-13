@@ -8,8 +8,8 @@
  * - `reply_session` 回：寄一封答复，对方问过来、已经读到、还没答的几封由本体对上、一起答掉。
  * - `notify_session` 告诉：一句通知，没有答复。
  *
- * 信由本体送（`ToolRun.letter`）：本体照实填发件方、在信前面说明它不是用户的话、不构成授权，请求和答复的配对、代答也归本体。
- * 这里定写什么、发不发：找人（`peers.ts`）、限速和链长（`pacing.ts`、`router.ts`）。
+ * 信由本体送（`ToolRun.letter`）：本体照实填发件方、在信前面说明它不是用户的话、不构成授权，请求和答复的配对、代答、
+ * 防原地来回的往来链也归本体。这里定写什么、发不发：找人（`peers.ts`）、长度、限速和去重（`pacing.ts`）。
  *
  * - 只给侧栏里的会话（顶层的）用：子 Agent、侧边聊天的工具表里藏起来（`model.context`），调到了也拒绝。
  * - 从别的会话开出来的（`spawnedFrom`：计划交给新会话执行、建议开出的新会话），来源还在侧栏里时系统提示词多一段，
@@ -28,15 +28,17 @@ import {
 	type Missed,
 	notified,
 	NOTIFY_SESSION_DESCRIPTION,
+	NOTICES_GUIDE,
 	ORIGIN_SECTION,
 	originSection,
 	paced,
 	READ_SESSION_DESCRIPTION,
 	replied,
 	REPLY_SESSION_DESCRIPTION,
+	REQUESTS_GUIDE,
 	TO,
 } from "./prompt.ts";
-import { NOTICES_GUIDE, PeerRouter, REQUESTS_GUIDE } from "./router.ts";
+import { PeerPacer } from "./pacing.ts";
 import { mainWorktrees } from "./worktree.ts";
 
 const TOOLS = new Set(["list_sessions", "read_session", "ask_session", "reply_session", "notify_session"]);
@@ -55,25 +57,15 @@ export default {
 	// 任何会话都可能被问、在等人批准：要知道每个会话的一轮何时收场、有没有弹着卡，看全部会话。
 	observe: "all",
 	apply(ctx) {
-		const router = new PeerRouter();
+		const pacer = new PeerPacer();
 		/** 正弹着审批卡、等它的人批准或回答的会话：`list_sessions` 照实说它在等人，免得别的会话以为它卡住了。 */
 		const waitingOnUser = new Set<string>();
-		ctx.sessions.observe((observation) => {
-			const { event } = observation;
-			if (event.type === "turnEnd") router.reset(observation.sessionId);
-			if (event.type === "approval") {
-				if (event.approval) waitingOnUser.add(event.sessionId);
-				else waitingOnUser.delete(event.sessionId);
-			}
+		ctx.sessions.observe(({ event }) => {
+			if (event.type !== "approval") return;
+			if (event.approval) waitingOnUser.add(event.sessionId);
+			else waitingOnUser.delete(event.sessionId);
 		});
-		ctx.sessions.onDeleted((sessionId) => {
-			waitingOnUser.delete(sessionId);
-			router.reset(sessionId);
-		});
-		ctx.hook("prompt.submit", async (input, next) => {
-			if (!input.synthetic) router.reset(input.sessionId);
-			return next(input);
-		});
+		ctx.sessions.onDeleted((sessionId) => waitingOnUser.delete(sessionId));
 
 		/** 解析地址：从 `fromId` 看出去，谁是 `to`。 */
 		async function lookup(fromId: string, to: string): Promise<Missed | { kind: "found"; from: SessionSummary; target: SessionSummary; to: string }> {
@@ -124,18 +116,25 @@ export default {
 			return { message, found, letter: run.letter };
 		}
 
-		/** 过了限速就寄出去；拦下了返回退回的话。 */
+		/**
+		 * 过了限速就寄出去；拦下了返回退回的话。本体拒寄时（往来链太长、对方刚好不在了）抛的错是给模型的话，原样交回，
+		 * 不算发过一封。
+		 */
 		function post(
 			fromId: string,
 			found: { target: SessionSummary; from: SessionSummary; to: string },
 			letter: NonNullable<ToolRun["letter"]>,
-			input: Omit<LetterInput, "from" | "chain">,
+			input: Omit<LetterInput, "from">,
 		): { refused: ToolOutput } | { receipt: LetterReceipt } {
-			const chain = router.chain(fromId);
-			const refusal = router.admit(fromId, found.target.id, input.text, chain);
-			if (refusal) return { refused: { output: paced(refusal, found.to, input.text.length, chain.length), isError: true } };
-			const receipt = letter(found.target.id, { ...input, from: sessionAddress(found.from), chain });
-			router.sent(receipt, found.target.id, chain);
+			const refusal = pacer.check(fromId, found.target.id, input.text);
+			if (refusal) return { refused: { output: paced(refusal, found.to, input.text.length), isError: true } };
+			let receipt: LetterReceipt;
+			try {
+				receipt = letter(found.target.id, { ...input, from: sessionAddress(found.from) });
+			} catch (error) {
+				return { refused: { output: error instanceof Error ? error.message : String(error), isError: true } };
+			}
+			pacer.spend(fromId, found.target.id, input.text);
 			return { receipt };
 		}
 

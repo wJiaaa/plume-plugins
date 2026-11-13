@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/sessions",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "让对话读别的对话、互相递话：同一个项目或目录里的对话互相看得到，读不打断它；问它、回它、告诉它一件事，信送进对方对话，答复作为一条消息送回来。",
   "author": "Plume",
   "keywords": [
