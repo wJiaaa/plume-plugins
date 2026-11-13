@@ -596,7 +596,13 @@ test("Stop：只给 additionalContext 也接着干；continue: false 压过 bloc
 	const verdict = async (value: object) => {
 		const h = await harness({ Stop: [{ hooks: [out(value)] }] });
 		try {
-			return await h.run("step.end", end(h.dir), async () => ({ continue: false }));
+			const result = await h.run("step.end", end(h.dir), async () => ({ continue: false }));
+			// 运行记录在后台写：等它落盘再删临时目录，免得删到一半撞上写入（ENOTEMPTY）。
+			await until(
+				() => h.api.runs("s1"),
+				(list) => list.length === 1 && list[0]?.status !== "running",
+			);
+			return result;
 		} finally {
 			await h.dispose();
 		}
