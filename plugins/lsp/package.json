@@ -1,7 +1,7 @@
 {
   "name": "@plume-plugins/lsp",
-  "version": "0.1.6",
-  "description": "给 agent 一个 lsp 工具：经语言服务器找一个符号的全部引用（含 grep 看不到的别名导入和重导出）、跳到定义、查一个文件的类型错误、算出重命名要改哪些地方；edit、write 之后把这个文件新出现的错误附在结果后面。",
+  "version": "0.1.7",
+  "description": "给 agent 一个 lsp 工具：经语言服务器找一个符号的全部引用（含 grep 看不到的别名导入和重导出）、跳到定义、查一个文件的类型错误、算出重命名要改哪些地方；改了文件之后把这些文件新出现的错误附在结果后面。",
   "author": "Plume",
   "keywords": [
     "lsp",

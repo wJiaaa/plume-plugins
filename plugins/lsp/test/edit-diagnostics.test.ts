@@ -1,8 +1,9 @@
 /**
- * edit、write 之后附上的错误，对着一台假的语言服务器。
+ * 改了文件的调用之后附上的错误，对着一台假的语言服务器。
  *
  * 要守住的：文件干净时一个字不加，只列错误、最多列那么多；要握手的服务器起起来但不等；慢的服务器拖不住这次编辑；
- * 只接声明了写、改文件（kind 是 create、modify）的工具改成了的那次。
+ * 只认本体记在结果上的改动（`changes.paths`），不认工具、参数：命令改的也问，出错却真改了的也问，没记下改动的不问；
+ * 一次改了太多文件就一个都不问。
  */
 
 import assert from "node:assert/strict";
@@ -10,8 +11,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, type TestContext } from "node:test";
-import type { ToolExecution, ToolKind, ToolOutput } from "@plume/contract";
-import { editedFile, withDiagnostics } from "../src/edit-diagnostics.ts";
+import type { ToolOutput } from "@plume/contract";
+import { withDiagnostics } from "../src/edit-diagnostics.ts";
 import { CodeIntelManager } from "../src/manager.ts";
 import type { CodeIntelBackend, Diagnostic } from "../src/types.ts";
 
@@ -42,24 +43,28 @@ function fakeServer(options: { ready?: boolean; handshake?: boolean; diagnostics
 
 const EDITED: ToolOutput = { output: "Edited a.ts: 1 replacement, +1 -1.", details: { kind: "edit", path: "a.ts" } };
 
-/** 走一遍插件那一层：里层（声明了 `kind` 的工具）给出 `inner`，再看附没附诊断。 */
-async function run(t: TestContext, backend: CodeIntelBackend, options: { name?: string; tool?: string; kind?: ToolKind; inner?: ToolOutput } = {}) {
+/**
+ * 走一遍插件那一层：在临时目录里放好 `files`，里层给出 `inner`，结果上记着改了 `changed`（相对临时目录，本体记的是绝对路径），
+ * 再看附没附诊断。
+ */
+async function run(
+	t: TestContext,
+	backend: CodeIntelBackend,
+	options: { files?: string[]; changed?: string[] | null; inner?: ToolOutput } = {},
+): Promise<ToolOutput> {
 	const dir = await mkdtemp(join(tmpdir(), "plume-edit-diag-"));
 	t.after(() => rm(dir, { recursive: true, force: true }));
-	const path = options.name ?? "a.ts";
-	await writeFile(join(dir, path), "export const a = 1;\n");
-	const tool = options.tool ?? "edit";
-	const input = {
-		sessionId: "s",
-		cwd: dir,
-		call: { id: "c", name: tool, args: { path } },
-		tool: { name: tool, mutating: true, plugin: "plume.tools" },
-	} as unknown as ToolExecution;
+	const files = options.files ?? ["a.ts"];
+	for (const file of files) await writeFile(join(dir, file), "export const a = 1;\n");
+	const changed = options.changed === undefined ? files : options.changed;
 	const inner = options.inner ?? EDITED;
 	const manager = new CodeIntelManager([backend]);
 	t.after(() => manager.dispose());
-	const file = editedFile(input, inner, "kind" in options ? options.kind : "modify");
-	return file ? withDiagnostics(manager, dir, file, inner) : inner;
+	return withDiagnostics(
+		manager,
+		dir,
+		changed ? { ...inner, changes: { ids: changed.map((_, at) => `c${at}`), paths: changed.map((file) => join(dir, file)) } } : inner,
+	);
 }
 
 const error = (line: number, message: string): Diagnostic => ({ path: "", line, column: 1, severity: "error", message, code: 2322 });
@@ -71,7 +76,7 @@ test("这个文件里的错误附在后面，警告不附", async (t) => {
 	});
 	const res = await run(t, backend);
 	assert.match(res.output, /^Edited a\.ts: 1 replacement, \+1 -1\./, "编辑自己的话在前");
-	assert.match(res.output, /The language server now reports 1 error in this file:\n1:1 Type 'string' is not assignable to type 'number'\. \(2322\)$/);
+	assert.match(res.output, /The language server now reports 1 error in a\.ts:\n1:1 Type 'string' is not assignable to type 'number'\. \(2322\)$/);
 	assert.doesNotMatch(res.output, /unused/);
 	assert.equal(diagnosticsOf(res)?.errors, 1);
 	assert.equal((res.details as { kind?: string }).kind, "edit", "原来的 details 留着");
@@ -119,29 +124,52 @@ test("不回话的服务器拖不过上限", async (t) => {
 
 test("没有服务器认领的文件不问", async (t) => {
 	const { backend, calls } = fakeServer();
-	const res = await run(t, backend, { name: "notes.md" });
+	const res = await run(t, backend, { files: ["notes.md"] });
 	assert.equal(calls.diagnostics + calls.start, 0);
 	assert.equal(diagnosticsOf(res), undefined);
 });
 
-test("write 同样附上", async (t) => {
-	const { backend } = fakeServer({ diagnostics: async () => [error(1, "'}' expected.")] });
-	const res = await run(t, backend, { tool: "write", kind: "create", inner: { output: "Created a.ts.", details: { kind: "write" } } });
-	assert.match(res.output, /^Created a\.ts\.\n\nThe language server now reports 1 error in this file:\n1:1 '\}' expected\. \(2322\)$/);
+test("命令改的几个文件都问，各列在自己的文件名下", async (t) => {
+	const { backend, calls } = fakeServer({ diagnostics: async () => [error(1, "'}' expected.")] });
+	const inner: ToolOutput = { output: "exit 0", details: { kind: "bash" } };
+	const res = await run(t, backend, { files: ["a.ts", "b.ts", "notes.md"], inner });
+	assert.equal(calls.diagnostics, 2, "语言服务器不认的不问");
+	assert.equal(
+		res.output,
+		"exit 0\n\nThe language server now reports 2 errors in 2 files this call changed:\na.ts:\n1:1 '}' expected. (2322)\nb.ts:\n1:1 '}' expected. (2322)",
+	);
+	assert.deepEqual(diagnosticsOf(res), { files: 2, errors: 2, ms: diagnosticsOf(res)?.ms });
 });
 
-test("被拒绝、出错的编辑不问", async (t) => {
-	const { backend, calls } = fakeServer();
-	const res = await run(t, backend, { inner: { output: "The user rejected this edit.", isError: true } });
+test("改完已经删掉的文件不问", async (t) => {
+	const { backend, calls } = fakeServer({ diagnostics: async () => [error(1, "x")] });
+	const res = await run(t, backend, { files: ["a.ts"], changed: ["a.ts", "gone.ts"] });
+	assert.equal(calls.diagnostics, 1);
+	assert.match(res.output, /1 error in a\.ts:/);
+});
+
+test("一次改了太多文件就一个都不问", async (t) => {
+	const { backend, calls } = fakeServer({ diagnostics: async () => [error(1, "x")] });
+	const files = Array.from({ length: 6 }, (_, i) => `f${i}.ts`);
+	const inner: ToolOutput = { output: "formatted", details: {} };
+	const res = await run(t, backend, { files, inner });
+	assert.equal(calls.diagnostics + calls.start, 0);
+	assert.equal(res.output, "formatted");
+	assert.deepEqual(diagnosticsOf(res), { files: 6, skipped: true });
+});
+
+test("出了错、文件却真改了的照样问", async (t) => {
+	const { backend } = fakeServer({ diagnostics: async () => [error(1, "x")] });
+	const res = await run(t, backend, { inner: { output: "sed: done; then exit 1", isError: true } });
 	assert.equal(res.isError, true);
-	assert.equal(calls.diagnostics, 0);
+	assert.match(res.output, /1 error in a\.ts:/);
 });
 
-test("没声明写、改文件的工具不接，叫什么都一样", async (t) => {
-	for (const kind of [undefined, "view"] as const) {
+test("结果上没记改动的不问：被拒绝的编辑、参数里写着路径的别的工具", async (t) => {
+	for (const inner of [{ output: "The user rejected this edit.", isError: true }, EDITED] satisfies ToolOutput[]) {
 		const { backend, calls } = fakeServer({ diagnostics: async () => [error(1, "x")] });
-		const res = await run(t, backend, { kind });
-		assert.equal(calls.diagnostics, 0);
-		assert.equal(res, EDITED);
+		const res = await run(t, backend, { changed: null, inner });
+		assert.equal(calls.diagnostics + calls.start, 0);
+		assert.equal(res, inner);
 	}
 });

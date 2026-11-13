@@ -1,12 +1,12 @@
 /**
- * plume.lsp 的逻辑入口：`lsp` 工具，和 plume.tools 的 edit、write 之后附上这个文件现在的错误。
+ * plume.lsp 的逻辑入口：`lsp` 工具，和改了文件的调用（plume.tools 的 edit、write，改了文件的命令）之后附上这些文件现在的错误。
  *
  * 语言服务器按工作目录一套：同一个目录的会话和子会话借同一套，worktree 里的会话目录不同，各用各的。每台服务器第一次
  * 被问才起，空闲十分钟回收（`manager.ts`）；最后一个借它的会话结束时停掉，插件停用时全部停掉。
  */
 
 import type { Plugin } from "@plume/contract";
-import { editedFile, withDiagnostics } from "./edit-diagnostics.ts";
+import { withDiagnostics } from "./edit-diagnostics.ts";
 import { lspTool } from "./lsp-tool.ts";
 import { CodeIntelLeases } from "./manager.ts";
 
@@ -34,8 +34,8 @@ export default {
 
 		ctx.hook("tool.execute", async (input, next) => {
 			const result = await next(input);
-			const file = editedFile(input, result, ctx.tools.list().find((tool) => tool.name === input.call.name)?.kind);
-			return file ? withDiagnostics(managerFor(input.cwd, input.sessionId), input.cwd, file, result) : result;
+			// 没改文件的调用不借语言服务器：改了哪些文件看本体记在结果上的 `changes`。
+			return result.changes?.paths.length ? withDiagnostics(managerFor(input.cwd, input.sessionId), input.cwd, result) : result;
 		});
 	},
 } satisfies Plugin;
