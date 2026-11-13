@@ -6,7 +6,6 @@ import type { Locale } from "@plume/contract";
 import type { Stage } from "./progress.ts";
 
 const zhCN = {
-	readOutside: (name: string) => `读取当前项目之外的位置：${name}`,
 	generateImage: "生成图片",
 	generating: "正在生成图片",
 	imageAlt: (summary: string, n: number) => `${summary} 的第 ${n} 张图片`,
@@ -32,7 +31,6 @@ const zhCN = {
 type Messages = typeof zhCN;
 
 const en: Messages = {
-	readOutside: (name) => `Read outside the current project: ${name}`,
 	generateImage: "Generate image",
 	generating: "Generating image",
 	imageAlt: (summary, n) => `Image ${n} from ${summary}`,

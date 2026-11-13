@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { test } from "node:test";
-import type { Message, ModelImageRequest, ModelImageResult, PluginContext, PromptSection, ToolRun } from "@plume/contract";
+import type { Message, ModelImageRequest, ModelImageResult, PluginContext, PromptSection, RunFiles, ToolRun } from "@plume/contract";
 import { imageCanvasState } from "../src/image-state.ts";
 import { drawingsIn } from "../src/lineage.ts";
 import { conversationPictures } from "../src/pictures.ts";
@@ -61,29 +61,26 @@ function fakeContext(options: { messages?: Message[]; result?: ModelImageResult;
 	return { ctx, requests, saved, found };
 }
 
-/** 本体交给模型的拒绝那句的替身。 */
-const REJECTION = "The user rejected this call. Do not retry it as is.";
+/** 本体读边界的替身：一律放行，按收到的路径交回；要看工具怎么经它读的测试自己给 `read`。 */
+const allowAll: RunFiles["read"] = async (target) => ({ ok: true, path: target });
 
-function fakeRun(cwd: string, decision: "approve" | "reject" = "approve"): ToolRun & { progressed: string[]; asked: number } {
+function fakeRun(cwd: string, read: RunFiles["read"] = allowAll): ToolRun & { progressed: string[] } {
 	const run = {
 		sessionId: "s1",
 		cwd,
 		signal: new AbortController().signal,
 		progressed: [] as string[],
-		asked: 0,
 		progress(chunk: string) {
 			run.progressed.push(chunk);
 		},
-		async ask() {
-			run.asked++;
-			return decision;
-		},
-		rejection: REJECTION,
+		ask: async () => assert.fail("image 不自己问人，读边界归本体"),
+		rejection: "The user rejected this call.",
 		permissionMode: async () => "default",
 		tools: () => [],
 		calls: [],
+		files: { read, resolve: (path: string) => resolve(cwd, path) },
 	};
-	return run as unknown as ToolRun & { progressed: string[]; asked: number };
+	return run as unknown as ToolRun & { progressed: string[] };
 }
 
 test("导出 Markdown 时写成「Generate image」加提示词第一行的前 80 个字", () => {
@@ -132,25 +129,43 @@ test("#1 是对话里最新的那张图：按媒体名读回来，记作来源",
 	assert.match(missing.output, /out of range/);
 });
 
-test("项目外的文件先问人；人拒绝时不读也不画", async () => {
+test("路径经本体的读边界：交给本体的是解析好的绝对路径，拒绝时原样交回本体的话、不画；放行后读本体交回的路径", async () => {
 	const dir = await mkdtemp(join(tmpdir(), "plume-image-"));
 	try {
 		const file = join(dir, "pic.png");
 		await writeFile(file, Buffer.from(PNG, "base64"));
 		const fake = fakeContext();
-		const run = fakeRun(join(dir, "project"), "reject");
-		const out = await imageTool(fake.ctx).execute({ prompt: "x", images: [file] }, run);
-		assert.equal(run.asked, 1);
-		assert.equal(out.output, `Reading ${file}: ${REJECTION}`);
+		const asked: string[] = [];
+		const declined = "Reading ../pic.png was declined. Do not retry.";
+		const run = fakeRun(join(dir, "project"), async (target) => {
+			asked.push(target);
+			return { ok: false, message: declined };
+		});
+		const out = await imageTool(fake.ctx).execute({ prompt: "x", images: ["../pic.png"] }, run);
+		assert.deepEqual(asked, [file]);
+		assert.deepEqual(out, { output: declined, isError: true });
 		assert.equal(fake.requests.length, 0);
 
-		const inside = fakeRun(dir);
-		const drawn = await imageTool(fake.ctx).execute({ prompt: "x", images: ["pic.png"] }, inside);
-		assert.equal(inside.asked, 0);
-		assert.equal(readDetails(drawn.details)?.sources?.length, 1);
+		// 本体追过链接后交回的是真实位置：读的是它（alias.png 并不存在），不是模型写的路径。
+		const linked = fakeRun(dir, async () => ({ ok: true, path: file }));
+		const drawn = await imageTool(fake.ctx).execute({ prompt: "x", images: ["alias.png"] }, linked);
+		assert.equal(drawn.isError, undefined);
+		assert.equal(fake.requests[0]?.images?.[0]?.data, PNG);
+
+		const resource = fakeRun(dir, async () => ({ ok: true, resource: { url: "skill://x", content: "", contentType: "text/plain" } }));
+		const refused = await imageTool(fake.ctx).execute({ prompt: "x", images: ["skill://x"] }, resource);
+		assert.match(refused.output, /not a file on disk/);
+		assert.equal(fake.requests.length, 1);
 	} finally {
 		await rm(dir, { recursive: true, force: true });
 	}
+});
+
+test("媒体目录里的图按媒体名读，不经读边界", async () => {
+	const fake = fakeContext();
+	const run = fakeRun("/work", async () => assert.fail("会话自己的媒体不问读边界"));
+	const out = await imageTool(fake.ctx).execute({ prompt: "x", images: [`/data/session-media/${media(1)}`] }, run);
+	assert.deepEqual(readDetails(out.details)?.sources, [media(1)]);
 });
 
 test("没画成：结果是错误，details 带着给卡片的原因", async () => {

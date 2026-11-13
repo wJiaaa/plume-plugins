@@ -10,9 +10,8 @@
  */
 
 import { readFile } from "node:fs/promises";
-import { basename, isAbsolute, relative, resolve } from "node:path";
+import { basename, isAbsolute, relative } from "node:path";
 import type { ImageFailure, ImageInput, ImageModel, PluginContext, PromptSection, ToolDefinition, ToolOutput, ToolRun } from "@plume/contract";
-import { MESSAGES } from "./messages.ts";
 import { conversationPictures, type Picture } from "./pictures.ts";
 import { ASPECT_RATIOS, IMAGE_TOOL, type ImageGenerateDetails, PROGRESS_SEPARATOR, QUALITIES } from "./types.ts";
 
@@ -154,7 +153,8 @@ export function imageTool(ctx: PluginContext): ToolDefinition {
 				sources.push(picture?.media ?? (await ctx.media.save(loaded)).name);
 				continue;
 			}
-			const absolute = resolve(run.cwd, ref);
+			// 路径照本体的写法解析（相对 cwd、`~/`、Windows 上 shell 的几种写法），和读边界判的是同一个文件。
+			const absolute = run.files.resolve(ref);
 			const media = ctx.media.nameOf(absolute);
 			if (media) {
 				const loaded = await ctx.media.read(media);
@@ -163,18 +163,14 @@ export function imageTool(ctx: PluginContext): ToolDefinition {
 				sources.push(media);
 				continue;
 			}
-			const outside = relative(run.cwd, absolute).startsWith("..") || isAbsolute(relative(run.cwd, absolute));
-			if (outside) {
-				const decision = await run.ask({
-					kind: "view",
-					title: MESSAGES[ctx.locale()].readOutside(basename(absolute)),
-					detail: absolute,
-					subject: absolute,
-				});
-				// 拒绝后的话由本体给（含别原样重试、别换工具绕过的叮嘱），前面带上被拒的是读哪个文件。
-				if (decision === "reject") return `Reading ${shownPath(run.cwd, absolute)}: ${run.rejection}`;
-			}
-			const bytes = await readFile(absolute).catch(() => null);
+			/*
+			 * 能不能读、要不要问人、拒绝时交给模型的话都归本体（run.files.read），和 read 等工具同一个答案、同一份批准记录。
+			 * 交给它的是绝对路径，不会被当成资源地址；万一交回的是读到的内容而不是磁盘上的文件，拒掉：生图接口要的是图片文件的原样字节。
+			 */
+			const authorized = await run.files.read(absolute);
+			if (!authorized.ok) return authorized.message;
+			if (authorized.path === undefined) return `${ref} is not a file on disk.`;
+			const bytes = await readFile(authorized.path).catch(() => null);
 			if (!bytes) return `Could not read ${ref}.`;
 			if (bytes.length > MAX_INPUT_BYTES) return `${ref} is ${Math.round(bytes.length / 1048576)}MB; images over 20MB cannot be sent.`;
 			const mimeType = sniff(bytes);
@@ -227,7 +223,6 @@ export function imageTool(ctx: PluginContext): ToolDefinition {
 			additionalProperties: false,
 		},
 		mutating: false,
-		asks: true,
 		// 导出会话成 Markdown 时这次调用写成的那一行（英文，和本体给自己工具的说法一样）。
 		describe(args) {
 			const prompt = typeof args.prompt === "string" ? args.prompt.trim() : "";
