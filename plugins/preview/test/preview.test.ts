@@ -76,7 +76,14 @@ async function setup(t: TestContext) {
 		shell: async () => assert.fail("preview 不跑命令"),
 		exec: async () => assert.fail("preview 不跑命令"),
 		escalate: async () => assert.fail("preview 不提权"),
-		files: { read: async () => assert.fail("preview 不经读边界"), readCommand: async () => assert.fail("preview 不跑命令") },
+		files: {
+			read: async () => assert.fail("preview 不经读边界"),
+			readCommand: async () => assert.fail("preview 不跑命令"),
+			resolve: () => assert.fail("preview 不解析要写的路径"),
+			change: async () => assert.fail("preview 不写文件"),
+			write: async () => assert.fail("preview 不写文件"),
+			includeChanges: () => assert.fail("preview 不跑命令"),
+		},
 		track: () => assert.fail("preview 不登记后台任务"),
 	};
 	const execute = (args: Record<string, unknown>, overrides: Partial<ToolRun> = {}) => tool.execute(args, { ...run, ...overrides });

@@ -47,7 +47,14 @@ function runFor(cwd: string, projectRoots: readonly string[] = [], read: RunFile
 		shell: async () => assert.fail("lsp 不跑命令"),
 		exec: async () => assert.fail("lsp 不跑命令"),
 		escalate: async () => assert.fail("lsp 不提权"),
-		files: { read, readCommand: async () => assert.fail("lsp 不跑命令") },
+		files: {
+			read,
+			readCommand: async () => assert.fail("lsp 不跑命令"),
+			resolve: () => assert.fail("lsp 不解析要写的路径"),
+			change: async () => assert.fail("lsp 不写文件"),
+			write: async () => assert.fail("lsp 不写文件"),
+			includeChanges: () => assert.fail("lsp 不跑命令"),
+		},
 		track: () => assert.fail("lsp 不登记后台任务"),
 	};
 }
