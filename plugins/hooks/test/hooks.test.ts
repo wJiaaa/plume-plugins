@@ -255,6 +255,39 @@ test("工具前后：拦下不执行；改参数、要确认；之后的上下�
 	}
 });
 
+test("PreToolUse 的 defer：Plume 没有 -p 模式，照 Claude Code 交互模式忽略它，连同它的 updatedInput、additionalContext；不算钩子失败", async () => {
+	const h = await harness({
+		PreToolUse: [
+			{
+				matcher: "Bash",
+				hooks: [
+					command(
+						`echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"defer","updatedInput":{"command":"pwd"},"additionalContext":"later"}}'`,
+					),
+				],
+			},
+		],
+	});
+	try {
+		await submit(h, "hello");
+		let seen: ToolExecution | undefined;
+		const result = await h.run("tool.execute", execution(h.dir), async (input) => {
+			seen = input;
+			return { output: "ran" };
+		});
+		assert.deepEqual(result, { output: "ran" });
+		assert.deepEqual(seen?.call.args, { command: "ls" });
+		assert.equal(seen?.approved, undefined);
+		const runs = await until(
+			() => h.api.runs("s1"),
+			(list) => list.length === 1 && list[0]?.status !== "running",
+		);
+		assert.equal(runs[0]?.status, "success");
+	} finally {
+		await h.dispose();
+	}
+});
+
 test("照 Claude Code 写的脚本：比 tool_name、读 tool_input.file_path、tool_input.command 的守卫拦得住；改 file_path 的 updatedInput 翻回 path", async () => {
 	const scripts = await mkdtemp(join(tmpdir(), "plume-hooks-cc-"));
 	const guard = join(scripts, "guard.mjs");

@@ -33,6 +33,7 @@ stdout 上的 JSON 能表达这些：
 
 - `PreToolUse` 可以用 `hookSpecificOutput.permissionDecision` 说「拦（deny）/ 问（ask）/ 放（allow）」，也可以用 `updatedInput` 改参数。
   - 几条钩子说法不一时，取最严的。
+  - `defer`（挂起这次调用、交给外面答）只在 Claude Code 的 `claude -p` 里有用，Plume 照它交互模式的做法忽略，连同这条钩子的 `updatedInput`、`additionalContext`。
   - 「放」会跳过审批卡，但沙箱外运行（提权）仍然要你点头。
 - `PermissionRequest` 可以用 `hookSpecificOutput.decision.behavior` 说 `allow` 或 `deny`；要拒绝只能这样说，退出码 2 不算拒绝。
   - 拒绝就不弹卡、直接拒绝；放行只放这一次。

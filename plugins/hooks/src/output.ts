@@ -26,7 +26,8 @@ export interface HookJSONOutput {
 	hookSpecificOutput?: {
 		hookEventName: HookEventName;
 		additionalContext?: string;
-		permissionDecision?: HookPermissionDecision;
+		/** `defer` 是 `claude -p` 里把这次调用挂起、交给外面答的，Plume 没有这种模式，照 Claude Code 交互模式的做法忽略。 */
+		permissionDecision?: HookPermissionDecision | "defer";
 		permissionDecisionReason?: string;
 		updatedInput?: unknown;
 		decision?: PermissionRequestHookDecision;
@@ -95,8 +96,8 @@ export function parseHookStdout(stdout: string): HookJSONOutput | undefined {
 		if (!isRecord(specific) || typeof specific.hookEventName !== "string") throw new HookOutputError("hookSpecificOutput.hookEventName is required");
 		optional(specific, "additionalContext", "string");
 		optional(specific, "permissionDecisionReason", "string");
-		if (specific.permissionDecision !== undefined && !["allow", "ask", "deny"].includes(specific.permissionDecision as string)) {
-			throw new HookOutputError('permissionDecision must be "allow", "ask" or "deny"');
+		if (specific.permissionDecision !== undefined && !["allow", "ask", "deny", "defer"].includes(specific.permissionDecision as string)) {
+			throw new HookOutputError('permissionDecision must be "allow", "ask", "deny" or "defer"');
 		}
 		if (specific.decision !== undefined) {
 			const decision = specific.decision;
@@ -136,6 +137,8 @@ export function processHookOutput(event: HookEventName, output: HookJSONOutput |
 	if (!specific) return result;
 	if (specific.hookEventName !== event) throw new HookOutputError(`hookSpecificOutput is for ${specific.hookEventName}, not ${event}`);
 	if (event === "PreToolUse") {
+		// Claude Code 文档：说 defer 时 updatedInput、additionalContext 都不用。
+		if (specific.permissionDecision === "defer") return result;
 		if (specific.permissionDecision) decide(specific.permissionDecision, specific.permissionDecisionReason);
 		if (specific.updatedInput !== undefined) result.updatedInput = specific.updatedInput;
 	}
