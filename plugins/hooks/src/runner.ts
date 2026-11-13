@@ -481,7 +481,8 @@ export class HookRunner {
 			({ entry }) =>
 				entry.event === input.hookEventName &&
 				entry.definition.enabled !== false &&
-				(values.length === 0 ? matchesHookMatcher(undefined, entry.matcher) : values.some((value) => matchesHookMatcher(value, entry.matcher))),
+				// 不按 matcher 分的事件（UserPromptSubmit、Stop）不给 matchValues：照 Claude Code，写了 matcher 也不理，照跑。
+				(values.length === 0 || values.some((value) => matchesHookMatcher(value, entry.matcher, input.hookEventName))),
 		);
 		for (const { entry, trusted } of matching) {
 			const base: HookRun = {

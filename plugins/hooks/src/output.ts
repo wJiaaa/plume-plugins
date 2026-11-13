@@ -170,12 +170,18 @@ export function mergeHookRunResult(target: HookRunResult, next: HookRunResult): 
 }
 
 /**
- * 空或 `*` 匹配全部；只由字母、数字、`_`、`|` 组成的按名字精确匹配；其余当正则，写错了的正则不匹配。
+ * 照 Claude Code：空或 `*` 匹配全部；只由字母、数字、`_`、`-`、空格、`,`、`|` 组成的按名字精确匹配，`|` 和 `,` 都分隔、
+ * 两边的空白不算（`Edit, Write`）；其余当不加锚的正则，写错了的正则不匹配。StopFailure 只认字母、数字、`_`、`|`，
+ * 带 `-`、空格、`,` 的走正则。
  */
-export function matchesHookMatcher(value: string | undefined, matcher: string | undefined): boolean {
+export function matchesHookMatcher(value: string | undefined, matcher: string | undefined, event?: HookEventName): boolean {
 	if (!matcher || matcher === "*") return true;
 	if (!value) return false;
-	if (/^[a-zA-Z0-9_|]+$/u.test(matcher)) return matcher.split("|").includes(value);
+	if (event === "StopFailure" ? /^[a-zA-Z0-9_|]+$/u.test(matcher) : /^[a-zA-Z0-9_\- ,|]+$/u.test(matcher))
+		return matcher
+			.split(/[|,]/u)
+			.map((name) => name.trim())
+			.includes(value);
 	try {
 		return new RegExp(matcher).test(value);
 	} catch {

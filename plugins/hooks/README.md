@@ -55,10 +55,10 @@ stdout 上的 JSON 能表达这些：
 3. 选事件，再选运行方式。
    - 「进程」直接启动一个程序，参数每行一个。
    - 「Shell 命令」交给 shell 跑一整行。
-4. 有些事件可以填匹配器，用 `|` 分隔多个，也可以写正则：
+4. 有些事件可以填匹配器，用 `|` 或 `,` 分隔多个（`Edit, Write`），带别的字符时当正则（不加锚，`Edit.*` 也中 `NotebookEdit`）；没列在下面的事件不看匹配器，写了也照跑：
    - 工具类事件（`PreToolUse`、`PermissionRequest`、`PostToolUse`、`PostToolUseFailure`）按工具名匹配，`Bash` 和 `bash` 都认，比如 `Write|Edit|Bash`。
    - `SessionStart` 按会话怎么开始的匹配：`startup` 或 `resume`。
-   - `StopFailure` 按这一轮怎么结束的匹配：`error`、`aborted`、`max_turns`、`stalled`、`interrupted`。
+   - `StopFailure` 按这一轮怎么结束的匹配：`error`、`aborted`、`max_turns`、`stalled`、`interrupted`。和 Claude Code 一样，这个事件只有 `|` 分隔，带 `,`、`-`、空格的当正则。
    - `SessionEnd` 按会话为什么结束匹配：`deleted`、`archived`、`moved`、`quit`。
 5. 需要时展开「高级」，设超时（默认 60 秒）和状态消息。
 

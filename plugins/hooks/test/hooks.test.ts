@@ -19,6 +19,7 @@ import type {
 import type { HooksApi } from "../src/api.ts";
 import { addHook, hookEntries, normalizeHooksConfig, removeHook, setHookEnabled, updateHook } from "../src/config.ts";
 import plugin from "../src/index.ts";
+import { matchesHookMatcher } from "../src/output.ts";
 import { createHookRunner } from "../src/runner.ts";
 
 // 测试跑在终端里：用继承来的环境，不去问登录 shell。
@@ -172,6 +173,33 @@ test("配置：认不出的事件和缺命令的条目丢掉，增删改开关�
 	assert.equal(moved.events.Stop?.[0]?.hooks[0]?.command, "c");
 	// 内容变了的旧 id 对不上，什么也不删。
 	assert.equal(removeHook(moved, entry.id), moved);
+});
+
+test("matcher：只有字母、数字、_、-、空格、逗号和 | 的按名字精确比，| 和逗号都分隔；StopFailure 只认字母、数字、_ 和 |；其余当正则", () => {
+	assert.equal(matchesHookMatcher("Write", "Edit, Write"), true);
+	assert.equal(matchesHookMatcher("Edit", "Edit,Write"), true);
+	assert.equal(matchesHookMatcher("Write", "Edit | Write"), true);
+	assert.equal(matchesHookMatcher("NotebookEdit", "Edit, Write"), false);
+	assert.equal(matchesHookMatcher("code-reviewer", "code-reviewer"), true);
+	assert.equal(matchesHookMatcher("code-reviewer-2", "code-reviewer"), false);
+	assert.equal(matchesHookMatcher("NotebookEdit", "Edit.*"), true);
+	assert.equal(matchesHookMatcher("mcp__memory__x", "mcp__memory"), false);
+	// StopFailure：逗号、连字符走正则，只有 | 分隔。
+	assert.equal(matchesHookMatcher("error", "error, aborted", "StopFailure"), false);
+	assert.equal(matchesHookMatcher("max_turns", "max_turns|error", "StopFailure"), true);
+});
+
+test("matcher：不按 matcher 分的事件（UserPromptSubmit、Stop）上写了 matcher 也照跑", async () => {
+	const dir = await mkdtemp(join(tmpdir(), "plume-hooks-matcher-"));
+	try {
+		const runner = createHookRunner({
+			user: normalizeHooksConfig({ events: { Stop: [{ matcher: "Bash", hooks: [command(`echo '{"decision":"block","reason":"again"}'`)] }] } }),
+		});
+		const result = await runner.run({ hookEventName: "Stop", sessionId: "s", cwd: dir });
+		assert.equal(result.continueStop, true);
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+	}
 });
 
 test("执行：退出码 2 是拦，原因取 stderr；JSON 里的决定取最严；坏了的钩子报失败不替它拦", async () => {
