@@ -69,6 +69,7 @@ async function setup(t: TestContext) {
 		signal: new AbortController().signal,
 		progress: () => {},
 		ask: async () => "reject",
+		rejection: "The user rejected this call.",
 		request: async () => ({ answered: false, reason: "declined" }),
 		permissionMode: async () => "ask",
 		tools: () => [],

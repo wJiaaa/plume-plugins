@@ -40,6 +40,7 @@ function runFor(cwd: string, projectRoots: readonly string[] = [], read: RunFile
 		signal: new AbortController().signal,
 		progress() {},
 		ask: async () => assert.fail("读取审批应由共享服务处理"),
+		rejection: "The user rejected this call.",
 		request: async () => assert.fail("lsp 不问人要数据"),
 		permissionMode: async () => "auto",
 		tools: () => [],

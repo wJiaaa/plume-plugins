@@ -171,7 +171,8 @@ export function imageTool(ctx: PluginContext): ToolDefinition {
 					detail: absolute,
 					subject: absolute,
 				});
-				if (decision === "reject") return `The user declined reading ${shownPath(run.cwd, absolute)}.`;
+				// 拒绝后的话由本体给（含别原样重试、别换工具绕过的叮嘱），前面带上被拒的是读哪个文件。
+				if (decision === "reject") return `Reading ${shownPath(run.cwd, absolute)}: ${run.rejection}`;
 			}
 			const bytes = await readFile(absolute).catch(() => null);
 			if (!bytes) return `Could not read ${ref}.`;

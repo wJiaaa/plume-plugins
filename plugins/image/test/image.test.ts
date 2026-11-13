@@ -61,6 +61,9 @@ function fakeContext(options: { messages?: Message[]; result?: ModelImageResult;
 	return { ctx, requests, saved, found };
 }
 
+/** 本体交给模型的拒绝那句的替身。 */
+const REJECTION = "The user rejected this call. Do not retry it as is.";
+
 function fakeRun(cwd: string, decision: "approve" | "reject" = "approve"): ToolRun & { progressed: string[]; asked: number } {
 	const run = {
 		sessionId: "s1",
@@ -75,6 +78,7 @@ function fakeRun(cwd: string, decision: "approve" | "reject" = "approve"): ToolR
 			run.asked++;
 			return decision;
 		},
+		rejection: REJECTION,
 		permissionMode: async () => "default",
 		tools: () => [],
 		calls: [],
@@ -137,7 +141,7 @@ test("项目外的文件先问人；人拒绝时不读也不画", async () => {
 		const run = fakeRun(join(dir, "project"), "reject");
 		const out = await imageTool(fake.ctx).execute({ prompt: "x", images: [file] }, run);
 		assert.equal(run.asked, 1);
-		assert.match(out.output, /declined/);
+		assert.equal(out.output, `Reading ${file}: ${REJECTION}`);
 		assert.equal(fake.requests.length, 0);
 
 		const inside = fakeRun(dir);
