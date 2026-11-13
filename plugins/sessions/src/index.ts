@@ -4,12 +4,12 @@
  *
  * - `list_sessions` 看看有谁，`read_session` 读它的记录：不叫醒它、不花它的钱，能查到的不问。
  * - `ask_session` 问：寄一封请求，当场返回。对方闲着开一轮，忙着在两步之间读到；答复不在这次调用里等，以后作为一封
- *   `answer` 信送回来。对方要用 `reply_session` 回；没回、没读到、删掉了，由 `router.ts` 代答。
- * - `reply_session` 回：对方问过来、已经读到、还没答的几封一起答。
+ *   `answer` 信送回来。对方要用 `reply_session` 回；没回、没读到、删掉了，由本体代答（见 `LetterReceipt`）。
+ * - `reply_session` 回：寄一封答复，对方问过来、已经读到、还没答的几封由本体对上、一起答掉。
  * - `notify_session` 告诉：一句通知，没有答复。
  *
- * 信由本体送（`ToolRun.letter`）：本体照实填发件方、在信前面说明它不是用户的话、不构成授权。这里定写什么、发不发：
- * 找人（`peers.ts`）、限速和链长（`pacing.ts`）、记账和代答（`router.ts`）。
+ * 信由本体送（`ToolRun.letter`）：本体照实填发件方、在信前面说明它不是用户的话、不构成授权，请求和答复的配对、代答也归本体。
+ * 这里定写什么、发不发：找人（`peers.ts`）、限速和链长（`pacing.ts`、`router.ts`）。
  *
  * - 只给侧栏里的会话（顶层的）用：子 Agent、侧边聊天的工具表里藏起来（`model.context`），调到了也拒绝。
  * - 从别的会话开出来的（`spawnedFrom`：计划交给新会话执行、建议开出的新会话），来源还在侧栏里时系统提示词多一段，
@@ -36,7 +36,7 @@ import {
 	REPLY_SESSION_DESCRIPTION,
 	TO,
 } from "./prompt.ts";
-import { ANSWERS_GUIDE, NOTICES_GUIDE, PeerRouter, REQUESTS_GUIDE } from "./router.ts";
+import { NOTICES_GUIDE, PeerRouter, REQUESTS_GUIDE } from "./router.ts";
 import { mainWorktrees } from "./worktree.ts";
 
 const TOOLS = new Set(["list_sessions", "read_session", "ask_session", "reply_session", "notify_session"]);
@@ -55,12 +55,12 @@ export default {
 	// 任何会话都可能被问、在等人批准：要知道每个会话的一轮何时收场、有没有弹着卡，看全部会话。
 	observe: "all",
 	apply(ctx) {
-		const router = new PeerRouter((sessionId) => ctx.sessions.messages(sessionId), ctx.log);
+		const router = new PeerRouter();
 		/** 正弹着审批卡、等它的人批准或回答的会话：`list_sessions` 照实说它在等人，免得别的会话以为它卡住了。 */
 		const waitingOnUser = new Set<string>();
 		ctx.sessions.observe((observation) => {
 			const { event } = observation;
-			if (event.type === "turnEnd") router.turnEnded(observation.sessionId, event.stop);
+			if (event.type === "turnEnd") router.reset(observation.sessionId);
 			if (event.type === "approval") {
 				if (event.approval) waitingOnUser.add(event.sessionId);
 				else waitingOnUser.delete(event.sessionId);
@@ -68,10 +68,10 @@ export default {
 		});
 		ctx.sessions.onDeleted((sessionId) => {
 			waitingOnUser.delete(sessionId);
-			router.deleted(sessionId);
+			router.reset(sessionId);
 		});
 		ctx.hook("prompt.submit", async (input, next) => {
-			if (!input.synthetic) router.personSpoke(input.sessionId);
+			if (!input.synthetic) router.reset(input.sessionId);
 			return next(input);
 		});
 
@@ -130,13 +130,13 @@ export default {
 			found: { target: SessionSummary; from: SessionSummary; to: string },
 			letter: NonNullable<ToolRun["letter"]>,
 			input: Omit<LetterInput, "from" | "chain">,
-		): { refused: ToolOutput } | { receipt: LetterReceipt; chain: string[] } {
+		): { refused: ToolOutput } | { receipt: LetterReceipt } {
 			const chain = router.chain(fromId);
 			const refusal = router.admit(fromId, found.target.id, input.text, chain);
 			if (refusal) return { refused: { output: paced(refusal, found.to, input.text.length, chain.length), isError: true } };
 			const receipt = letter(found.target.id, { ...input, from: sessionAddress(found.from), chain });
 			router.sent(receipt, found.target.id, chain);
-			return { receipt, chain };
+			return { receipt };
 		}
 
 		const listSessions: ToolDefinition = {
@@ -194,16 +194,17 @@ export default {
 				const ready = await addressed(args, run, "`to` is required: an address from list_sessions.");
 				if ("refused" in ready) return ready.refused;
 				const { message, found, letter } = ready;
-				const posted = post(run.sessionId, found, letter, { text: message, request: true, guide: REQUESTS_GUIDE });
+				// 本体代答时拿 `recipient` 署名：写成地址，这边照着它的 `from` 就能再问、再回。
+				const posted = post(run.sessionId, found, letter, { text: message, request: true, recipient: found.to, guide: REQUESTS_GUIDE });
 				if ("refused" in posted) return posted.refused;
-				router.asked(posted.receipt, { text: message, chain: posted.chain, asker: run.sessionId, target: { id: found.target.id, address: found.to } });
 				return { output: asked(found.to, found.target.running), details: { kind: "session_ask", to: found.to, sessionId: found.target.id } };
 			},
 		};
 
 		/*
-		 * 回答问过来的会话：它发给这边、已经读到、还没答的几封一起答。没有待答的信也照送，当作通知、照通知的规矩查：
-		 * 先回一句「稍后做」、做完再回结果，第二句就落在这里，报错只会让模型换成 `notify_session` 再发一遍。
+		 * 回答问过来的会话：寄一封答复，它发给这边、已经读到、还没答的几封由本体对上、一起答掉。没有待答的也照送，
+		 * 本体当作通知送、照通知的规矩查：先回一句「稍后做」、做完再回结果，第二句就落在这里，报错只会让模型换成
+		 * `notify_session` 再发一遍。答没答掉看回执的 `answered`；说明写通知的那句，答复的意思本体的抬头会说。
 		 */
 		const replySession: ToolDefinition = {
 			name: "reply_session",
@@ -213,16 +214,9 @@ export default {
 				const ready = await addressed(args, run, "`to` is required: the `from` address of the request you are answering.");
 				if ("refused" in ready) return ready.refused;
 				const { message, found, letter } = ready;
-				const re = router.answerable(run.sessionId, found.target.id);
-				const posted = post(
-					run.sessionId,
-					found,
-					letter,
-					re.length > 0 ? { text: message, answer: "replied", re, guide: ANSWERS_GUIDE } : { text: message, guide: NOTICES_GUIDE },
-				);
+				const posted = post(run.sessionId, found, letter, { text: message, answer: "replied", guide: NOTICES_GUIDE });
 				if ("refused" in posted) return posted.refused;
-				if (re.length > 0) router.replied(run.sessionId, found.target.id);
-				return { output: replied(found.to, re.length), details: { kind: "session_reply", to: found.to, sessionId: found.target.id } };
+				return { output: replied(found.to, posted.receipt.answered), details: { kind: "session_reply", to: found.to, sessionId: found.target.id } };
 			},
 		};
 

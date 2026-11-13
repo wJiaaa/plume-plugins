@@ -87,20 +87,6 @@ export function readHistory(sessionId: string, messages: readonly Message[], arg
 	return JSON.stringify({ sessionId, totalMessages: messages.length, messages: entries, next });
 }
 
-/** `since` 之后它最后说的那段话（assistant 的正文）；一句都没说是空串。 */
-export function lastReply(messages: readonly Message[], since: number): string {
-	for (let index = messages.length - 1; index >= since; index--) {
-		const message = messages[index];
-		if (message?.role !== "assistant") continue;
-		const text = message.content
-			.map((block) => (block.type === "text" ? block.text : ""))
-			.join("")
-			.trim();
-		if (text) return text;
-	}
-	return "";
-}
-
 /**
  * 它清单上正在做的那一项：最新一份进度清单里 `in_progress` 的那条。列出会话时据此说它在做什么。
  * 清单认工具结果 `details` 里的 `checklist`（`ChecklistDetails`，会话里最新一条成功的那份算数），不认是哪个工具记的。

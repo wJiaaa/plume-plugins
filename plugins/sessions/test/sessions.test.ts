@@ -13,13 +13,11 @@ import type {
 	SessionSummary,
 	ToolDefinition,
 	ToolRun,
-	TurnStop,
 } from "@plume/contract";
 import { currentStep } from "../src/history.ts";
 import plugin from "../src/index.ts";
 import { PEER_DEDUP_MS } from "../src/pacing.ts";
 import { resolveSession, sessionAddress, together } from "../src/peers.ts";
-import { REPLY_LIMIT } from "../src/router.ts";
 
 /** 会话摘要；`kind` 和本体一样按 `parentId`、`owner` 算。 */
 const summary = (id: string, extra: Partial<SessionSummary> = {}): SessionSummary =>
@@ -51,14 +49,15 @@ const said = (role: "user" | "assistant", text: string): Message =>
 		? { role, content: [{ type: "text", text }], timestamp: 1 }
 		: { role, content: [{ type: "text", text }], api: "x", provider: "x", model: "x", usage: {}, stopReason: "stop", timestamp: 1 }) as unknown as Message;
 
-/** 寄出的一封：谁寄给谁、写了什么；`settle` 定它的下落，`answers` 是经它代答的那几封。 */
+/** 寄出的一封：谁寄给谁、写了什么；`settle` 定它的下落。`read`、`answered` 是本体配对用的账（请求读到了、已经有了答复）。 */
 interface Posted {
 	from: string;
 	to: string;
 	input: LetterInput;
 	receipt: LetterReceipt;
 	settle(fate: LetterFate): void;
-	answers: Posted[];
+	read: boolean;
+	answered: boolean;
 }
 
 /** 几个会话：`plan` 在项目 p1；`exec` 是从它开出来的、开在别处；`near` 在同一个目录；`far` 在别处；`side` 是 `plan` 的子会话。 */
@@ -80,26 +79,24 @@ function fixture() {
 	const tools = new Map<string, ToolDefinition>();
 	const layers = new Map<string, unknown>();
 	const observers: Array<(observation: SessionObservation) => void> = [];
-	const deleted: Array<(sessionId: string) => void> = [];
 	const posted: Posted[] = [];
 	let letters = 0;
+	/** 和本体一样配对：一封答复答掉收件方问发件方、已经读到、还没答的全部请求。代答归本体，这里不做。 */
 	const post = (from: string, to: string, input: LetterInput): Posted => {
 		const fate = Promise.withResolvers<LetterFate>();
+		const answering = input.answer ? posted.filter((one) => one.input.request && one.from === to && one.to === from && one.read && !one.answered) : [];
+		for (const one of answering) one.answered = true;
 		const entry: Posted = {
 			from,
 			to,
 			input,
-			settle: fate.resolve,
-			answers: [],
-			receipt: {
-				id: `letter-${++letters}`,
-				read: fate.promise,
-				answer: (letter) => {
-					const answer = post(to, from, letter);
-					entry.answers.push(answer);
-					return answer.receipt;
-				},
+			settle: (result) => {
+				if (result.status === "read") entry.read = true;
+				fate.resolve(result);
 			},
+			read: false,
+			answered: false,
+			receipt: { id: `letter-${++letters}`, read: fate.promise, answered: answering.length, answer: () => undefined },
 		};
 		return entry;
 	};
@@ -113,7 +110,7 @@ function fixture() {
 			get: async (id: string) => structuredClone(sessions.find((session) => session.id === id)),
 			messages: async (id: string) => structuredClone(messages.get(id) ?? []),
 			observe: (listener: (observation: SessionObservation) => void) => void observers.push(listener),
-			onDeleted: (listener: (sessionId: string) => void) => void deleted.push(listener),
+			onDeleted() {},
 		},
 	} as unknown as PluginContext;
 	void plugin.apply(ctx);
@@ -145,23 +142,16 @@ function fixture() {
 		const event = { type: "approval", sessionId, approval: waiting ? { toolCallId: "t" } : undefined } as unknown as SessionObservation["event"];
 		for (const listener of observers) listener({ sessionId, at: 0, timestamp: 0, event });
 	};
-	const turnEnd = (sessionId: string, stop: TurnStop = { reason: "done" }) => {
-		for (const listener of observers) listener({ sessionId, at: 0, timestamp: 0, event: { type: "turnEnd", stop } });
+	const turnEnd = (sessionId: string) => {
+		for (const listener of observers) listener({ sessionId, at: 0, timestamp: 0, event: { type: "turnEnd", stop: { reason: "done" } } });
 	};
 	const speak = (sessionId: string, synthetic = false) =>
 		(layers.get("prompt.submit") as HookLayer<"prompt.submit">)({ sessionId, synthetic } as never, async () => ({ block: false }));
-	const remove = (sessionId: string) => {
-		for (const listener of deleted) listener(sessionId);
-	};
-	return { plan, exec, near, far, side, messages, posted, call, context, approval, turnEnd, speak, remove };
+	return { plan, exec, near, far, side, posted, call, context, approval, turnEnd, speak };
 }
 
-/** 等读到、代答这些 `then` 跑完。 */
+/** 等读到这些 `then` 跑完。 */
 const settled = () => new Promise((resolve) => setTimeout(resolve, 10));
-
-/** 收件方对话里那条带着这封信的消息。 */
-const letterMessage = (id: string): Message =>
-	({ role: "user", content: [{ type: "text", text: "…" }], timestamp: 1, synthetic: true, peer: [{ id, sessionId: "x", from: "x", text: "x" }] }) as Message;
 
 test("地址是「名字 [ref]」，ref 说了算；重名不猜；同一个项目、目录套着、开出来的彼此看得见", () => {
 	const f = fixture();
@@ -226,7 +216,7 @@ test("从别的会话开出来的：系统提示词多一段，点名来源的 r
 	assert.equal((await sections(f.exec.id)).length, 1);
 });
 
-test("ask_session 寄一封请求给对方：带地址、链和怎么回的说明，当场返回；空的、太长的、刚问过一模一样的不发", async () => {
+test("ask_session 寄一封请求给对方：带双方的地址、链和怎么回的说明，当场返回；空的、太长的、刚问过一模一样的不发", async () => {
 	const f = fixture();
 	const asked = await f.call("ask_session", f.exec.id, { to: "定计划 [aaaaaa]", message: "为什么选 SQLite？" });
 	assert.match(asked.output, /^Sent to 定计划 \[aaaaaa\]\. It is idle, so it starts a turn to read it\./);
@@ -235,7 +225,8 @@ test("ask_session 寄一封请求给对方：带地址、链和怎么回的说�
 	assert.equal(letter.to, f.plan.id);
 	assert.deepEqual(
 		{ ...letter.input, guide: undefined },
-		{ from: "执行 [bbbbbb]", text: "为什么选 SQLite？", request: true, chain: [f.exec.id], guide: undefined },
+		// `recipient` 是本体代答时署的名：对方的地址，照着它能再问。
+		{ from: "执行 [bbbbbb]", text: "为什么选 SQLite？", request: true, recipient: "定计划 [aaaaaa]", chain: [f.exec.id], guide: undefined },
 	);
 	assert.match(letter.input.guide!, /reply_session/);
 	assert.match((await f.call("ask_session", f.plan.id, { to: "旁边", message: "x" })).output, /It reads it between its steps/);
@@ -250,7 +241,7 @@ test("ask_session 寄一封请求给对方：带地址、链和怎么回的说�
 	assert.equal(f.posted.length, 2);
 });
 
-test("reply_session 一起答掉读到了的问；没有待答的问就当通知寄过去；答过的不再代答", async () => {
+test("reply_session 一律寄成答复，答掉几封看回执；一封也没对上就是通知", async () => {
 	const f = fixture();
 	await f.call("ask_session", f.exec.id, { to: "aaaaaa", message: "第一问" });
 	await f.call("ask_session", f.exec.id, { to: "aaaaaa", message: "第二问" });
@@ -264,82 +255,14 @@ test("reply_session 一起答掉读到了的问；没有待答的问就当通知
 	assert.equal(answer.to, f.exec.id);
 	assert.deepEqual(
 		{ ...answer.input, guide: undefined },
-		// 这一轮是 exec 的信叫起来的：plan 寄出的信接着那条链。
-		{ from: "定计划 [aaaaaa]", text: "因为单机。", answer: "replied", re: ["第一问", "第二问"], chain: [f.exec.id, f.plan.id], guide: undefined },
+		// 对着哪几封、`re` 写什么由本体定；这一轮是 exec 的信叫起来的：plan 寄出的信接着那条链。
+		{ from: "定计划 [aaaaaa]", text: "因为单机。", answer: "replied", chain: [f.exec.id, f.plan.id], guide: undefined },
 	);
-	assert.match(answer.input.guide!, /answer="unreplied"/);
-	f.turnEnd(f.plan.id);
-	await settled();
-	assert.deepEqual(
-		f.posted.flatMap((one) => one.answers),
-		[],
-	);
+	assert.match(answer.input.guide!, /通知/);
 
 	const later = await f.call("reply_session", f.plan.id, { to: "执行", message: "做完了，结果在 out.md。" });
 	assert.equal(later.output, "执行 [bbbbbb] had no open question to you, so it reads this as a notice.");
-	assert.equal(f.posted[4]!.input.answer, undefined);
-	assert.deepEqual(f.posted[4]!.input.chain, [f.plan.id]);
-});
-
-test("读到请求的那一轮收场了还没回：拿那一轮最后说的话代答，太长的截掉；没跑完的说明怎么收的场", async () => {
-	const f = fixture();
-	await f.call("ask_session", f.exec.id, { to: "aaaaaa", message: "选了什么？" });
-	const ask = f.posted[0]!;
-	ask.settle({ status: "read", opened: false });
-	await settled();
-	f.messages.set(f.plan.id, [said("assistant", "更早的话"), letterMessage(ask.receipt.id), said("assistant", "长".repeat(REPLY_LIMIT + 5))]);
-	f.turnEnd(f.plan.id);
-	await settled();
-	const [answer] = ask.answers;
-	assert.equal(answer!.to, f.exec.id);
-	assert.equal(answer!.input.answer, "unreplied");
-	assert.deepEqual(answer!.input.re, ["选了什么？"]);
-	assert.deepEqual(answer!.input.chain, [f.exec.id, f.plan.id]);
-	assert.match(answer!.input.text, /^长{4000}\n\[cut after 4000 characters; 5 more not shown/);
-
-	await f.call("ask_session", f.near.id, { to: "aaaaaa", message: "另一问" });
-	const second = f.posted[1]!;
-	second.settle({ status: "read", opened: true });
-	await settled();
-	f.messages.set(f.plan.id, [said("assistant", "上一轮的话"), letterMessage(second.receipt.id)]);
-	f.turnEnd(f.plan.id, { reason: "error", error: "坏了" });
-	await settled();
-	assert.equal(second.answers[0]!.input.text, "[The turn that read your message ended early (error).]\n(It said nothing.)");
-});
-
-test("没读到就被对方的人停下：代它说 dropped；问的一方删掉了就不再等", async () => {
-	const f = fixture();
-	await f.call("ask_session", f.exec.id, { to: "aaaaaa", message: "一" });
-	await f.call("ask_session", f.near.id, { to: "aaaaaa", message: "二" });
-	assert.equal((await f.call("ask_session", f.near.id, { to: "执行", message: "看不见的" })).isError, true);
-	f.posted[0]!.settle({ status: "dropped" });
-	f.posted[1]!.settle({ status: "read", opened: true });
-	await settled();
-	assert.equal(f.posted[0]!.answers[0]!.input.answer, "dropped");
-	assert.match(f.posted[0]!.answers[0]!.input.text, /stopped it before it read your message/);
-	// 「二」是 near 问的，near 删掉了：plan 这一轮收场、plan 删掉都不再替它代答。
-	f.remove(f.near.id);
-	f.turnEnd(f.plan.id);
-	await settled();
-	f.remove(f.plan.id);
-	await settled();
-	assert.deepEqual(f.posted[1]!.answers, []);
-});
-
-test("对方删掉了：读到还没答的替它说 closed", async () => {
-	const f = fixture();
-	await f.call("ask_session", f.exec.id, { to: "aaaaaa", message: "一" });
-	f.posted[0]!.settle({ status: "read", opened: true });
-	await settled();
-	f.remove(f.plan.id);
-	await settled();
-	assert.equal(f.posted[0]!.answers[0]!.input.answer, "closed");
-	assert.equal(f.posted[0]!.answers[0]!.input.text, "That session was closed before it answered.");
-	// 本体告诉 closed 的（还没读到就删掉了）也一样。
-	await f.call("ask_session", f.near.id, { to: "aaaaaa", message: "二" });
-	f.posted[1]!.settle({ status: "closed" });
-	await settled();
-	assert.equal(f.posted[1]!.answers[0]!.input.answer, "closed");
+	assert.equal(f.posted[4]!.input.answer, "replied");
 });
 
 test("notify_session 寄一句通知；往来链只接叫起这一轮的信，人开口、这一轮收场就从头算", async () => {
