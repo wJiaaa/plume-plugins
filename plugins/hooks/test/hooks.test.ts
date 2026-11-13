@@ -88,7 +88,8 @@ async function harness(events: Record<string, unknown>): Promise<Harness> {
 		deleted: (sessionId) => {
 			for (const listener of deleted) listener(sessionId);
 		},
-		dispose: () => rm(root, { recursive: true, force: true }),
+		// 运行记录在后台写（插件不等它落盘），测试跑完立刻删目录会撞上还没写完的那份（ENOTEMPTY）：删不干净时稍后重试。
+		dispose: () => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 20 }),
 	};
 }
 
@@ -596,13 +597,7 @@ test("Stop：只给 additionalContext 也接着干；continue: false 压过 bloc
 	const verdict = async (value: object) => {
 		const h = await harness({ Stop: [{ hooks: [out(value)] }] });
 		try {
-			const result = await h.run("step.end", end(h.dir), async () => ({ continue: false }));
-			// 运行记录在后台写：等它落盘再删临时目录，免得删到一半撞上写入（ENOTEMPTY）。
-			await until(
-				() => h.api.runs("s1"),
-				(list) => list.length === 1 && list[0]?.status !== "running",
-			);
-			return result;
+			return await h.run("step.end", end(h.dir), async () => ({ continue: false }));
 		} finally {
 			await h.dispose();
 		}
