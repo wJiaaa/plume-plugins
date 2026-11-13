@@ -181,7 +181,11 @@ export default {
 			return { output: refusal(input.call.name, why), isError: true };
 		});
 
-		/** 第一轮之后真闲下来（问出去的有了答复、答复叫起的那一轮修完了），把报告交回原会话。被人停下的不交，出错、跑到上限的照样交，标成没跑完。 */
+		/**
+		 * 第一轮之后真闲下来（子智能体、一次性的后台命令都回来了，问出去的有了答复、答复叫起的那一轮修完了），把报告交回原会话。
+		 * 它留下的监视、开发服务器、约好的唤醒不挡（本体的规则，见 `ParentStatus`）：它们没有做完的那一刻，等它们报告就永远交不回去；
+		 * 之后它们叫醒的几轮不算进报告。被人停下的不交，出错、跑到上限的照样交，标成没跑完。
+		 */
 		function follow(launched: LaunchedSession, title: string): void {
 			const id = launched.session.id;
 			const report = async () => {
