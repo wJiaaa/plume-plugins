@@ -8,6 +8,7 @@ import type {
 	HookName,
 	Hooks,
 	Message,
+	ModelContext,
 	PluginContext,
 	SessionEndReason,
 	SessionObservation,
@@ -349,6 +350,84 @@ test("照 Claude Code 写的脚本：比 tool_name、读 tool_input.file_path、
 	} finally {
 		await h.dispose();
 		await rm(scripts, { recursive: true, force: true });
+	}
+});
+
+/** 一次模型请求：权限模式、计划模式和 shell 只在这里给，钩子插件从这里记下。 */
+function request(h: Harness, overrides: Partial<ModelContext> = {}) {
+	const input = { sessionId: "s1", cwd: h.dir, permissionMode: "auto", shell: { kind: "posix", label: "zsh", sandbox: "workspace-write" }, ...overrides };
+	return h.run("model.context", input as unknown as ModelContext, async (context) => context);
+}
+
+test("stdin 照 Claude Code 补上 permission_mode、duration_ms、is_interrupt；拿不到的 effort、prompt_id 不给", async () => {
+	const log = `cat >> "$CLAUDE_PROJECT_DIR/events.log"; echo >> "$CLAUDE_PROJECT_DIR/events.log"`;
+	const h = await harness({
+		UserPromptSubmit: [{ hooks: [command(log)] }],
+		PreToolUse: [{ hooks: [command(log)] }],
+		PermissionRequest: [{ hooks: [command(log)] }],
+		PostToolUse: [{ hooks: [command(log)] }],
+		PostToolUseFailure: [{ hooks: [command(log)] }],
+		Stop: [{ hooks: [command(log)] }],
+	});
+	try {
+		const events = async () =>
+			(await readFile(join(h.dir, "events.log"), "utf8"))
+				.split("\n")
+				.filter(Boolean)
+				.map((line) => JSON.parse(line) as Record<string, unknown>);
+		await submit(h, "hello");
+		await request(h);
+		// 工具里等人审批的那 300 毫秒不算进 duration_ms。
+		await h.run("tool.execute", execution(h.dir), async () => {
+			await h.run("tool.approve", approval(h.dir, { permissionMode: "auto" }), async () => {
+				await new Promise((resolve) => setTimeout(resolve, 300));
+				return "once";
+			});
+			return { output: "ok" };
+		});
+		await request(h, { permissionMode: "full" });
+		await h.run("tool.execute", execution(h.dir), async () => ({ output: "boom", isError: true }));
+		await request(h, { permissionMode: "ask", readOnly: true });
+		await h.run("tool.execute", execution(h.dir, { readOnly: { refusal: "plan" } }), async () => ({ output: "ok" }));
+		const end = {
+			sessionId: "s1",
+			cwd: h.dir,
+			step: 1,
+			stepsLeft: 10,
+			reply: { role: "assistant", content: [{ type: "text", text: "done" }] },
+			toolResults: [],
+			signal: new AbortController().signal,
+		} as unknown as StepEnd;
+		await h.run("step.end", end, async () => ({ continue: false }));
+
+		const seen = await events();
+		assert.deepEqual(
+			seen.map((event) => [event.hook_event_name, event.permission_mode]),
+			[
+				// 一轮开始时还没有这一轮的请求，权限模式拿不到。
+				["UserPromptSubmit", undefined],
+				["PreToolUse", "auto"],
+				["PermissionRequest", "auto"],
+				["PostToolUse", "auto"],
+				["PreToolUse", "bypassPermissions"],
+				["PostToolUseFailure", "bypassPermissions"],
+				["PreToolUse", "plan"],
+				["PostToolUse", "plan"],
+				["Stop", "plan"],
+			],
+		);
+		const [post, failure] = seen.filter((event) => event.hook_event_name === "PostToolUse" || event.hook_event_name === "PostToolUseFailure");
+		assert.equal(typeof post?.duration_ms, "number");
+		assert.ok((post?.duration_ms as number) < 250, `duration_ms ${String(post?.duration_ms)}`);
+		assert.equal(typeof failure?.duration_ms, "number");
+		assert.equal(failure?.is_interrupt, false);
+		assert.equal(failure?.error, "boom");
+		for (const event of seen) {
+			assert.equal("effort" in event, false);
+			assert.equal("prompt_id" in event, false);
+		}
+	} finally {
+		await h.dispose();
 	}
 });
 

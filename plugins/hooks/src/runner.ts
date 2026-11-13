@@ -234,6 +234,12 @@ function expandVariables(value: string, input: HookInput): string {
 }
 
 /**
+ * Plume 的权限模式 → Claude Code 的 `permission_mode`：请求批准是 Claude Code 的默认（Manual），帮我批准对它的 auto（按风险自动批），
+ * 完全访问对 bypassPermissions；计划模式（只读）是 plan。
+ */
+const CLAUDE_CODE_PERMISSION_MODES: Record<string, string> = { ask: "default", auto: "auto", full: "bypassPermissions" };
+
+/**
  * stdin：Plume 自己的 camelCase 字段，加上 Claude Code 脚本认的 snake_case 字段——值照 Claude Code 的叫法，所以 `tool_name`
  * 和 `toolName` 可以不同（`Edit` 和 `edit`），见 `claudeCodeToolName`。`transcript_path` 指向一份临时文件，
  * 只装着这次事件涉及的那条消息——只有 Stop（最后一条回复）和 UserPromptSubmit（刚发的那句）有这条消息；
@@ -241,15 +247,19 @@ function expandVariables(value: string, input: HookInput): string {
  */
 async function compatibleStdin(input: HookInput): Promise<{ value: string; cleanup: () => Promise<void> }> {
 	const compatible: Record<string, unknown> = { ...input, hook_event_name: input.hookEventName, session_id: input.sessionId };
+	if (typeof input.permissionMode === "string")
+		compatible.permission_mode = input.readOnly === true ? "plan" : (CLAUDE_CODE_PERMISSION_MODES[input.permissionMode] ?? input.permissionMode);
 	if (typeof input.toolName === "string") {
 		compatible.tool_name = claudeCodeToolName(input.toolName);
 		compatible.tool_input = claudeCodeInput(input.toolName, input.toolInput, input.cwd);
 		compatible.tool_use_id = input.toolCallId;
 	}
+	if (input.hookEventName === "PostToolUse" || input.hookEventName === "PostToolUseFailure") compatible.duration_ms = input.durationMs;
 	if (input.hookEventName === "PostToolUse") compatible.tool_response = input.toolResponse;
 	if (input.hookEventName === "PostToolUseFailure") {
 		compatible.error = (input.error as { message?: string } | undefined)?.message;
 		compatible.error_details = input.error;
+		compatible.is_interrupt = input.isInterrupt;
 	}
 	if (input.hookEventName === "Stop") {
 		compatible.last_assistant_message = input.responseText;

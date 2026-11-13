@@ -13,7 +13,7 @@
 
 import { isAbsolute, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import type { Message, Plugin, ToolOutput, TurnStop } from "@plume/contract";
+import type { HookLayer, Message, PermissionMode, Plugin, ToolOutput, TurnStop } from "@plume/contract";
 import type { HookView, HooksApi, HooksView } from "./api.ts";
 import {
 	addHook,
@@ -138,6 +138,17 @@ export default {
 		const gone = new Set<string>();
 		/** 每个会话还没跑完的 StopFailure：SessionEnd 排在它后面，外面先收到「这一轮失败了」再收到「会话结束了」。 */
 		const tails = new Map<string, Promise<void>>();
+		/**
+		 * 每个会话最近一次模型请求时的权限模式、是不是计划模式（只读）：交给脚本的 `permission_mode` 要它，tool.execute、step.end
+		 * 的输入里没有，从 model.context 记下。工具调用、收尾都跟在发出它们的那次请求后面，记下的就是那次请求的。
+		 */
+		const requests = new Map<string, { permissionMode: PermissionMode; readOnly: boolean }>();
+		/**
+		 * 正在执行的工具调用里等审批花了多少毫秒（键是会话和调用 id）：`duration_ms` 照 Claude Code 不算等审批的时间。
+		 * 只有 tool.execute 正在计时的调用才记，计完就删。
+		 */
+		const waited = new Map<string, number>();
+		const callKey = (sessionId: string, callId: string) => `${sessionId}\0${callId}`;
 
 		const record = (sessionId: string) => (run: HookRun) => {
 			if (gone.has(sessionId)) return;
@@ -165,6 +176,16 @@ export default {
 			cwd,
 			timestamp: new Date().toISOString(),
 		});
+		/**
+		 * 交给脚本的权限模式：Plume 的叫法，计划模式另带 `readOnly`，runner 再翻成 Claude Code 的 `permission_mode`。
+		 * 事件自己的输入里有的（审批的权限模式、工具调用是不是只读）用它，没有的用最近一次请求时的；这个会话还没发过请求时不给。
+		 */
+		const modeOf = (sessionId: string, own: { permissionMode?: PermissionMode; readOnly?: boolean } = {}) => {
+			const last = requests.get(sessionId);
+			const permissionMode = own.permissionMode ?? last?.permissionMode;
+			if (!permissionMode) return {};
+			return { permissionMode, ...((own.readOnly ?? last?.readOnly) ? { readOnly: true } : {}) };
+		};
 		const failedHandling = (sessionId: string, event: HookEventName, error: unknown) => {
 			ctx.log.warn(`${event} 钩子处理失败：${reasonOf(error)}`);
 			ctx.notice(sessionId, text().handlingFailed(event, reasonOf(error)), "warn");
@@ -226,19 +247,25 @@ export default {
 			return { block: false, context: [...contexts, ...(verdict.context ? [verdict.context] : [])].join("\n\n") };
 		});
 
+		ctx.hook("model.context", (input, next) => {
+			requests.set(input.sessionId, { permissionMode: input.permissionMode, readOnly: input.readOnly === true });
+			return next(input);
+		});
+
 		ctx.hook("tool.execute", async (input, next) => {
 			cwds.set(input.sessionId, input.cwd);
 			const runner = await runnerFor(input.sessionId, input.cwd);
 			if (!(runner.has("PreToolUse") || runner.has("PostToolUse") || runner.has("PostToolUseFailure"))) return next(input);
 			const toolName = input.call.name;
 			const matchValues = hookMatchValues(toolName);
+			const mode = modeOf(input.sessionId, { readOnly: input.readOnly !== undefined });
 			let contexts: string[] = [];
 			let execution = input;
 
 			if (runner.has("PreToolUse")) {
 				try {
 					const result = await runner.run(
-						{ ...base("PreToolUse", input.sessionId, input.cwd), toolName, toolInput: input.call.args, toolCallId: input.call.id },
+						{ ...base("PreToolUse", input.sessionId, input.cwd), ...mode, toolName, toolInput: input.call.args, toolCallId: input.call.id },
 						{ matchValues, signal: input.signal },
 					);
 					contexts = result.additionalContexts;
@@ -258,12 +285,20 @@ export default {
 				}
 			}
 
-			const result = await next(execution);
+			// 计时只算工具自己：PreToolUse 的「要确认」在这之前，里面等审批的时间由 tool.approve 记下、减掉。
+			const key = callKey(input.sessionId, input.call.id);
+			waited.set(key, 0);
+			const startedAt = Date.now();
+			let durationMs = 0;
+			const result = await next(execution).finally(() => {
+				durationMs = Math.max(0, Date.now() - startedAt - (waited.get(key) ?? 0));
+				waited.delete(key);
+			});
 			const failed = result.isError === true;
 			const event = failed ? "PostToolUseFailure" : "PostToolUse";
 			if (!runner.has(event)) return appendHookContexts(result, contexts);
 			try {
-				const call = { ...base(event, input.sessionId, input.cwd), toolName, toolInput: execution.call.args, toolCallId: input.call.id };
+				const call = { ...base(event, input.sessionId, input.cwd), ...mode, toolName, toolInput: execution.call.args, toolCallId: input.call.id, durationMs };
 				const preview = result.output.slice(0, PREVIEW_MAX);
 				const hookInput = failed
 					? { ...call, error: { message: preview, type: "ToolError" }, isInterrupt: input.signal.aborted }
@@ -285,34 +320,45 @@ export default {
 		 * 照原参数放行等于放过了钩子没同意的那一版。原样交回的（`jq '.tool_input'`）还是放行。`updatedPermissions`（记规则、换权限模式）
 		 * 也没有地方落，不理它，只放这一次。
 		 */
+		const approve: HookLayer<"tool.approve"> = async (input, next) => {
+			if (input.byLayer) return next(input);
+			const runner = await runnerFor(input.sessionId, input.cwd);
+			if (!runner.has("PermissionRequest")) return next(input);
+			try {
+				const toolName = input.call.name;
+				const result = await runner.run(
+					{
+						...base("PermissionRequest", input.sessionId, input.cwd),
+						...modeOf(input.sessionId, { permissionMode: input.permissionMode }),
+						toolName,
+						toolInput: input.call.args,
+						toolCallId: input.call.id,
+						reason: input.request.reason ?? input.request.title,
+						requestId: input.call.id,
+					},
+					{ matchValues: hookMatchValues(toolName), signal: input.signal },
+				);
+				if (result.decision === "deny") return "reject";
+				const changed =
+					isPlainObject(result.updatedInput) && !isDeepStrictEqual(plumeToolInput(toolName, result.updatedInput, input.call.args, input.cwd), input.call.args);
+				if (result.decision === "allow" && !changed) return "once";
+			} catch (error) {
+				failedHandling(input.sessionId, "PermissionRequest", error);
+			}
+			return next(input);
+		};
 		ctx.hook(
 			"tool.approve",
 			async (input, next) => {
-				if (input.byLayer) return next(input);
-				const runner = await runnerFor(input.sessionId, input.cwd);
-				if (!runner.has("PermissionRequest")) return next(input);
+				// 等审批的时间（钩子答的、人点的都算）记到正在计时的那次调用上，duration_ms 里减掉。
+				const key = callKey(input.sessionId, input.call.id);
+				const startedAt = Date.now();
 				try {
-					const toolName = input.call.name;
-					const result = await runner.run(
-						{
-							...base("PermissionRequest", input.sessionId, input.cwd),
-							toolName,
-							toolInput: input.call.args,
-							toolCallId: input.call.id,
-							reason: input.request.reason ?? input.request.title,
-							requestId: input.call.id,
-						},
-						{ matchValues: hookMatchValues(toolName), signal: input.signal },
-					);
-					if (result.decision === "deny") return "reject";
-					const changed =
-						isPlainObject(result.updatedInput) &&
-						!isDeepStrictEqual(plumeToolInput(toolName, result.updatedInput, input.call.args, input.cwd), input.call.args);
-					if (result.decision === "allow" && !changed) return "once";
-				} catch (error) {
-					failedHandling(input.sessionId, "PermissionRequest", error);
+					return await approve(input, next);
+				} finally {
+					const sofar = waited.get(key);
+					if (sofar !== undefined) waited.set(key, sofar + Date.now() - startedAt);
 				}
-				return next(input);
 			},
 			{ order: PERMISSION_REQUEST_ORDER },
 		);
@@ -329,6 +375,7 @@ export default {
 				const result = await runner.run(
 					{
 						...base("Stop", input.sessionId, input.cwd),
+						...modeOf(input.sessionId),
 						responseText,
 						responsePreview: responseText.slice(0, PREVIEW_MAX),
 						toolCallCount: 0,
@@ -389,7 +436,7 @@ export default {
 		});
 		ctx.sessions.onDeleted((sessionId) => {
 			gone.add(sessionId);
-			for (const map of [continuations, cwds, turnAt]) map.delete(sessionId);
+			for (const map of [continuations, cwds, turnAt, requests]) map.delete(sessionId);
 			void runs.forget(sessionId).catch((error: unknown) => ctx.log.warn(`删不掉钩子运行记录：${reasonOf(error)}`));
 		});
 
