@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { readFile, realpath, stat } from "node:fs/promises";
-import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, isAbsolute, join, relative, sep } from "node:path";
 import type { Plugin, ToolOutput, ToolRun } from "@plume/contract";
 import type { PreviewApi } from "./api.ts";
 import { MEASURE_HEIGHT } from "./bridge.ts";
@@ -72,19 +72,22 @@ export default {
 			};
 		});
 
+		/*
+		 * 能不能读、要不要问人、拒绝时交给模型的话都归本体（run.files.read），和 read 等工具同一个答案、同一份批准记录；
+		 * `scratch://` 也由本体换成临时目录里的文件。这里只管自己的限制：只认磁盘上的 .html、最大 2 MB。
+		 * 字面路径先查一遍扩展名，不是网页的不必去问人；读之前按真实路径再查，链接名是 .html、指向别的文件的不收。
+		 */
 		async function localFile(path: string, run: ToolRun): Promise<{ html: string; themed: boolean }> {
-			const absolute = await realpath(path.startsWith("scratch://") ? resolve(run.scratchDir, path.slice(10)) : resolve(run.cwd, path));
+			if (!/\.html?$/i.test(path)) throw new Error("Only .html files can be previewed");
+			const authorized = await run.files.read(path);
+			if (!authorized.ok) throw new Error(authorized.message);
+			if (authorized.path === undefined) throw new Error(`${path} is not a file on disk; only local .html files can be previewed`);
+			const absolute = await realpath(authorized.path);
 			if (!/\.html?$/i.test(absolute)) throw new Error("Only .html files can be previewed");
-			const scratch = await realpath(run.scratchDir).catch(() => run.scratchDir);
-			const cwd = await realpath(run.cwd);
-			const sensitive = /(?:^|[/\\])(?:\.env(?:\.[^/\\]*)?|\.ssh|\.aws|\.gnupg)(?:[/\\]|$)/i.test(absolute);
-			if (sensitive || (!within(cwd, absolute) && !within(scratch, absolute))) {
-				const words = MESSAGES[ctx.locale()];
-				if ((await run.ask({ kind: "view", title: words.read, detail: absolute, subject: absolute, reason: words.readReason })) === "reject")
-					throw new Error(`Reading ${absolute}: ${run.rejection}`);
-			}
 			const info = await stat(absolute);
 			if (!info.isFile() || info.size > MAX_BYTES) throw new Error("The page must be a file of at most 2 MB");
+			// 临时目录里的页面是模型为这次对话写的，跟随应用主题；项目里的是人的文件，原样显示。这是展示上的判断，不是读边界。
+			const scratch = await realpath(run.scratchDir).catch(() => run.scratchDir);
 			return { html: await readFile(absolute, "utf8"), themed: within(scratch, absolute) };
 		}
 		const shown = (document: PreviewDocument, notes = ""): ToolOutput => ({
@@ -119,7 +122,6 @@ export default {
 				additionalProperties: false,
 			},
 			mutating: false,
-			asks: true,
 			async execute(args, run) {
 				try {
 					run.signal.throwIfAborted();

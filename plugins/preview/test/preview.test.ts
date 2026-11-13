@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { test, type TestContext } from "node:test";
-import type { HookLayer, PluginContext, PromptSubmit, ToolDefinition, ToolRun, WebInspection, WebPages } from "@plume/contract";
+import type { HookLayer, PluginContext, PromptSubmit, RunFiles, ToolDefinition, ToolRun, WebInspection, WebPages } from "@plume/contract";
 import plugin from "../src/index.ts";
 import type { PreviewApi } from "../src/api.ts";
 import { MAX_BYTES, pageFiles, stateJson, type Preview } from "../src/types.ts";
 import { withBridge } from "../src/bridge.ts";
+
+/** 本体读边界的替身：一律放行，`scratch://` 换成临时目录里的文件、别的按 cwd 解析，不追链接（追链接是本体的事）。 */
+const allowAll =
+	(run: Pick<ToolRun, "cwd" | "scratchDir">): RunFiles["read"] =>
+	async (target) => ({ ok: true, path: target.startsWith("scratch://") ? join(run.scratchDir, target.slice(10)) : resolve(run.cwd, target) });
 
 async function setup(t: TestContext) {
 	const root = await mkdtemp(join(tmpdir(), "plume-preview-"));
@@ -68,7 +73,7 @@ async function setup(t: TestContext) {
 		scratchDir: join(root, "scratch"),
 		signal: new AbortController().signal,
 		progress: () => {},
-		ask: async () => "reject",
+		ask: async () => assert.fail("preview 不自己问人，读边界归本体"),
 		rejection: "The user rejected this call.",
 		request: async () => ({ answered: false, reason: "declined" }),
 		permissionMode: async () => "ask",
@@ -78,7 +83,7 @@ async function setup(t: TestContext) {
 		exec: async () => assert.fail("preview 不跑命令"),
 		escalate: async () => assert.fail("preview 不提权"),
 		files: {
-			read: async () => assert.fail("preview 不经读边界"),
+			read: async () => assert.fail("由 execute 按这次调用的 cwd 换上"),
 			readCommand: async () => assert.fail("preview 不跑命令"),
 			resolve: () => assert.fail("preview 不解析要写的路径"),
 			change: async () => assert.fail("preview 不写文件"),
@@ -87,7 +92,11 @@ async function setup(t: TestContext) {
 		},
 		track: () => assert.fail("preview 不登记后台任务"),
 	};
-	const execute = (args: Record<string, unknown>, overrides: Partial<ToolRun> = {}) => tool.execute(args, { ...run, ...overrides });
+	const execute = (args: Record<string, unknown>, overrides: Partial<ToolRun> & { read?: RunFiles["read"] } = {}) => {
+		const { read, ...rest } = overrides;
+		const effective = { ...run, ...rest };
+		return tool.execute(args, { ...effective, files: { ...run.files, read: read ?? allowAll(effective) } });
+	};
 	const submit = (sessionId = run.sessionId, synthetic = false) => hook({ sessionId, synthetic } as PromptSubmit, async () => ({ block: false }));
 	return {
 		root,
@@ -191,19 +200,52 @@ test("页面状态恢复、并发保存与下一条人工消息回传，只读�
 	assert.ok(!escaped.block && escaped.context?.includes("\\u003c/page-state>"));
 });
 
-test("本地文件只复制 HTML，scratch 可读，指向外部的软链必须授权", async (t) => {
+test("本地文件经本体的读边界：交给本体的是字面路径，拒绝时原样交回本体的话，自己不问人", async (t) => {
+	const f = await setup(t);
+	const asked: string[] = [];
+	await writeFile(join(f.root, "page.html"), "<p>page</p>");
+	const declined = await f.execute(
+		{ path: "../page.html" },
+		{
+			read: async (target) => {
+				asked.push(target);
+				return { ok: false, message: "Reading ../page.html was declined. Do not retry." };
+			},
+		},
+	);
+	assert.deepEqual(declined, { output: "Reading ../page.html was declined. Do not retry.", isError: true });
+	assert.deepEqual(asked, ["../page.html"], "相对路径、scratch:// 都由本体解析");
+
+	const notPage = await f.execute({ path: "notes.txt" }, { read: async () => assert.fail("不是网页的不去问人") });
+	assert.match(notPage.output, /Only \.html/);
+	const resource = await f.execute(
+		{ path: "plugin://x/page.html" },
+		{ read: async () => ({ ok: true, resource: { url: "plugin://x/page.html", content: "<p>x</p>", contentType: "text/html" } }) },
+	);
+	assert.ok(resource.isError);
+	assert.match(resource.output, /not a file on disk/);
+});
+
+test("本地文件只复制 HTML：链接按真实路径认扩展名，scratch 里的页面跟随主题，项目里的不跟", async (t) => {
 	const f = await setup(t);
 	const workspace = join(f.root, "workspace");
 	await mkdir(workspace);
 	await mkdir(f.run.scratchDir);
 	await writeFile(join(f.root, "outside.html"), "<p>outside</p>");
+	await writeFile(join(f.root, "secret.txt"), "secret");
 	await symlink(join(f.root, "outside.html"), join(workspace, "linked.html"));
-	assert.equal((await f.execute({ path: "linked.html" }, { cwd: workspace })).isError, true);
-	const allowed = await f.execute({ path: "linked.html" }, { cwd: workspace, ask: async () => "once" });
-	assert.equal(allowed.isError, undefined);
-	assert.equal(previewOf(allowed.details).themed, false);
+	await symlink(join(f.root, "secret.txt"), join(workspace, "disguised.html"));
+	const linked = await f.execute({ path: "linked.html" }, { cwd: workspace });
+	assert.equal(linked.isError, undefined);
+	assert.equal(previewOf(linked.details).themed, false);
+	assert.match((await f.execute({ path: "disguised.html" }, { cwd: workspace })).output, /Only \.html/);
 	await writeFile(join(f.run.scratchDir, "draft.html"), "<p>draft</p>");
 	const scratch = await f.execute({ path: "scratch://draft.html" }, { cwd: workspace });
 	assert.equal(scratch.isError, undefined);
 	assert.equal(previewOf(scratch.details).themed, true);
+	// 本体交回的临时目录路径没追链接（macOS 的 /var 是 /private/var 的链接）也认得出在临时目录里。
+	const viaLink = join(f.root, "scratch-link");
+	await symlink(f.run.scratchDir, viaLink);
+	const linkedScratch = await f.execute({ path: "draft.html" }, { cwd: viaLink });
+	assert.equal(previewOf(linkedScratch.details).themed, true);
 });

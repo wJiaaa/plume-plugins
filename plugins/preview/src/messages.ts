@@ -31,8 +31,6 @@ const zh = {
 	loading: "正在加载网页…",
 	failed: "网页加载失败，请重新运行。",
 	saveFailed: "页面状态保存失败，请重试。",
-	read: "读取网页文件",
-	readReason: "这个网页位于工作目录之外或敏感目录中。",
 };
 export const MESSAGES: Record<Locale, typeof zh> = {
 	"zh-CN": zh,
@@ -67,7 +65,5 @@ export const MESSAGES: Record<Locale, typeof zh> = {
 		loading: "Loading page…",
 		failed: "The page could not load. Try rerunning it.",
 		saveFailed: "Page state could not be saved. Try again.",
-		read: "Read HTML file",
-		readReason: "This page is outside the workspace or in a sensitive directory.",
 	},
 };
