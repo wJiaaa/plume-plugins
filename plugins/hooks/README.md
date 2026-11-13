@@ -79,6 +79,7 @@ stdout 上的 JSON 能表达这些：
   - 名字本来就一样的不用补：`command`、`description`、`timeout`（都是毫秒）、`run_in_background`，`content`、`old_string`、`new_string`、`replace_all`、`offset`、`limit`，`pattern`、`path`、`glob`，`url`、`query`。
 - **Plume 没有的参数**：`Grep` 的 `output_mode`（Plume 用 `files_only` 二选一，没有计数）、`head_limit`（Plume 的 `limit` 数的是匹配数）、`offset`、`-A`、`-B`、`-n`、`-o`、`type`、`multiline`，`WebFetch` 的 `prompt`、`offset`，`WebSearch` 的 `allowed_domains`、`blocked_domains`、`mode`（Plume 的 `web_search` 只有 `query`），`Read` 的 `pages`、`allow_large`，`Bash` 的 `dangerouslyDisableSandbox`，旧版 `MultiEdit` 的 `edits`（Plume 的 `edit` 一次改一处，读 `file_path`、`old_string`、`new_string` 就行）。读它们的脚本拿到空值。
 - **`updatedInput`**：照 Claude Code 写法改了 `file_path`、`-i`、`-C` 的，翻回 Plume 的参数名再交给工具；只改了 Plume 名字的也认。
+- **`terminalSequence`**：Plume 没有终端可写，认得这个字段、不用它；同一份输出里别的字段照常算。
 - **`tool_response`**：是 Plume 的 `{ output, details }`，不是 Claude Code 各工具自己的结构。
 - **`permission_mode`**：照 Claude Code 的叫法，请求批准是 `default`，帮我批准是 `auto`，完全访问是 `bypassPermissions`，计划模式是 `plan`。工具前后、`PermissionRequest`、`Stop` 有，取的是发出这次调用（这次回答）的那次请求时的模式；`UserPromptSubmit` 时这一轮还没发过请求，Plume 拿不到这一刻的权限模式，不给。
 - **`duration_ms`、`is_interrupt`**：`PostToolUse`、`PostToolUseFailure` 有 `duration_ms`，和 Claude Code 一样不算等审批的时间；`PostToolUseFailure` 有 `is_interrupt`。

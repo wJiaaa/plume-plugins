@@ -202,6 +202,32 @@ test("matcher：不按 matcher 分的事件（UserPromptSubmit、Stop）上写�
 	}
 });
 
+test("输出：Claude Code 的 terminalSequence 认得、不用，同一份输出里的决定照算", async () => {
+	const dir = await mkdtemp(join(tmpdir(), "plume-hooks-terminal-"));
+	try {
+		const runner = createHookRunner({
+			user: normalizeHooksConfig({
+				events: {
+					PreToolUse: [
+						{
+							hooks: [
+								command(
+									`printf '%s' '{"terminalSequence":"\\u0007","hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"no"}}'`,
+								),
+							],
+						},
+					],
+				},
+			}),
+		});
+		const result = await runner.run({ hookEventName: "PreToolUse", sessionId: "s", cwd: dir, toolName: "bash" }, { matchValues: ["bash"] });
+		assert.equal(result.decision, "deny");
+		assert.equal(result.reason, "no");
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+	}
+});
+
 test("执行：退出码 2 是拦，原因取 stderr；JSON 里的决定取最严；坏了的钩子报失败不替它拦", async () => {
 	const dir = await mkdtemp(join(tmpdir(), "plume-hooks-run-"));
 	try {

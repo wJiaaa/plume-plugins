@@ -21,6 +21,8 @@ export interface HookJSONOutput {
 	reason?: string;
 	systemMessage?: string;
 	suppressOutput?: boolean;
+	/** Claude Code 替钩子往终端写的转义序列（桌面通知、窗口标题）。Plume 没有终端可写，认得、不用。 */
+	terminalSequence?: string;
 	additionalContext?: string;
 	additional_context?: string;
 	hookSpecificOutput?: {
@@ -60,6 +62,7 @@ const TOP_LEVEL = new Set([
 	"reason",
 	"systemMessage",
 	"suppressOutput",
+	"terminalSequence",
 	"additionalContext",
 	"additional_context",
 	"hookSpecificOutput",
@@ -88,7 +91,7 @@ export function parseHookStdout(stdout: string): HookJSONOutput | undefined {
 	for (const key of Object.keys(parsed)) if (!TOP_LEVEL.has(key)) throw new HookOutputError(`unknown field "${key}"`);
 	optional(parsed, "continue", "boolean");
 	optional(parsed, "suppressOutput", "boolean");
-	for (const key of ["stopReason", "reason", "systemMessage", "additionalContext", "additional_context"]) optional(parsed, key, "string");
+	for (const key of ["stopReason", "reason", "systemMessage", "terminalSequence", "additionalContext", "additional_context"]) optional(parsed, key, "string");
 	if (parsed.decision !== undefined && parsed.decision !== "approve" && parsed.decision !== "block")
 		throw new HookOutputError('decision must be "approve" or "block"');
 	const specific = parsed.hookSpecificOutput;
