@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/scheduled",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "把常做的事排成定时任务：每天几点或每隔多少分钟、在哪个目录、发什么提示词。到点开一个新会话把提示词发出去，失败了在输入框上方告诉你。",
   "author": "Plume",
   "keywords": [
