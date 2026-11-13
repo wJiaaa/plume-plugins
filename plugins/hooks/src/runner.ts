@@ -103,16 +103,29 @@ const CLAUDE_CODE_TOOLS: Record<string, ClaudeCodeTool> = {
 	web_search: { names: ["WebSearch"] },
 };
 
-export function hookMatchValues(toolName: string): string[] {
-	return [toolName, ...(CLAUDE_CODE_TOOLS[toolName]?.names ?? [])];
+/** 命令跑在哪种 shell：`ModelContext.shell.kind`。 */
+export type CommandShellKind = "posix" | "powershell";
+
+/**
+ * 这个工具在 Claude Code 里叫什么，现行的名字在前。Plume 的 bash 在 PowerShell 里跑命令时（Windows 上受约束的权限档）对的是
+ * Claude Code 的 PowerShell 工具：参数和 Bash 一样，名字不同。Claude Code 文档写明只写 `Bash` 的 matcher 不管 PowerShell，
+ * 要两边都管写 `Bash|PowerShell`，这里照它。
+ */
+function claudeCodeNames(toolName: string, shell?: CommandShellKind): string[] {
+	if (toolName === "bash" && shell === "powershell") return ["PowerShell"];
+	return CLAUDE_CODE_TOOLS[toolName]?.names ?? [];
+}
+
+export function hookMatchValues(toolName: string, shell?: CommandShellKind): string[] {
+	return [toolName, ...claudeCodeNames(toolName, shell)];
 }
 
 /**
  * 交给脚本的 `tool_name`：有对照的给 Claude Code 的名字，没有的给 Plume 的。照 Claude Code 文档写的守卫比的是 `tool_name == "Edit"`，
  * 给 Plume 的 `edit` 就比不上、该拦的被放过去；Plume 的名字留在 `toolName` 上。
  */
-function claudeCodeToolName(toolName: string): string {
-	return CLAUDE_CODE_TOOLS[toolName]?.names[0] ?? toolName;
+function claudeCodeToolName(toolName: string, shell?: CommandShellKind): string {
+	return claudeCodeNames(toolName, shell)[0] ?? toolName;
 }
 
 /** 换算路径要知道的本机情况。参数化是为了在别的系统上测 Windows 的换算。 */
@@ -250,7 +263,7 @@ async function compatibleStdin(input: HookInput): Promise<{ value: string; clean
 	if (typeof input.permissionMode === "string")
 		compatible.permission_mode = input.readOnly === true ? "plan" : (CLAUDE_CODE_PERMISSION_MODES[input.permissionMode] ?? input.permissionMode);
 	if (typeof input.toolName === "string") {
-		compatible.tool_name = claudeCodeToolName(input.toolName);
+		compatible.tool_name = claudeCodeToolName(input.toolName, input.shell as CommandShellKind | undefined);
 		compatible.tool_input = claudeCodeInput(input.toolName, input.toolInput, input.cwd);
 		compatible.tool_use_id = input.toolCallId;
 	}

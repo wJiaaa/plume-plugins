@@ -35,7 +35,7 @@ import {
 	writeProjectHooks,
 } from "./config.ts";
 import { MESSAGES } from "./messages.ts";
-import { createHookRunner, type HookInput, type HookRun, type HookRunner, hookMatchValues, plumeToolInput } from "./runner.ts";
+import { type CommandShellKind, createHookRunner, type HookInput, type HookRun, type HookRunner, hookMatchValues, plumeToolInput } from "./runner.ts";
 import { RunStore } from "./runs.ts";
 import { trustedHookDigests, trustHookDigests } from "./trust.ts";
 
@@ -139,10 +139,13 @@ export default {
 		/** 每个会话还没跑完的 StopFailure：SessionEnd 排在它后面，外面先收到「这一轮失败了」再收到「会话结束了」。 */
 		const tails = new Map<string, Promise<void>>();
 		/**
-		 * 每个会话最近一次模型请求时的权限模式、是不是计划模式（只读）：交给脚本的 `permission_mode` 要它，tool.execute、step.end
-		 * 的输入里没有，从 model.context 记下。工具调用、收尾都跟在发出它们的那次请求后面，记下的就是那次请求的。
+		 * 每个会话最近一次模型请求时的权限模式、是不是计划模式（只读）、命令跑在哪种 shell：交给脚本的 `permission_mode`、
+		 * bash 的 `tool_name`（PowerShell 里跑的是 `PowerShell`）要它们，tool.execute、tool.approve、step.end 的输入里没有，从 model.context 记下。
+		 * 工具调用、收尾都跟在发出它们的那次请求后面，记下的就是那次请求的；模型照这次请求点名的 shell 写命令。
 		 */
-		const requests = new Map<string, { permissionMode: PermissionMode; readOnly: boolean }>();
+		const requests = new Map<string, { permissionMode: PermissionMode; readOnly: boolean; shell: CommandShellKind }>();
+		/** 这个会话的命令跑在哪种 shell；还没发过请求时不知道，bash 按 `Bash` 对。 */
+		const shellOf = (sessionId: string) => requests.get(sessionId)?.shell;
 		/**
 		 * 正在执行的工具调用里等审批花了多少毫秒（键是会话和调用 id）：`duration_ms` 照 Claude Code 不算等审批的时间。
 		 * 只有 tool.execute 正在计时的调用才记，计完就删。
@@ -248,7 +251,7 @@ export default {
 		});
 
 		ctx.hook("model.context", (input, next) => {
-			requests.set(input.sessionId, { permissionMode: input.permissionMode, readOnly: input.readOnly === true });
+			requests.set(input.sessionId, { permissionMode: input.permissionMode, readOnly: input.readOnly === true, shell: input.shell.kind });
 			return next(input);
 		});
 
@@ -257,7 +260,9 @@ export default {
 			const runner = await runnerFor(input.sessionId, input.cwd);
 			if (!(runner.has("PreToolUse") || runner.has("PostToolUse") || runner.has("PostToolUseFailure"))) return next(input);
 			const toolName = input.call.name;
-			const matchValues = hookMatchValues(toolName);
+			const shell = shellOf(input.sessionId);
+			const matchValues = hookMatchValues(toolName, shell);
+			const shellField = shell ? { shell } : {};
 			const mode = modeOf(input.sessionId, { readOnly: input.readOnly !== undefined });
 			let contexts: string[] = [];
 			let execution = input;
@@ -265,7 +270,7 @@ export default {
 			if (runner.has("PreToolUse")) {
 				try {
 					const result = await runner.run(
-						{ ...base("PreToolUse", input.sessionId, input.cwd), ...mode, toolName, toolInput: input.call.args, toolCallId: input.call.id },
+						{ ...base("PreToolUse", input.sessionId, input.cwd), ...mode, ...shellField, toolName, toolInput: input.call.args, toolCallId: input.call.id },
 						{ matchValues, signal: input.signal },
 					);
 					contexts = result.additionalContexts;
@@ -298,7 +303,15 @@ export default {
 			const event = failed ? "PostToolUseFailure" : "PostToolUse";
 			if (!runner.has(event)) return appendHookContexts(result, contexts);
 			try {
-				const call = { ...base(event, input.sessionId, input.cwd), ...mode, toolName, toolInput: execution.call.args, toolCallId: input.call.id, durationMs };
+				const call = {
+					...base(event, input.sessionId, input.cwd),
+					...mode,
+					...shellField,
+					toolName,
+					toolInput: execution.call.args,
+					toolCallId: input.call.id,
+					durationMs,
+				};
 				const preview = result.output.slice(0, PREVIEW_MAX);
 				const hookInput = failed
 					? { ...call, error: { message: preview, type: "ToolError" }, isInterrupt: input.signal.aborted }
@@ -326,17 +339,19 @@ export default {
 			if (!runner.has("PermissionRequest")) return next(input);
 			try {
 				const toolName = input.call.name;
+				const shell = shellOf(input.sessionId);
 				const result = await runner.run(
 					{
 						...base("PermissionRequest", input.sessionId, input.cwd),
 						...modeOf(input.sessionId, { permissionMode: input.permissionMode }),
+						...(shell ? { shell } : {}),
 						toolName,
 						toolInput: input.call.args,
 						toolCallId: input.call.id,
 						reason: input.request.reason ?? input.request.title,
 						requestId: input.call.id,
 					},
-					{ matchValues: hookMatchValues(toolName), signal: input.signal },
+					{ matchValues: hookMatchValues(toolName, shell), signal: input.signal },
 				);
 				if (result.decision === "deny") return "reject";
 				const changed =

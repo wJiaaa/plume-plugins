@@ -431,6 +431,41 @@ test("stdin 照 Claude Code 补上 permission_mode、duration_ms、is_interrupt�
 	}
 });
 
+test("命令跑在 PowerShell 里时（Windows 上受约束的档），bash 对的是 Claude Code 的 PowerShell 工具：tool_name 是 PowerShell，只写 Bash 的 matcher 不中", async () => {
+	const log = (tag: string) =>
+		`printf '${tag} ' >> "$CLAUDE_PROJECT_DIR/events.log"; cat >> "$CLAUDE_PROJECT_DIR/events.log"; echo >> "$CLAUDE_PROJECT_DIR/events.log"`;
+	const h = await harness({
+		PreToolUse: [
+			{ matcher: "Bash", hooks: [command(log("bash-only"))] },
+			{ matcher: "Bash|PowerShell", hooks: [command(log("both"))] },
+		],
+		PermissionRequest: [{ matcher: "PowerShell", hooks: [command(log("permission"))] }],
+	});
+	try {
+		const events = async () =>
+			(await readFile(join(h.dir, "events.log"), "utf8"))
+				.split("\n")
+				.filter(Boolean)
+				.map((line) => {
+					const at = line.indexOf(" ");
+					return [line.slice(0, at), (JSON.parse(line.slice(at + 1)) as { tool_name: string }).tool_name];
+				});
+		await request(h, { shell: { kind: "powershell", label: "Windows PowerShell 5.1", sandbox: "workspace-write" } });
+		await h.run("tool.execute", execution(h.dir), async () => ({ output: "ok" }));
+		await h.run("tool.approve", approval(h.dir), async () => "once");
+		await request(h, { shell: { kind: "posix", label: "Git Bash", sandbox: "danger-full-access" } });
+		await h.run("tool.execute", execution(h.dir), async () => ({ output: "ok" }));
+		assert.deepEqual(await events(), [
+			["both", "PowerShell"],
+			["permission", "PowerShell"],
+			["bash-only", "Bash"],
+			["both", "Bash"],
+		]);
+	} finally {
+		await h.dispose();
+	}
+});
+
 test("一轮开始：SessionStart 只跑一次；UserPromptSubmit 拦下时下一轮重跑 SessionStart", async () => {
 	const h = await harness({
 		SessionStart: [{ hooks: [command(`echo '{"additionalContext":"start"}'`)] }],
