@@ -418,7 +418,8 @@ function exitCodeBlock(event: HookEventName, result: ProcessResult): HookJSONOut
 	if (event === "PreToolUse")
 		return { continue: false, reason, hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: reason } };
 	if (event === "PermissionRequest") return undefined;
-	if (event === "Stop") return { decision: "block", reason };
+	// Stop 的「接着干」、工具之后的「交给 agent 看」都走 decision block 的 reason，和 Claude Code 一样。
+	if (event === "Stop" || event === "PostToolUse" || event === "PostToolUseFailure") return { decision: "block", reason };
 	return { continue: false, reason };
 }
 

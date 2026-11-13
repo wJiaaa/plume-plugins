@@ -310,6 +310,23 @@ test("工具前后：拦下不执行；改参数、要确认；之后的上下�
 	}
 });
 
+test("工具之后：decision block 的 reason、退出码 2 的 stderr 接在结果后面交给 agent，结果本身不变", async () => {
+	const h = await harness({
+		PostToolUse: [{ hooks: [command(`echo '{"decision":"block","reason":"lint failed"}'`)] }],
+		PostToolUseFailure: [{ hooks: [command("echo 'see the logs' >&2; exit 2")] }],
+	});
+	try {
+		const ok = await h.run("tool.execute", execution(h.dir), async () => ({ output: "done" }));
+		assert.equal(ok.output, "done\n[Hook additional context]\n#1\nlint failed");
+		assert.equal(ok.isError, undefined);
+		const failed = await h.run("tool.execute", execution(h.dir), async () => ({ output: "boom", isError: true }));
+		assert.equal(failed.output, "boom\n[Hook additional context]\n#1\nsee the logs");
+		assert.equal(failed.isError, true);
+	} finally {
+		await h.dispose();
+	}
+});
+
 test("PreToolUse 的 defer：Plume 没有 -p 模式，照 Claude Code 交互模式忽略它，连同它的 updatedInput、additionalContext；不算钩子失败", async () => {
 	const h = await harness({
 		PreToolUse: [

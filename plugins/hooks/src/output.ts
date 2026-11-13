@@ -131,6 +131,9 @@ export function processHookOutput(event: HookEventName, output: HookJSONOutput |
 	} else {
 		if (output.continue === false) decide("deny", said);
 		if (output.decision === "block") decide("deny", said ?? output.systemMessage);
+		// 工具已经跑完了，拦不了：照 Claude Code，block 的 reason（退出码 2 的 stderr）接在结果后面给 agent 看。
+		if (output.decision === "block" && output.reason && (event === "PostToolUse" || event === "PostToolUseFailure"))
+			result.additionalContexts.push(output.reason);
 		if (output.decision === "approve" && isPermissionEvent(event)) decide("allow");
 	}
 	if (output.additionalContext) result.additionalContexts.push(output.additionalContext);

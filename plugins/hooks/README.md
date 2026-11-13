@@ -41,6 +41,7 @@ stdout 上的 JSON 能表达这些：
   - `updatedPermissions`（记一条规则、换权限模式、加目录）不支持，不理它，只放这一次。
   - 申请沙箱外运行（提权）只能由你在卡上批，钩子的放行 Plume 不认，拒绝照样算。
   - 提问、批准计划这些只能由你答的卡，不问钩子。
+- `PostToolUse`、`PostToolUseFailure` 时工具已经跑完了：`decision: "block"` 的 `reason`、退出码 2 的 stderr 接在工具结果后面给 agent 看，结果本身不变。
 - `StopFailure` 和 `SessionEnd` 只是通知：这一轮或会话已经结束了，它们的输出不读。
 - `UserPromptSubmit` 拦下时，这条消息不发给 agent，原因弹成提示条。
 - `Stop` 用 `decision: "block"` 加 `reason` 让 agent 接着干。每轮最多续三次。
