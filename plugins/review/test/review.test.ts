@@ -233,7 +233,7 @@ async function fixture(t: TestContext) {
 		messages,
 		sessions,
 		letters,
-		unreachable: () => void (unreachable = true),
+		unreachable: (value = true) => void (unreachable = value),
 		done,
 		idle,
 	};
@@ -261,7 +261,7 @@ test("review_session 只列给侧栏里的会话：子会话、插件的独立�
 	assert.deepEqual(await visible(f, "ops"), ["read"]);
 });
 
-test("review_session：开出审阅会话、第一轮接上正文和原会话的目录，只读到原会话答复为止，做完把报告交回", async (t) => {
+test("review_session：开出审阅会话、第一轮接上正文和原会话的目录，只问原会话一次、只读到它答复为止，做完把报告交回", async (t) => {
 	const f = await fixture(t);
 	// 子会话、插件的独立会话里拒绝。
 	assert.equal((await f.tool.execute({}, f.run("side"))).isError, true);
@@ -300,9 +300,19 @@ test("review_session：开出审阅会话、第一轮接上正文和原会话的
 	assert.deepEqual(await visible(f, "review"), ["review_session", "ask_implementer", "read"]);
 	assert.equal((await f.ask.execute({ message: "修哪几条？" }, f.run("main"))).isError, true);
 	assert.equal((await f.ask.execute({ message: " " }, f.run("review"))).isError, true);
-	const asked = await f.ask.execute({ message: "1 high a.ts:3 — 漏了空值。修哪几条？" }, f.run("review"));
+	// 原会话不在了：寄不出去，照第 F 步什么都不修；没寄出去不算问过。
+	f.unreachable();
+	assert.match((await f.ask.execute({ message: "修哪几条？" }, f.run("review"))).output, /Fix nothing/);
+	f.unreachable(false);
+	// 同一步里并排调了两次：只寄一封，另一次说在等。
+	const [asked, twice] = await Promise.all([
+		f.ask.execute({ message: "1 high a.ts:3 — 漏了空值。修哪几条？" }, f.run("review")),
+		f.ask.execute({ message: "1 high a.ts:3 — 漏了空值。修哪几条？" }, f.run("review")),
+	]);
 	assert.equal(asked.isError, undefined);
 	assert.match(asked.output, /^Sent to “改登录”/);
+	assert.equal(twice.isError, true);
+	assert.match(twice.output, /has not arrived yet\. Do not ask again/);
 	assert.equal(f.letters.length, 1);
 	assert.equal(f.letters[0]!.to, "main");
 	assert.deepEqual(
@@ -310,9 +320,11 @@ test("review_session：开出审阅会话、第一轮接上正文和原会话的
 		{ from: "改登录 [review]", text: "1 high a.ts:3 — 漏了空值。修哪几条？", request: true, recipient: "改登录 [main]", guide: undefined },
 	);
 	assert.match(f.letters[0]!.letter.guide!, /step H\.4/);
-	// 原会话不在了：寄不出去，照第 F 步什么都不修。
-	f.unreachable();
-	assert.match((await f.ask.execute({ message: "再问" }, f.run("review"))).output, /Fix nothing/);
+	// 还在等答复：再问直接拒，叫它收尾等着。
+	const again = await f.ask.execute({ message: "再问" }, f.run("review"));
+	assert.equal(again.isError, true);
+	assert.match(again.output, /has not arrived yet\. Do not ask again/);
+	assert.equal(f.letters.length, 1);
 
 	// 只读：审阅会话和它的子 Agent 写不了文件，读照常；原会话答复以后放行。
 	f.sessions.set("worker", { ...f.sessions.get("side")!, id: "worker", parentId: "review", owner: "plume.subagents" });
@@ -323,8 +335,18 @@ test("review_session：开出审阅会话、第一轮接上正文和原会话的
 	assert.deepEqual(await f.call("main", "write"), { output: "ran" });
 	f.messages.set("review", [user("修 1、2", { peer: [{ sessionId: "main", from: "改登录 [abc]", text: "修 1、2", answer: "dropped" }] })]);
 	assert.equal((await f.call("review", "write")).isError, true);
+	// 没读到就被那边的人停下了：不重问，什么都不修。
+	assert.match(
+		(await f.ask.execute({ message: "再问" }, f.run("review"))).output,
+		/stopped that conversation before it read your request\. Do not ask again\. Fix nothing/,
+	);
 	f.messages.set("review", [user("修 1、2", { peer: [{ sessionId: "main", from: "改登录 [abc]", text: "修 1、2", answer: "replied" }] })]);
 	assert.deepEqual(await f.call("review", "write"), { output: "ran" });
+	// 答过以后再问也拒：一次答复就是原会话的决定，照它修。
+	const after = await f.ask.execute({ message: "再问" }, f.run("review"));
+	assert.equal(after.isError, true);
+	assert.match(after.output, /already answered which findings to fix.*Fix exactly the findings it named/);
+	assert.equal(f.letters.length, 1);
 
 	// 做完、真闲下来以后交回最后那段回复。
 	f.done.resolve({ reason: "done" });

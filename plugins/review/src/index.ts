@@ -9,7 +9,7 @@
  * - 审阅会话的第一轮开头（`prompt.submit`）：认出交接单，把流程正文接在它后面给模型（气泡里只有交接单），
  *   原会话在别的目录里跑（工作树）时把审阅会话也挪过去，未提交的改动只在那里。
  * - 审阅会话经自己的 `ask_implementer` 问原会话修哪几条：一封请求（`ToolRun.letter`），答复的配对、原会话没答时的代答归本体，
- *   不靠别的插件；这件工具只列给审阅会话。
+ *   不靠别的插件；这件工具只列给审阅会话。一个审阅会话只问一次：在等答复时、答过以后再调都拒绝（见 `asking`）。
  * - 只读：审阅会话和它派出的子会话写文件的调用一律拒绝（`tool.execute`），直到原会话答复了修哪几条——
  *   审阅会话的记录里有原会话寄来、带 `answer`（`replied`、`unreplied`）的信。命令不压只读沙箱，留给权限档：`verify` 要写缓存。
  * - 审阅会话第一轮之后真闲下来（问出去的有了答复、修完了），把最后那段回复（报告）交回原会话；被人停下的不交。
@@ -18,7 +18,7 @@
 
 import { readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { LaunchedSession, Message, Plugin, SessionScope, ToolKind } from "@plume/contract";
+import type { LaunchedSession, Message, PeerLetter, Plugin, SessionScope, ToolKind } from "@plume/contract";
 import { reviewPrompt, reviewRequest, sessionAddress } from "./brief.ts";
 import { MESSAGES } from "./messages.ts";
 import { type BodyTools, REVIEW_ARGUMENT_HINT, REVIEW_SESSION_OPENING, reportText, reviewBody, reviewRequest as commandText } from "./review.ts";
@@ -66,7 +66,7 @@ function refusal(tool: string, why: string): string {
 // i18n-exempt：发给模型的话。
 const ASK_DESCRIPTION =
 	"Review session only: ask the conversation that wrote the change and handed you this review which findings to fix, as step F of the `/review` instructions says. " +
-	"Returns at once; its answer arrives here later as a message by itself and starts your next turn, so end your turn after asking.";
+	"Ask only once. It returns at once; its answer arrives here later as a message by itself and starts your next turn, so end your turn after asking.";
 
 /**
  * 原会话读到这封请求时附的处理说明：请求没答会被代答这些本体的抬头说了，这里只说拿它怎么办。原会话未必装着能回信的工具，
@@ -123,7 +123,13 @@ export default {
 		};
 		/** 开出去、第一轮还没开头的交接单：`prompt.submit` 按第一句话认出是哪一份（`launch` 返回之前第一轮可能已经开头了）。 */
 		const pending = new Map<string, Review>();
+		/**
+		 * 这次运行里经 `ask_implementer` 问过原会话的审阅会话。第 F 步只问一次：答复叫起审阅会话的下一轮，等的时候再问只会把原会话
+		 * 多叫起几轮、答好几遍。不存盘：应用退出后还没答的请求不会再有答复（见 `LetterReceipt`），重启以后可以重问；答过的看记录里的答复。
+		 */
+		const asking = new Set<string>();
 		ctx.sessions.onDeleted((sessionId) => {
+			asking.delete(sessionId);
 			if (reviews.delete(sessionId)) save();
 		});
 
@@ -134,15 +140,18 @@ export default {
 			return parentId && reviews.has(parentId) ? parentId : undefined;
 		}
 
-		/** 原会话答复了修哪几条：审阅会话的记录里有它寄来的答复（它自己回的，或那一轮收场时代答的）。没读到、关掉了不算——修什么还没定。 */
-		async function fixesAllowed(reviewId: string): Promise<boolean> {
+		/** 审阅会话的记录里原会话寄来的答复（它自己回的，或本体代答的），旧的在前。 */
+		async function answers(reviewId: string): Promise<NonNullable<PeerLetter["answer"]>[]> {
 			const parentId = reviews.get(reviewId)?.parentId;
 			const messages = await ctx.sessions.messages(reviewId).catch((): Message[] => []);
-			return messages.some(
-				(message) =>
-					message.role === "user" &&
-					(message.peer ?? []).some((letter) => letter.sessionId === parentId && (letter.answer === "replied" || letter.answer === "unreplied")),
+			return messages.flatMap((message) =>
+				message.role === "user" ? (message.peer ?? []).flatMap((letter) => (letter.sessionId === parentId && letter.answer ? [letter.answer] : [])) : [],
 			);
+		}
+
+		/** 原会话答复了修哪几条：它自己回的，或那一轮收场时代答的。没读到、关掉了不算——修什么还没定。 */
+		async function fixesAllowed(reviewId: string): Promise<boolean> {
+			return (await answers(reviewId)).some((answer) => answer === "replied" || answer === "unreplied");
 		}
 
 		ctx.commands.provide({
@@ -263,9 +272,18 @@ export default {
 				const message = typeof args.message === "string" ? args.message.trim() : "";
 				// i18n-exempt：发给模型的话。
 				if (!message) return { output: "`message` is required.", isError: true };
+				// 先占上再 await：同一步里并排调了两次也只寄一封。
+				const waiting = asking.has(run.sessionId);
+				asking.add(run.sessionId);
+				const answer = (await answers(run.sessionId)).at(-1);
+				if (answer) return { output: answered(answer), isError: true };
+				if (waiting) return { output: STILL_WAITING, isError: true };
 				const [self, parent] = await Promise.all([ctx.sessions.get(run.sessionId), ctx.sessions.get(review.parentId)]);
-				// 原会话删掉了、归档了：没人能答，照第 F 步第 3 条什么都不修。
-				if (!self || !parent || parent.archived) return { output: unreachable(), isError: true };
+				// 原会话删掉了、归档了：没人能答，照第 F 步第 3 条什么都不修。没寄出去，不算问过。
+				if (!self || !parent || parent.archived) {
+					asking.delete(run.sessionId);
+					return { output: unreachable(), isError: true };
+				}
 				try {
 					run.letter(parent.id, {
 						from: sessionAddress(self),
@@ -276,6 +294,7 @@ export default {
 						guide: ASK_GUIDE,
 					});
 				} catch {
+					asking.delete(run.sessionId);
 					return { output: unreachable(), isError: true };
 				}
 				// i18n-exempt：发给模型的话。
@@ -286,6 +305,29 @@ export default {
 		});
 	},
 } satisfies Plugin;
+
+// i18n-exempt：发给模型的话。
+const STILL_WAITING =
+	"You have already asked the conversation that wrote the change which findings to fix, and its answer has not arrived yet. Do not ask again: " +
+	"end your turn now with one line saying you are waiting for its decision. The answer arrives here as a message by itself and starts your next turn.";
+
+/**
+ * 答过以后再问：照第 F 步和 H.4，原会话定完每一条才答，一次答复就是它的决定，再问是让它把同一件事再定一遍。只说它要先问它的人时，
+ * 第 F 步第 2 条说的是收尾等下一条消息，不是重问。没读到（它的人先按了停）、原会话关了，照第 F 步第 3 条什么都不修——
+ * 那边的人停下了这件事，重问就是绕过他。
+ */
+// i18n-exempt：发给模型的话。
+function answered(answer: NonNullable<PeerLetter["answer"]>): string {
+	if (answer === "dropped" || answer === "closed")
+		return (
+			`Your question already got its answer: ${answer === "dropped" ? "its person stopped that conversation before it read your request" : "that conversation was closed"}. ` +
+			'Do not ask again. Fix nothing and list every finding under "Awaiting a decision" (step F, item 3).'
+		);
+	return (
+		"The conversation that wrote the change has already answered which findings to fix; its answer is the message from it above. Do not ask again. " +
+		"Fix exactly the findings it named (step F, item 4). If it only said it is asking its person first, end your turn: the decision comes as another message."
+	);
+}
 
 // i18n-exempt：发给模型的话。
 function unreachable(): string {
