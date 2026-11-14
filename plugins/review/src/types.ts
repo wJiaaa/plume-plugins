@@ -3,6 +3,8 @@
 export const REVIEW_SESSION = "review_session";
 /** 审阅会话问原会话修哪几条的工具（`/review` 正文第 F 步）。只列给审阅会话。 */
 export const ASK_IMPLEMENTER = "ask_implementer";
+/** 原会话答审阅会话修哪几条的工具（`/review` 正文第 H.4 步）。只列给交出过审阅的会话。 */
+export const ANSWER_REVIEW = "answer_review";
 
 export type Effort = "low" | "medium" | "high";
 

@@ -16,8 +16,9 @@ import type {
 } from "@plume/contract";
 import { currentStep } from "../src/history.ts";
 import plugin from "../src/index.ts";
+import type { SessionsApi } from "../src/api.ts";
 import { PEER_DEDUP_MS } from "../src/pacing.ts";
-import { resolveSession, sessionAddress, together } from "../src/peers.ts";
+import { familyOf, resolveSession, sessionAddress, together } from "../src/peers.ts";
 
 /** 会话摘要；`kind` 和本体一样按 `parentId`、`owner` 算。 */
 const summary = (id: string, extra: Partial<SessionSummary> = {}): SessionSummary =>
@@ -49,22 +50,27 @@ const said = (role: "user" | "assistant", text: string): Message =>
 		? { role, content: [{ type: "text", text }], timestamp: 1 }
 		: { role, content: [{ type: "text", text }], api: "x", provider: "x", model: "x", usage: {}, stopReason: "stop", timestamp: 1 }) as unknown as Message;
 
-/** 寄出的一封：谁寄给谁、写了什么；`settle` 定它的下落。`read`、`answered` 是本体配对用的账（请求读到了、已经有了答复）。 */
+/** 寄出的一封：谁寄给谁、写了什么；`settle` 定它的下落。 */
 interface Posted {
 	from: string;
 	to: string;
 	input: LetterInput;
 	receipt: LetterReceipt;
 	settle(fate: LetterFate): void;
-	read: boolean;
-	answered: boolean;
 }
 
-/** 几个会话：`plan` 在项目 p1；`exec` 是从它开出来的、开在别处；`near` 在同一个目录；`far` 在别处；`side` 是 `plan` 的子会话。 */
+/**
+ * 几个会话：`plan` 在项目 p1；`exec` 是从它开出来的、开在别处（短名 exec）；`near` 在同一个目录；`far` 在别处；`side` 是 `plan` 的子会话；
+ * `grand` 是从 `exec` 开出来的。
+ */
 function fixture() {
 	const sessions: SessionSummary[] = [
 		summary("aaaaaa11-0000-4000-8000-000000000000", { title: "定计划", cwd: "/w/app", project: "p1" }),
-		summary("bbbbbb22-0000-4000-8000-000000000000", { title: "执行", cwd: "/elsewhere", spawnedFrom: { sessionId: "aaaaaa11-0000-4000-8000-000000000000" } }),
+		summary("bbbbbb22-0000-4000-8000-000000000000", {
+			title: "执行",
+			cwd: "/elsewhere",
+			spawnedFrom: { sessionId: "aaaaaa11-0000-4000-8000-000000000000", toolCallId: "c1", name: "exec" },
+		}),
 		summary("cccccc33-0000-4000-8000-000000000000", { title: "旁边", cwd: "/w/app/src", running: true }),
 		summary("dddddd44-0000-4000-8000-000000000000", { title: "别处", cwd: "/other" }),
 		summary("eeeeee55-0000-4000-8000-000000000000", {
@@ -73,8 +79,13 @@ function fixture() {
 			parentId: "aaaaaa11-0000-4000-8000-000000000000",
 			owner: "plume.side-chat",
 		}),
+		summary("ffffff66-0000-4000-8000-000000000000", {
+			title: "孙辈",
+			cwd: "/elsewhere",
+			spawnedFrom: { sessionId: "bbbbbb22-0000-4000-8000-000000000000", toolCallId: "c2" },
+		}),
 	];
-	const [plan, exec, near, far, side] = sessions as [SessionSummary, SessionSummary, SessionSummary, SessionSummary, SessionSummary];
+	const [plan, exec, near, far, side, grand] = sessions as [SessionSummary, SessionSummary, SessionSummary, SessionSummary, SessionSummary, SessionSummary];
 	const messages = new Map<string, Message[]>([[plan.id, [said("user", "做个计划"), said("assistant", "选 SQLite，因为单机。")]]]);
 	const tools = new Map<string, ToolDefinition>();
 	const layers = new Map<string, unknown>();
@@ -83,25 +94,12 @@ function fixture() {
 	/** 给了就让寄信抛这句错，和本体拒寄（往来链太长）时一样。 */
 	const refuse: { reason?: string } = {};
 	let letters = 0;
-	/** 和本体一样配对：一封答复答掉收件方问发件方、已经读到、还没答的全部请求。代答归本体，这里不做。 */
 	const post = (from: string, to: string, input: LetterInput): Posted => {
 		const fate = Promise.withResolvers<LetterFate>();
-		const answering = input.answer ? posted.filter((one) => one.input.request && one.from === to && one.to === from && one.read && !one.answered) : [];
-		for (const one of answering) one.answered = true;
-		const entry: Posted = {
-			from,
-			to,
-			input,
-			settle: (result) => {
-				if (result.status === "read") entry.read = true;
-				fate.resolve(result);
-			},
-			read: false,
-			answered: false,
-			receipt: { id: `letter-${++letters}`, read: fate.promise, answered: answering.length, answer: () => undefined },
-		};
-		return entry;
+		const busy = sessions.find((session) => session.id === to)?.running === true;
+		return { from, to, input, settle: (result) => fate.resolve(result), receipt: { id: `letter-${++letters}`, queued: busy, read: fate.promise } };
 	};
+	let served: SessionsApi | undefined;
 	const ctx = {
 		name: "plume.sessions",
 		log: { info() {}, warn() {}, error() {} },
@@ -114,6 +112,7 @@ function fixture() {
 			observe: (listener: (observation: SessionObservation) => void) => void observers.push(listener),
 			onDeleted() {},
 		},
+		serve: (api: SessionsApi) => void (served = api),
 	} as unknown as PluginContext;
 	void plugin.apply(ctx);
 	/** 调一件工具；顶层会话的调用拿得到寄信的口子，和本体一样。 */
@@ -137,7 +136,7 @@ function fixture() {
 					sessionId,
 				),
 				sections: [{ id: "identity", text: "Plume" }],
-				tools: ["read", "list_sessions", "read_session", "ask_session", "reply_session", "notify_session"].map((name) => ({ name })),
+				tools: ["read", "list_sessions", "read_session", "send_message"].map((name) => ({ name })),
 			} as unknown as ModelContext,
 			async (input) => input,
 		);
@@ -145,7 +144,7 @@ function fixture() {
 		const event = { type: "approval", sessionId, approval: waiting ? { toolCallId: "t" } : undefined } as unknown as SessionObservation["event"];
 		for (const listener of observers) listener({ sessionId, at: 0, timestamp: 0, event });
 	};
-	return { plan, exec, near, far, side, posted, refuse, call, context, approval };
+	return { plan, exec, near, far, side, grand, posted, refuse, call, context, approval, api: () => served! };
 }
 
 /** 等读到这些 `then` 跑完。 */
@@ -160,6 +159,9 @@ test("地址是「名字 [ref]」，ref 说了算；重名不猜；同一个项�
 	assert.equal(resolveSession("aaaaaa", all).kind, "found");
 	assert.equal(resolveSession("旁边", all).kind, "ambiguous");
 	assert.equal(resolveSession("没有", all).kind, "none");
+	// 名册里写的完整 id、开出它的一方起的短名也认。
+	assert.equal(resolveSession(f.near.id, all).kind, "found");
+	assert.equal(resolveSession("exec", [f.plan, f.exec]).kind, "found");
 	assert.equal(together(f.plan, f.near), true);
 	assert.equal(together(f.plan, f.exec), true);
 	assert.equal(together(f.near, f.far), false);
@@ -186,96 +188,94 @@ test("read_session 读得到看得见的会话；看不见的、自己、子会�
 	assert.equal((await f.call("read_session", f.plan.id, { to: "旁边", start: -1 })).isError, true);
 
 	const list = await f.call("list_sessions", f.plan.id, {});
-	assert.deepEqual(list.output.split("\n"), ["执行 [bbbbbb] · idle · /elsewhere", "旁边 [cccccc] · busy · /w/app/src"]);
+	assert.deepEqual(list.output.split("\n"), [
+		`执行 [bbbbbb] · ${f.exec.id} · name: exec · idle · /elsewhere`,
+		`旁边 [cccccc] · ${f.near.id} · working · /w/app/src`,
+	]);
+	// 只列一家子的：开出来的、开出来的又开出来的（不在一处也列），不列旁边的。
+	assert.deepEqual(
+		(await f.call("list_sessions", f.plan.id, { linked: true })).output.split("\n").map((row) => row.split(" · ")[0]),
+		["执行 [bbbbbb]", "孙辈 [ffffff]"],
+	);
+	assert.equal((await f.call("list_sessions", f.near.id, { linked: true })).output, "No session is linked to this one.");
 	// 弹着审批卡的说在等它的人，卡收了回到忙或闲。
 	f.approval(f.near.id, true);
-	assert.match((await f.call("list_sessions", f.plan.id, {})).output, /^旁边 \[cccccc\] · waiting for its user · /m);
+	assert.match((await f.call("list_sessions", f.plan.id, {})).output, /^旁边 \[cccccc\] · \S+ · waiting for its user · /m);
 	f.approval(f.near.id, false);
-	assert.match((await f.call("list_sessions", f.plan.id, {})).output, /^旁边 \[cccccc\] · busy · /m);
+	assert.match((await f.call("list_sessions", f.plan.id, {})).output, /^旁边 \[cccccc\] · \S+ · working · /m);
 	// 子会话的工具表里没有这几件。
 	assert.deepEqual(
 		(await f.context(f.side.id)).tools.map((tool) => tool.name),
 		["read"],
 	);
-	assert.equal((await f.context(f.plan.id)).tools.length, 6);
+	assert.equal((await f.context(f.plan.id)).tools.length, 4);
 });
 
-test("从别的会话开出来的：系统提示词多一段，点名来源的 ref；来源归档了、不是开出来的都不加", async () => {
+test("从别的会话开出来的：系统提示词多一段点名来源；一家子都有名册，写着谁开了谁；来源归档了、不在一家的都不加", async () => {
 	const f = fixture();
 	const sections = async (sessionId: string) => (await f.context(sessionId)).sections;
-	const [identity, origin] = await sections(f.exec.id);
+	const [identity, origin, roster] = await sections(f.exec.id);
 	assert.equal(identity?.id, "identity");
 	assert.equal(origin?.id, "plume.sessions.origin");
-	assert.match(origin?.text ?? "", /^This conversation was started from another one, `\[aaaaaa\]`/);
-	// 照着这段写的 `to` 认得出来源。
-	assert.equal((await f.call("read_session", f.exec.id, { to: "[aaaaaa]" })).isError, undefined);
+	assert.match(origin?.text ?? "", new RegExp(`^This conversation was started from another one, \`${f.plan.id}\``));
+	assert.equal(roster?.id, "plume.sessions.linked");
+	assert.match(roster?.text ?? "", new RegExp(`- 定计划 \\[aaaaaa\\] = \`${f.plan.id}\` \\(started this session\\)`));
+	assert.match(roster?.text ?? "", new RegExp(`- 孙辈 \\[ffffff\\] = \`${f.grand.id}\` \\(started by this session\\)`));
+	// 名册里称呼开出来的会话用它的短名，不列自己。
+	const top = (await sections(f.plan.id)).find((section) => section.id === "plume.sessions.linked")?.text ?? "";
+	assert.match(top, new RegExp(`- exec = \`${f.exec.id}\` \\(started by this session\\)`));
+	assert.doesNotMatch(top, /定计划/);
+	// 照着名册写的 `to` 认得出来。
+	assert.equal((await f.call("read_session", f.exec.id, { to: f.plan.id })).isError, undefined);
 	assert.equal((await sections(f.near.id)).length, 1);
 	f.plan.archived = true;
-	assert.equal((await sections(f.exec.id)).length, 1);
+	assert.deepEqual(
+		(await sections(f.exec.id)).map((section) => section.id),
+		["identity", "plume.sessions.linked"],
+	);
 });
 
-test("ask_session 寄一封请求给对方：带双方的地址和怎么回的说明，当场返回；空的、太长的、刚问过一模一样的不发", async () => {
+test("send_message 寄一封单向的信：带发件方的地址和处理说明，当场返回回执；空的、太长的、刚发过一模一样的不发", async () => {
 	const f = fixture();
-	const asked = await f.call("ask_session", f.exec.id, { to: "定计划 [aaaaaa]", message: "为什么选 SQLite？" });
-	assert.match(asked.output, /^Sent to 定计划 \[aaaaaa\]\. It is idle, so it starts a turn to read it\./);
+	const sent = await f.call("send_message", f.exec.id, { to: "定计划 [aaaaaa]", message: "为什么选 SQLite？" });
+	assert.match(sent.output, /^Sent to 定计划 \[aaaaaa\]\. It is idle, so it starts a turn to read it\./);
+	assert.deepEqual(sent.details, { kind: "session_message", to: "定计划 [aaaaaa]", sessionId: f.plan.id, letterId: "letter-1", queued: false });
 	assert.equal(f.posted.length, 1);
 	const letter = f.posted[0]!;
 	assert.equal(letter.to, f.plan.id);
-	assert.deepEqual(
-		{ ...letter.input, guide: undefined },
-		// `recipient` 是本体代答时署的名：对方的地址，照着它能再问。
-		{ from: "执行 [bbbbbb]", text: "为什么选 SQLite？", request: true, recipient: "定计划 [aaaaaa]", guide: undefined },
-	);
-	assert.match(letter.input.guide!, /reply_session/);
-	assert.match((await f.call("ask_session", f.plan.id, { to: "旁边", message: "x" })).output, /It reads it between its steps/);
+	assert.deepEqual({ ...letter.input, guide: undefined }, { from: "执行 [bbbbbb]", text: "为什么选 SQLite？", guide: undefined });
+	assert.match(letter.input.guide!, /send_message/);
+	assert.match((await f.call("send_message", f.plan.id, { to: "旁边", message: "x" })).output, /It is busy, so it reads it after its current step/);
 
-	assert.equal((await f.call("ask_session", f.exec.id, { to: "aaaaaa", message: " " })).output, "`message` is required.");
-	assert.match((await f.call("ask_session", f.exec.id, { to: "aaaaaa", message: "长".repeat(20_001) })).output, /limit is 20000/);
+	assert.equal((await f.call("send_message", f.exec.id, { to: "aaaaaa", message: " " })).output, "`message` is required.");
+	assert.match((await f.call("send_message", f.exec.id, { to: "aaaaaa", message: "长".repeat(20_001) })).output, /limit is 20000/);
 	assert.equal(
-		(await f.call("ask_session", f.exec.id, { to: "aaaaaa", message: "为什么选 SQLite？" })).output,
+		(await f.call("send_message", f.exec.id, { to: "aaaaaa", message: "为什么选 SQLite？" })).output,
 		`You sent the same message to 定计划 [aaaaaa] less than ${PEER_DEDUP_MS / 1000} seconds ago; it was not sent again.`,
 	);
-	assert.match((await f.call("ask_session", f.side.id, { to: "aaaaaa", message: "x" })).output, /only work in a main conversation/);
+	assert.match((await f.call("send_message", f.side.id, { to: "aaaaaa", message: "x" })).output, /only work in a main conversation/);
 	assert.equal(f.posted.length, 2);
 });
 
-test("reply_session 一律寄成答复，答掉几封看回执；一封也没对上就是通知", async () => {
+test("send_message 的下落记在内存里给界面：读到了、拦下了；本体拒寄时把它的话原样交给模型，不算发过", async () => {
 	const f = fixture();
-	await f.call("ask_session", f.exec.id, { to: "aaaaaa", message: "第一问" });
-	await f.call("ask_session", f.exec.id, { to: "aaaaaa", message: "第二问" });
-	await f.call("ask_session", f.exec.id, { to: "aaaaaa", message: "还没读到的第三问" });
+	await f.call("send_message", f.exec.id, { to: "aaaaaa", message: "一" });
+	await f.call("send_message", f.exec.id, { to: "aaaaaa", message: "二" });
 	f.posted[0]!.settle({ status: "read" });
-	f.posted[1]!.settle({ status: "read" });
+	f.posted[1]!.settle({ status: "dropped" });
 	await settled();
-	const reply = await f.call("reply_session", f.plan.id, { to: "执行 [bbbbbb]", message: "因为单机。" });
-	assert.equal(reply.output, "执行 [bbbbbb] gets your answer as a message.");
-	const answer = f.posted[3]!;
-	assert.equal(answer.to, f.exec.id);
-	assert.deepEqual(
-		{ ...answer.input, guide: undefined },
-		// 对着哪几封、`re` 写什么由本体定。
-		{ from: "定计划 [aaaaaa]", text: "因为单机。", answer: "replied", guide: undefined },
-	);
-	assert.match(answer.input.guide!, /通知/);
+	assert.deepEqual(await f.api().fates(["letter-1", "letter-2", "letter-9"]), { "letter-1": "read", "letter-2": "dropped" });
 
-	const later = await f.call("reply_session", f.plan.id, { to: "执行", message: "做完了，结果在 out.md。" });
-	assert.equal(later.output, "执行 [bbbbbb] had no open question to you, so it reads this as a notice.");
-	assert.equal(f.posted[4]!.input.answer, "replied");
-});
-
-test("notify_session 寄一句通知；本体拒寄（往来链太长）时把它的话原样交给模型，不算发过", async () => {
-	const f = fixture();
-	const notice = await f.call("notify_session", f.exec.id, { to: "aaaaaa", message: "dev server 停了，归你了。" });
-	assert.match(notice.output, /^Delivered to 定计划 \[aaaaaa\]\. .*There is no answer to a notice\.$/);
-	assert.equal(f.posted[0]!.input.request, undefined);
-	assert.match(f.posted[0]!.input.guide!, /通知/);
-
-	f.refuse.reason = "没有寄出：往来链太长了。";
-	assert.deepEqual(await f.call("ask_session", f.exec.id, { to: "aaaaaa", message: "再问一次" }), { output: "没有寄出：往来链太长了。", isError: true });
+	f.refuse.reason = "对方刚好不在了。";
+	assert.deepEqual(await f.call("send_message", f.exec.id, { to: "aaaaaa", message: "再问一次" }), { output: "对方刚好不在了。", isError: true });
 	// 没寄出去的不记作发过：同一句之后照样寄得出去，不算重复。
 	delete f.refuse.reason;
-	assert.equal((await f.call("ask_session", f.exec.id, { to: "aaaaaa", message: "再问一次" })).isError, undefined);
-	assert.equal(f.posted.length, 2);
+	assert.equal((await f.call("send_message", f.exec.id, { to: "aaaaaa", message: "再问一次" })).isError, undefined);
+	assert.equal(f.posted.length, 3);
+	assert.deepEqual(
+		familyOf(f.near, [f.plan, f.exec, f.near]).map((one) => one.id),
+		[],
+	);
 });
 
 test("正在做的那一项认最新一份成功的进度清单（details.checklist），不认是哪个工具记的", () => {

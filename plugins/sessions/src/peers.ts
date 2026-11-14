@@ -3,7 +3,7 @@
  *
  * 地址是 `名字 [ref]`：名字取会话标题，会变、会重名；ref 取 id 的前六位，不变。所以解析时 ref 说了算：模型拿着一个
  * 改名之前抄下的地址来，名字对不上、ref 对得上，照样认得。重名又没带 ref 的，不猜，把候选列出来让它挑——猜错一次
- * 就是读了另一个项目里的会话。
+ * 就是读了另一个项目里的会话。完整的 id（名册里写的）和开出它的一方起的短名（`spawnedFrom.name`）也认。
  *
  * 看得见的：侧栏里的会话（顶层、没归档的），不是自己，并且和自己在一处——同一个项目、目录相同或一个套着另一个
  * （会话目录是 git 工作树时，它的主工作树也算它的目录，见 `worktree.ts`），或者一个是从另一个开出来的（`spawnedFrom`：计划交出去执行的那个会话要读得到原会话，哪怕它开在别的目录）。
@@ -34,9 +34,11 @@ export type Resolution = { kind: "found"; session: SessionSummary } | { kind: "n
 export function resolveSession(to: string, sessions: readonly SessionSummary[]): Resolution {
 	const wanted = to.trim();
 	const startsWith = (ref: string) => sessions.filter((session) => session.id.replace(/-/g, "").toLowerCase().startsWith(ref.toLowerCase()));
+	const exact = sessions.find((session) => session.id === wanted);
+	if (exact) return { kind: "found", session: exact };
 	const parsed = REF.exec(wanted);
 	if (parsed) return pick(startsWith(parsed[2]!));
-	const byName = sessions.filter((session) => sessionName(session) === wanted);
+	const byName = sessions.filter((session) => sessionName(session) === wanted || session.spawnedFrom?.name === wanted);
 	if (byName.length > 0) return pick(byName);
 	// 只写了 ref 的也认：那是从列表里抄的，不会是别的意思。
 	if (/^[0-9a-f]{6,12}$/i.test(wanted)) return pick(startsWith(wanted));
@@ -70,4 +72,25 @@ export function together(from: SessionSummary, to: SessionSummary, mains: Readon
 	const theirs = roots(to.cwd);
 	if (roots(from.cwd).some((a) => theirs.some((b) => within(a, b) || within(b, a)))) return true;
 	return from.spawnedFrom?.sessionId === to.id || to.spawnedFrom?.sessionId === from.id;
+}
+
+/**
+ * 和 `self` 互相开出来的那一家子（顺着 `spawnedFrom` 往上找到头，再把头下面的都算上），不含自己，只算侧栏里的。
+ * 只有自己时是空的。
+ */
+export function familyOf(self: SessionSummary, sessions: readonly SessionSummary[]): SessionSummary[] {
+	const byId = new Map(sessions.filter(listed).map((session) => [session.id, session]));
+	const root = (session: SessionSummary) => {
+		const seen = new Set<string>();
+		let current = session;
+		while (current.spawnedFrom && !seen.has(current.id)) {
+			seen.add(current.id);
+			const up = byId.get(current.spawnedFrom.sessionId);
+			if (!up) break;
+			current = up;
+		}
+		return current.id;
+	};
+	const mine = root(self);
+	return [...byId.values()].filter((session) => session.id !== self.id && root(session) === mine);
 }

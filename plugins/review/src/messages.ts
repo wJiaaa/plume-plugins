@@ -9,6 +9,7 @@ const zhCN = {
 	command: "在只读会话里审查改动或 PR，报告交回这里修",
 	handingOff: "交给审阅会话",
 	askingImplementer: "问原会话修哪几条",
+	answeringReview: "答复审阅会话修哪几条",
 	reviewSession: "审阅会话",
 	failedMark: "没跑完",
 	brief: {
@@ -48,6 +49,7 @@ export const MESSAGES: Record<Locale, Messages> = {
 		command: "Review changes or a PR in a read-only session; the report comes back here to fix",
 		handingOff: "Handed off the review",
 		askingImplementer: "Asked which findings to fix",
+		answeringReview: "Told the review session what to fix",
 		reviewSession: "Review chat",
 		failedMark: "Unfinished",
 		brief: {

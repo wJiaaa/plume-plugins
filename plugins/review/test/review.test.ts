@@ -4,12 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, type TestContext } from "node:test";
 import type {
-	DeliveryInput,
 	HookLayer,
-	LaunchedIdle,
 	LetterInput,
 	LaunchedSession,
 	Message,
+	ReportBackOptions,
+	SessionObservation,
 	PluginContext,
 	PromptSubmit,
 	SessionLaunch,
@@ -26,6 +26,7 @@ import { REVIEW_SESSION_OPENING, reviewBody } from "../src/review.ts";
 
 const brief = MESSAGES.en.brief;
 const user = (text: string, extra: Partial<Message> = {}): Message => ({ role: "user", content: [{ type: "text", text }], timestamp: 1, ...extra }) as Message;
+const said = (text: string): Message => ({ role: "assistant", content: [{ type: "text", text }], timestamp: 1 }) as unknown as Message;
 // 交接单的这一项和行内样式的属性同名，用变量当键，免得样式检查当成 style 里的底色。
 const BACKGROUND = "background";
 const complete = {
@@ -107,12 +108,6 @@ test("正文按类别点名派子智能体、问人的工具；没有派子智�
 	assert.doesNotMatch(bare, /`undefined`/);
 });
 
-function deferred<T>() {
-	let resolve!: (value: T) => void;
-	const promise = new Promise<T>((settle) => (resolve = settle));
-	return { promise, resolve };
-}
-
 async function fixture(t: TestContext) {
 	const directory = mkdtempSync(join(tmpdir(), "plume-review-"));
 	t.after(() => rmSync(directory, { recursive: true, force: true }));
@@ -138,16 +133,15 @@ async function fixture(t: TestContext) {
 	const plans = new Map<string, string>([["main", "新计划\n\n## 执行时注意\n别动接口"]]);
 	const layers = new Map<string, unknown>();
 	const tools = new Map<string, ToolDefinition>();
-	/** 经 `run.letter` 寄出的信；`unreachable` 时寄信抛错，和本体对方不在时一样；`refusal` 是本体拒寄（往来链太长）时抛的话。 */
+	/** 经 `run.letter` 寄出的信；`unreachable` 时寄信抛错，和本体对方不在时一样；`refusal` 是本体拒寄时抛的话。 */
 	const letters: { to: string; letter: LetterInput }[] = [];
 	let unreachable = false;
 	let refusal: string | undefined;
 	/** 寄信时发现原会话没了（寄之前还在）：之后再查它就查不到。 */
 	let parentGone = false;
 	const launches: SessionLaunch[] = [];
-	const reports: { text: string; delivery: DeliveryInput }[] = [];
-	const done = deferred<TurnStop>();
-	const idle = deferred<LaunchedIdle>();
+	const reports: { sessionId: string; text: string; options: ReportBackOptions }[] = [];
+	const observers: Array<(observation: SessionObservation) => void> = [];
 	const ctx = {
 		name: "plume.review",
 		dataDir: directory,
@@ -178,21 +172,14 @@ async function fixture(t: TestContext) {
 		sessions: {
 			get: async (id: string) => (parentGone && id === "main" ? undefined : sessions.get(id)),
 			messages: async (id: string) => structuredClone(messages.get(id) ?? []),
-			observe() {},
+			observe: (listener: (observation: SessionObservation) => void) => void observers.push(listener),
 			onDeleted() {},
+			reportBack: (sessionId: string, text: string, options: ReportBackOptions) => (reports.push({ sessionId, text, options }), true),
 			launch: async (launch: SessionLaunch): Promise<LaunchedSession> => {
 				launches.push(launch);
 				const session = summary("review", { project: "p", cwd: "/w", spawnedFrom: { sessionId: "main", toolCallId: "call" } });
 				sessions.set("review", session);
-				return {
-					session,
-					done: done.promise,
-					idle: idle.promise,
-					reportBack: (text, delivery) => {
-						reports.push({ text, delivery });
-						return true;
-					},
-				};
+				return { session, done: new Promise(() => {}), idle: new Promise(() => {}) };
 			},
 		},
 	} as unknown as PluginContext;
@@ -217,7 +204,7 @@ async function fixture(t: TestContext) {
 							}
 							if (refusal) throw new Error(refusal);
 							letters.push({ to, letter });
-							return { id: "l", read: new Promise(() => {}), answered: 0, answer: () => undefined };
+							return { id: "l", queued: false, read: new Promise(() => {}) };
 						},
 					}
 				: {}),
@@ -227,9 +214,16 @@ async function fixture(t: TestContext) {
 	const call = (sessionId: string, name: string) =>
 		execute({ sessionId, session: scope(sessionId), call: { id: "c", name, args: {} } } as Parameters<typeof execute>[0], async () => ({ output: "ran" }));
 	const context = layers.get("model.context") as HookLayer<"model.context">;
+	/** 一个会话的一轮收场了，和本体的观察一样。 */
+	const turnEnd = async (sessionId: string, stop: TurnStop) => {
+		for (const listener of observers) listener({ sessionId, at: 0, timestamp: 0, event: { type: "turnEnd", stop } });
+		await new Promise((resolve) => setTimeout(resolve, 10));
+	};
 	return {
 		tool: tools.get("review_session")!,
 		ask: tools.get("ask_implementer")!,
+		answer: tools.get("answer_review")!,
+		turnEnd,
 		run,
 		scope,
 		submit,
@@ -245,8 +239,6 @@ async function fixture(t: TestContext) {
 			if (!value) parentGone = false;
 		},
 		refuse: (message?: string) => void (refusal = message),
-		done,
-		idle,
 	};
 }
 
@@ -256,7 +248,7 @@ async function visible(f: Awaited<ReturnType<typeof fixture>>, sessionId: string
 	const input = {
 		sessionId,
 		session: f.scope(sessionId),
-		tools: [{ name: "review_session" }, { name: "ask_implementer" }, { name: "read" }],
+		tools: [{ name: "review_session" }, { name: "ask_implementer" }, { name: "answer_review" }, { name: "read" }],
 	} as unknown as Parameters<typeof f.context>[0];
 	await f.context(input, async (next) => {
 		seen = next.tools.map((tool) => tool.name);
@@ -265,7 +257,7 @@ async function visible(f: Awaited<ReturnType<typeof fixture>>, sessionId: string
 	return seen;
 }
 
-test("review_session 只列给侧栏里的会话：子会话、插件的独立会话的工具表里没有；ask_implementer 只列给审阅会话", async (t) => {
+test("review_session 只列给侧栏里的会话：子会话、插件的独立会话的工具表里没有；ask_implementer 只列给审阅会话，answer_review 只列给交出过审阅的会话", async (t) => {
 	const f = await fixture(t);
 	assert.deepEqual(await visible(f, "main"), ["review_session", "read"]);
 	assert.deepEqual(await visible(f, "side"), ["read"]);
@@ -307,17 +299,18 @@ test("review_session：开出审阅会话、第一轮接上正文和原会话的
 	// 审阅会话自己再交一次不行。
 	assert.match((await f.tool.execute(complete, f.run("review"))).output, /This conversation is the review session/);
 
-	// 问原会话修哪几条：只有审阅会话看得到、用得了，寄给原会话一封署着双方地址的请求。
+	// 问原会话修哪几条：只有审阅会话看得到、用得了，寄给原会话一封署着审阅会话地址的信；交出过审阅的原会话看得到答的那件。
 	assert.deepEqual(await visible(f, "review"), ["review_session", "ask_implementer", "read"]);
+	assert.deepEqual(await visible(f, "main"), ["review_session", "answer_review", "read"]);
 	assert.equal((await f.ask.execute({ message: "修哪几条？" }, f.run("main"))).isError, true);
 	assert.equal((await f.ask.execute({ message: " " }, f.run("review"))).isError, true);
 	// 原会话不在了：寄不出去，照第 F 步什么都不修；没寄出去不算问过。
 	f.unreachable();
 	assert.match((await f.ask.execute({ message: "修哪几条？" }, f.run("review"))).output, /Fix nothing/);
 	f.unreachable(false);
-	// 原会话还在、本体拒寄（往来链太长）：交回本体的话，不说原会话不在了；同样不算问过。
-	f.refuse("Not sent: this exchange has gone back and forth too many times.");
-	assert.equal((await f.ask.execute({ message: "修哪几条？" }, f.run("review"))).output, "Not sent: this exchange has gone back and forth too many times.");
+	// 原会话还在、本体拒寄：交回本体的话，不说原会话不在了；同样不算问过。
+	f.refuse("Not sent.");
+	assert.equal((await f.ask.execute({ message: "修哪几条？" }, f.run("review"))).output, "Not sent.");
 	f.refuse();
 	// 同一步里并排调了两次：只寄一封，另一次说在等。
 	const [asked, twice] = await Promise.all([
@@ -330,11 +323,11 @@ test("review_session：开出审阅会话、第一轮接上正文和原会话的
 	assert.match(twice.output, /has not arrived yet\. Do not ask again/);
 	assert.equal(f.letters.length, 1);
 	assert.equal(f.letters[0]!.to, "main");
-	assert.deepEqual(
-		{ ...f.letters[0]!.letter, guide: undefined },
-		{ from: "改登录 [review]", text: "1 high a.ts:3 — 漏了空值。修哪几条？", request: true, recipient: "改登录 [main]", guide: undefined },
-	);
-	assert.match(f.letters[0]!.letter.guide!, /step H\.4/);
+	assert.deepEqual({ ...f.letters[0]!.letter, guide: undefined }, { from: "改登录 [review]", text: "1 high a.ts:3 — 漏了空值。修哪几条？", guide: undefined });
+	assert.match(f.letters[0]!.letter.guide!, /step H\.4.*answer_review/);
+	// 问完收场的那一轮在等答复，不交报告。
+	await f.turnEnd("review", { reason: "done" });
+	assert.equal(f.reports.length, 0);
 	// 还在等答复：再问直接拒，叫它收尾等着。
 	const again = await f.ask.execute({ message: "再问" }, f.run("review"));
 	assert.equal(again.isError, true);
@@ -348,28 +341,33 @@ test("review_session：开出审阅会话、第一轮接上正文和原会话的
 	assert.equal((await f.call("review", "apply_patch")).isError, true, "别的插件声明了改文件的工具同样拦");
 	assert.deepEqual(await f.call("review", "read"), { output: "ran" });
 	assert.deepEqual(await f.call("main", "write"), { output: "ran" });
-	f.messages.set("review", [user("修 1、2", { peer: [{ sessionId: "main", from: "改登录 [abc]", text: "修 1、2", answer: "dropped" }] })]);
-	assert.equal((await f.call("review", "write")).isError, true);
-	// 没读到就被那边的人停下了：不重问，什么都不修。
-	assert.match(
-		(await f.ask.execute({ message: "再问" }, f.run("review"))).output,
-		/stopped that conversation before it read your request\. Do not ask again\. Fix nothing/,
-	);
-	f.messages.set("review", [user("修 1、2", { peer: [{ sessionId: "main", from: "改登录 [abc]", text: "修 1、2", answer: "replied" }] })]);
+	// 原会话答：寄回给最近问过来的那个审阅会话。
+	assert.equal((await f.answer.execute({ message: "修 1" }, f.run("main"))).isError, true, "还没有审阅会话问过来");
+	f.messages.set("main", [
+		user("把登录改成 OAuth"),
+		user("<session-message>", { peer: [{ sessionId: "review", from: "改登录 [review]", text: "修哪几条？" }] }),
+	]);
+	const answered = await f.answer.execute({ message: "修 1、2" }, f.run("main"));
+	assert.match(answered.output, /^Sent to “改登录”/);
+	assert.equal(f.letters[1]!.to, "review");
+	assert.deepEqual({ ...f.letters[1]!.letter, guide: undefined }, { from: "改登录 [main]", text: "修 1、2", guide: undefined });
+	f.messages.set("review", [user("修 1、2", { peer: [{ sessionId: "main", from: "改登录 [main]", text: "修 1、2" }] })]);
 	assert.deepEqual(await f.call("review", "write"), { output: "ran" });
 	// 答过以后再问也拒：一次答复就是原会话的决定，照它修。
 	const after = await f.ask.execute({ message: "再问" }, f.run("review"));
 	assert.equal(after.isError, true);
 	assert.match(after.output, /already answered which findings to fix.*Fix exactly the findings it named/);
-	assert.equal(f.letters.length, 1);
+	assert.equal(f.letters.length, 2);
 
-	// 做完、真闲下来以后交回最后那段回复。
-	f.done.resolve({ reason: "done" });
-	f.idle.resolve({ stop: { reason: "done" }, reply: "## Review: local changes\nNo defects found." });
-	await new Promise((resolve) => setTimeout(resolve, 10));
+	// 被人停下的那一轮不交；修完收场的那一轮交回最后那段回复、叫醒原会话，只交一次。
+	await f.turnEnd("review", { reason: "aborted" });
+	assert.equal(f.reports.length, 0);
+	f.messages.set("review", [...(f.messages.get("review") ?? []), said("## Review: local changes\nNo defects found.")]);
+	await f.turnEnd("review", { reason: "done" });
+	await f.turnEnd("review", { reason: "done" });
 	assert.equal(f.reports.length, 1);
 	// 那一行由宿主按通用字段画：标题是审阅会话现在的标题，点了过去由宿主填 id。
-	assert.deepEqual(f.reports[0]!.delivery, { id: "review", title: "改登录", status: "done" });
+	assert.deepEqual(f.reports[0]!.options, { delivery: { id: "review", title: "改登录", status: "done" }, wake: true });
 	assert.match(
 		f.reports[0]!.text,
 		/<session_result id="review" title="改登录" status="done">\n## Review: local changes\nNo defects found\.\n<\/session_result>/,

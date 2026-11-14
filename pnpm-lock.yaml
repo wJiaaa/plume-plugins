@@ -225,6 +225,9 @@ importers:
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
+      '@types/react':
+        specifier: ^19.2.0
+        version: 19.3.0
 
   plugins/skin-studio:
     devDependencies:
