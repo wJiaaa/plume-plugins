@@ -89,6 +89,7 @@ async function setup(t: TestContext) {
 			change: async () => assert.fail("preview 不写文件"),
 			write: async () => assert.fail("preview 不写文件"),
 			includeChanges: () => assert.fail("preview 不跑命令"),
+			spill: () => assert.fail("preview 不外溢结果"),
 		},
 		track: () => assert.fail("preview 不登记后台任务"),
 	};

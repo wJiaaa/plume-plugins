@@ -55,6 +55,7 @@ function runFor(cwd: string, projectRoots: readonly string[] = [], read: RunFile
 			change: async () => assert.fail("lsp 不写文件"),
 			write: async () => assert.fail("lsp 不写文件"),
 			includeChanges: () => assert.fail("lsp 不跑命令"),
+			spill: () => assert.fail("lsp 不外溢结果"),
 		},
 		track: () => assert.fail("lsp 不登记后台任务"),
 	};
