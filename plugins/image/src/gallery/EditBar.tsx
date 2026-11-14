@@ -8,7 +8,7 @@
 import type { UiContext } from "@plume/contract/ui";
 import { composingKey, IconButton, Input, Text, Tooltip, useI18n } from "@plume/ui";
 import { PenLine, X } from "@plume/ui/icons";
-import { type MouseEvent, useState } from "react";
+import { useState } from "react";
 import { GALLERY_MESSAGES as MESSAGES } from "../messages.ts";
 
 export function EditBar({
@@ -18,7 +18,7 @@ export function EditBar({
 	onAnnotate,
 	onUnmark,
 	onSend,
-	onStop,
+	sessionId,
 }: {
 	ui: UiContext;
 	/** 等着发的标注副本，`data:` URL。 */
@@ -28,7 +28,8 @@ export function EditBar({
 	onUnmark: () => void;
 	/** 什么都没发出去时得到 false，字留着再试一次。 */
 	onSend: (words: string) => Promise<boolean>;
-	onStop: (event: MouseEvent<HTMLButtonElement>) => void;
+	/** 这张图所在的会话：在跑时按钮停的是它。 */
+	sessionId: string;
 }) {
 	const { resolvedLocale } = useI18n();
 	const m = MESSAGES[resolvedLocale];
@@ -90,7 +91,7 @@ export function EditBar({
 			</Text>
 			{/* 按钮跟主输入框一样停止当前轮；运行中按回车仍把这句话排到后面。 */}
 			<span data-image-gallery-send="" className="image-gallery-send">
-				<ui.ComposerSend running={running} disabled={!ready} tip={m.send} onSend={() => void send()} onStop={onStop} />
+				<ui.ComposerSend sessionId={sessionId} running={running} disabled={!ready} tip={m.send} onSend={() => void send()} />
 			</span>
 		</form>
 	);

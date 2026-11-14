@@ -11,7 +11,7 @@
  */
 
 import type { ToolCardProps, UiContext } from "@plume/contract/ui";
-import { ContextMenu, MenuItem, MenuSeparator, RollingText, Text, Tooltip, useI18n, useNow } from "@plume/ui";
+import { ContextMenu, macKeyboard, MenuItem, MenuSeparator, RollingText, Text, Tooltip, useI18n, useNow } from "@plume/ui";
 import { Copy, CornerUpRight, Download, Image as ImageIcon, MessageSquarePlus, PanelRightOpen, PencilLine } from "@plume/ui/icons";
 import { type MouseEvent, useState } from "react";
 import { editInConversation } from "./gallery/actions.ts";
@@ -30,6 +30,11 @@ export function promptSubject(args: Record<string, unknown>): string | undefined
 	const prompt = typeof args.prompt === "string" ? args.prompt.trim().split("\n")[0]?.trim() : "";
 	if (!prompt) return undefined;
 	return prompt.length > 60 ? `${prompt.slice(0, 60)}…` : prompt;
+}
+
+/** 系统的文件管理器按这个平台的叫法：访达、资源管理器，别处统称文件管理器。 */
+function revealLabel(text: Words): string {
+	return macKeyboard() ? text.reveal : /^Win/i.test(navigator.platform) ? text.revealExplorer : text.revealOther;
 }
 
 export function imageCard(ui: UiContext) {
@@ -101,6 +106,8 @@ export function imageCard(ui: UiContext) {
 			.filter(Boolean)
 			.join(" · ");
 		const target = menu ? images[menu.index] : undefined;
+		// 存图时记下的磁盘路径（和 `images` 一一对应）：在文件面板打开、在文件管理器里指出来都用它。
+		const path = menu ? details?.paths?.[menu.index] : undefined;
 
 		return (
 			<figure className="plume-image-card" data-image-card="done">
@@ -130,7 +137,7 @@ export function imageCard(ui: UiContext) {
 						<>
 							<MenuItem
 								icon={<PanelRightOpen {...ICON} />}
-								onClick={() => void ui.openMediaFile(target.media, sessionId).catch((error: unknown) => ui.notify(String(error), "error"))}
+								onClick={() => path && void ui.openFile(path, sessionId).catch((error: unknown) => ui.notify(String(error), "error"))}
 							>
 								{text.openInTab}
 							</MenuItem>
@@ -143,9 +150,9 @@ export function imageCard(ui: UiContext) {
 							<MenuSeparator />
 							<MenuItem
 								icon={<CornerUpRight {...ICON} />}
-								onClick={() => void ui.revealMediaFile(target.media).catch((error: unknown) => ui.notify(String(error), "error"))}
+								onClick={() => path && void ui.revealPath(path).catch((error: unknown) => ui.notify(String(error), "error"))}
 							>
-								{ui.revealMediaLabel()}
+								{revealLabel(text)}
 							</MenuItem>
 							<MenuItem icon={<Download {...ICON} />} onClick={() => void ui.saveImage(ui.mediaUrl(target.media))}>
 								{text.downloadCopy}

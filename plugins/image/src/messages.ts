@@ -26,6 +26,9 @@ const zhCN = {
 	openInTab: "在新标签页中打开图片",
 	copy: "复制图片",
 	downloadCopy: "下载副本",
+	reveal: "在访达中显示",
+	revealExplorer: "在资源管理器中显示",
+	revealOther: "在文件管理器中显示",
 };
 
 type Messages = typeof zhCN;
@@ -51,6 +54,9 @@ const en: Messages = {
 	openInTab: "Open image in a new tab",
 	copy: "Copy image",
 	downloadCopy: "Download a copy",
+	reveal: "Show in the Finder",
+	revealExplorer: "Show in File Explorer",
+	revealOther: "Show in the file manager",
 };
 
 export const MESSAGES: Record<Locale, Messages> = { "zh-CN": zhCN, en };

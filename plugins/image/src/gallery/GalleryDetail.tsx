@@ -312,7 +312,7 @@ export function GalleryDetail({
 						onAnnotate={() => zoom(true)}
 						onUnmark={() => setMarked(null)}
 						onSend={sendEdit}
-						onStop={(event) => void ui.stopSession(entry.sessionId, event).catch((error: unknown) => ui.notify(String(error), "error"))}
+						sessionId={entry.sessionId}
 					/>
 				</div>
 			</div>
