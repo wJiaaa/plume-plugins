@@ -1,17 +1,6 @@
 .preview-card {
 	min-width: 0;
 }
-.preview-title {
-	display: flex;
-	gap: 8px;
-	width: 100%;
-	justify-content: flex-start;
-}
-.preview-title > span {
-	min-width: 0;
-	flex: 1;
-	text-align: left;
-}
 .preview-body {
 	padding-top: 6px;
 }

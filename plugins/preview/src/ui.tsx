@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PanelProps, ToolCardProps, UiPlugin } from "@plume/contract/ui";
-import { Button, Collapse, IconButton, ScrollText, Text, useI18n } from "@plume/ui";
-import { AppWindow, Check, Copy, ChevronRight, ChevronsDown, ExternalLink, Minimize2, RotateCw, SlidersHorizontal } from "@plume/ui/icons";
+import { Collapse, FlowRow, IconButton, Text, useI18n } from "@plume/ui";
+import { AppWindow, Check, Copy, ChevronsDown, ExternalLink, Minimize2, RotateCw, SlidersHorizontal } from "@plume/ui/icons";
 import type { PreviewApi } from "./api.ts";
 import { MESSAGES } from "./messages.ts";
 import { previewTheme } from "./theme.ts";
@@ -191,13 +191,13 @@ export default {
 			return (
 				<div className={panel ? "preview-panel" : "preview-card"} data-preview-id={id} data-capturing={copy.capturing || undefined}>
 					{!panel && (
-						<Button className="preview-title" variant="subtle" size="sm" expanded={!collapsed} onClick={() => setCollapsed((value) => !value)}>
-							<AppWindow size={13} />
-							<Text size="label" tone="faint">
-								<ScrollText text={preview?.title ?? words.title} />
-							</Text>
-							<ChevronRight size={12} style={{ transform: collapsed ? undefined : "rotate(90deg)" }} />
-						</Button>
+						// 和别的工具调用同一种单行（图标、「网页预览 标题」、展开箭头），不另画一块标题栏。
+						<FlowRow
+							icon={<AppWindow size={13} strokeWidth={1.8} />}
+							summary={preview ? `${words.title} ${preview.title}` : words.title}
+							open={!collapsed}
+							onToggle={() => setCollapsed((value) => !value)}
+						/>
 					)}
 					<Collapse open={!collapsed} keepMounted bodyClassName={panel ? "preview-panel-body" : "preview-body"}>
 						<div
