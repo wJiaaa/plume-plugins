@@ -24,7 +24,7 @@ export function oklch(l: number, c: number, h: number): string {
 
 /**
  * 一个色相 h、一个彩度 c 推出整套浅色皮肤：用 OKLCH，换色相时亮度看起来不变，几套色调一样干净。
- * 外圈（停靠侧栏）是一张粉彩底板，从 h 斜着滑到 h+24（颗粒质感由宿主的「磨砂」开关统一加，不在皮肤里）；正文是近白的纸，卡片、悬停、按下往色调里一档档加深；
+ * 外圈（活动栏和顶上那一条）是一张粉彩底板，从 h 斜着滑到 h+24（颗粒质感由宿主的「磨砂」开关统一加，不在皮肤里）；正文是近白的纸，卡片、悬停、按下往色调里一档档加深；
  * 字和强调色用同一色相的深色。各档亮度在三套色调上都过了 parseSkin 的对比度，改动后由测试把关。
  */
 export function toneSkin(id: string, name: string, h: number, c: number): StudioSkin {

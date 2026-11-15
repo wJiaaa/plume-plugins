@@ -77,7 +77,7 @@ export function ScheduledView({
 		);
 	};
 
-	/* 页面在屏上就是看见了：输入框上方那一行、侧栏的数目说的就是下面这些卡片，开着时新来的失败也算。 */
+	/* 页面在屏上就是看见了：输入框上方那一行、活动栏的数目说的就是下面这些卡片，开着时新来的失败也算。 */
 	const unseen = live?.unseen.length ?? 0;
 	useEffect(() => {
 		if (unseen > 0) void api.markSeen().catch((error: unknown) => console.error("[plume.scheduled] 没标上已看：", error));
