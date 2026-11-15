@@ -15,7 +15,7 @@ import type { SessionSummary } from "@plume/contract";
 
 const REF = /^(.*?)\s*\[([0-9a-f]{6,12})\]$/i;
 
-export function sessionRef(id: string): string {
+function sessionRef(id: string): string {
 	return id.replace(/-/g, "").slice(0, 6).toLowerCase();
 }
 
