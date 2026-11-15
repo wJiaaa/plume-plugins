@@ -96,10 +96,10 @@ function SaveDialog({ api, store, onClose, initialName }: DialogProps & { initia
 			width={420}
 			actions={(dismiss) => (
 				<>
+					<Button onClick={() => dismiss()}>{text.cancel}</Button>
 					<Button variant="primary" disabled={!valid || state.status !== "ready"} loading={saving} onClick={() => save(dismiss)}>
 						{text.save}
 					</Button>
-					<Button onClick={() => dismiss()}>{text.cancel}</Button>
 				</>
 			)}
 		>
@@ -173,10 +173,10 @@ function ImportDialog({ api, store, onClose }: DialogProps) {
 			width={520}
 			actions={(dismiss) => (
 				<>
+					<Button onClick={() => dismiss()}>{text.cancel}</Button>
 					<Button variant="primary" disabled={!parsed.skin || state.status !== "ready"} loading={saving} onClick={() => save(dismiss)}>
 						{text.importApply}
 					</Button>
-					<Button onClick={() => dismiss()}>{text.cancel}</Button>
 				</>
 			)}
 		>

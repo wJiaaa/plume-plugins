@@ -287,10 +287,10 @@ function ForgeSignIn({ kinds, onClose }: { kinds: ForgeKindInfo[]; onClose: () =
 					</DialogAction>
 				) : (
 					<>
+						<DialogAction onClick={() => dismiss()}>{text.cancel}</DialogAction>
 						<DialogAction tone="primary" disabled={!ready} onClick={() => void save()}>
 							{busy ? text.verifying : text.verifyAndSave}
 						</DialogAction>
-						<DialogAction onClick={() => dismiss()}>{text.cancel}</DialogAction>
 					</>
 				)
 			}
