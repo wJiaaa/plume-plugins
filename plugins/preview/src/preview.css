@@ -16,10 +16,11 @@
 	border-radius: inherit;
 	background: transparent;
 }
+/* 尺寸由 ui.tsx 在外框停下后写进变量（见 settle.ts），拖动面板时不跟着每帧重排；写进来之前铺满外框。 */
 .preview-frame {
 	display: block;
-	width: 100%;
-	height: 100%;
+	width: var(--preview-frame-width, 100%);
+	height: var(--preview-frame-height, 100%);
 	border: none;
 	opacity: 0;
 	transition: opacity var(--plume-t-base);

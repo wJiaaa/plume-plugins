@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { PanelProps, ToolCardProps, UiPlugin } from "@plume/contract/ui";
 import { Collapse, FlowRow, IconButton, Text, useI18n } from "@plume/ui";
 import { AppWindow, Check, Copy, ChevronsDown, ExternalLink, Minimize2, RotateCw, SlidersHorizontal } from "@plume/ui/icons";
@@ -12,6 +12,7 @@ import { inlineCall, placements } from "./placement.ts";
 import { Tweaks } from "./Tweaks.tsx";
 import { usePreviewTweaks } from "./useTweaks.ts";
 import { usePreviewCopy } from "./copy.ts";
+import { settleSize } from "./settle.ts";
 import css from "./preview.css";
 
 export default {
@@ -36,11 +37,35 @@ export default {
 			media.removeEventListener("change", publishTheme);
 		});
 
+		/*
+		 * 面板里正看着的页面（会话 id + 页面 id → 几个面板在显示）。对话里的同一页这时停在当前帧：两份一起动，
+		 * 重画和合成的活就是两份，而人正看着的是面板那份。只认同一个渲染进程里的面板，弹到独立窗口的面板管不到，
+		 * 对话里那份照常动。人点进对话里那份时它自己拿到焦点、照常动（见 bridge.ts 的 HOLD_FRAMES）。
+		 */
+		const inPanel = new Map<string, number>();
+		const panelWatchers = new Set<() => void>();
+		const pageKey = (sessionId: string, id: string) => `${sessionId}\n${id}`;
+		const watchPanels = (notify: () => void) => {
+			panelWatchers.add(notify);
+			return () => panelWatchers.delete(notify);
+		};
+		const showInPanel = (key: string) => {
+			inPanel.set(key, (inPanel.get(key) ?? 0) + 1);
+			for (const notify of panelWatchers) notify();
+			return () => {
+				const left = (inPanel.get(key) ?? 1) - 1;
+				if (left > 0) inPanel.set(key, left);
+				else inPanel.delete(key);
+				for (const notify of panelWatchers) notify();
+			};
+		};
+
 		function Page({
 			sessionId,
 			id,
 			initial,
 			panel = false,
+			visible = false,
 			setTitle,
 			send,
 			onShown,
@@ -50,6 +75,8 @@ export default {
 			id: string;
 			initial?: Preview;
 			panel?: boolean;
+			/** 面板：这个标签正显示着（`PanelProps.shown`）。 */
+			visible?: boolean;
 			setTitle?: PanelProps["setTitle"];
 			send?: ToolCardProps["send"];
 			onShown?: () => void;
@@ -57,6 +84,31 @@ export default {
 		}) {
 			const words = MESSAGES[useI18n().resolvedLocale];
 			const frame = useRef<HTMLIFrameElement>(null);
+			const surface = useRef<HTMLDivElement>(null);
+			const key = pageKey(sessionId, id);
+			useEffect(() => {
+				if (panel && visible) return showInPanel(key);
+			}, [panel, visible, key]);
+			const mirrored = useSyncExternalStore(watchPanels, () => !panel && inPanel.has(key));
+			const held = useRef(mirrored);
+			held.current = mirrored;
+			// iframe 的像素尺寸经 CSS 变量给（见 preview.css 的 .preview-frame），不放进 React 的 style：整页复制会临时改 iframe 的高度再清掉。
+			useEffect(() => {
+				const element = surface.current;
+				if (!element) return;
+				const fit = settleSize(({ width, height }) => {
+					element.style.setProperty("--preview-frame-width", `${width}px`);
+					element.style.setProperty("--preview-frame-height", `${height}px`);
+				});
+				const observer = new ResizeObserver(([entry]) => {
+					if (entry) fit.update({ width: entry.contentRect.width, height: entry.contentRect.height });
+				});
+				observer.observe(element);
+				return () => {
+					observer.disconnect();
+					fit.dispose();
+				};
+			}, []);
 			const [preview, setPreview] = useState(initial);
 			const [src, setSrc] = useState("");
 			const [nonce, setNonce] = useState(0);
@@ -169,11 +221,12 @@ export default {
 			}, [sessionId, id, preview?.themed, words, panel, copy.capturing]);
 			/*
 			 * 页面该不该停在当前帧：这扇窗不在前台（见 bridge.ts 的 HOLD_FRAMES）。问 `hasFocus()` 而不看是哪个事件：
-			 * 点进页面拖动时窗口也会 blur，可焦点还在这扇窗里。
+			 * 点进页面拖动时窗口也会 blur，可焦点还在这扇窗里。对话里的这份在面板里正显示着时也停（见 inPanel）。
 			 */
 			const postPause = useCallback(() => {
-				frame.current?.contentWindow?.postMessage({ preview: "pause", value: !document.hasFocus() }, "*");
+				frame.current?.contentWindow?.postMessage({ preview: "pause", value: !document.hasFocus() || held.current }, "*");
 			}, []);
+			useEffect(postPause, [mirrored, postPause]);
 			useEffect(() => {
 				window.addEventListener("blur", postPause);
 				window.addEventListener("focus", postPause);
@@ -201,6 +254,7 @@ export default {
 					)}
 					<Collapse open={!collapsed} keepMounted bodyClassName={panel ? "preview-panel-body" : "preview-body"}>
 						<div
+							ref={surface}
 							className="preview-surface"
 							data-preview-themed={preview?.themed || undefined}
 							style={{ height: panel ? "100%" : full ? height : Math.min(MAX_HEIGHT, height) }}
@@ -315,8 +369,8 @@ export default {
 				</div>
 			);
 		}
-		function Panel({ session, tab, setTitle }: PanelProps) {
-			return session ? <Page sessionId={session.summary.id} id={tab} panel setTitle={setTitle} /> : null;
+		function Panel({ session, tab, shown, setTitle }: PanelProps) {
+			return session ? <Page sessionId={session.summary.id} id={tab} panel visible={shown} setTitle={setTitle} /> : null;
 		}
 		ui.toolCard("preview", Card, { inline: inlineCall });
 		ui.toolLine("preview", {
