@@ -194,7 +194,7 @@ export interface SshState {
 	transfers: Transfer[];
 	/** 运维助手现在这一段的会话 id；还没说过话、刚点了「新开一段」时为空。 */
 	assistant: string | null;
-	/** 运维助手有一次操作在等人批准：主机页没开着时给侧栏那一行挂提醒。 */
+	/** 运维助手有一次操作在等人批准：主机页没开着时给活动栏那一格挂提醒。 */
 	asking: boolean;
 }
 

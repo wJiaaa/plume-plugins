@@ -1,5 +1,5 @@
 /**
- * plume.ssh 的界面入口：侧栏「SSH 主机」页（主机库、终端标签、AI 运维助手）、`ssh_run` 的审批卡和工具卡片。
+ * plume.ssh 的界面入口：活动栏「SSH 主机」页（主机库、终端标签、AI 运维助手）、`ssh_run` 的审批卡和工具卡片。
  * 连接、凭据、运维助手的会话都在逻辑入口那边，界面经 ui.remote() 连过去，一直订阅着它的状态。
  */
 
@@ -35,8 +35,8 @@ export default {
 		const client = connectSsh(api);
 		ui.effect(client.cancel);
 
-		ui.page(PAGE, hostsPage(ui, api, client), { title: (locale) => MESSAGES[locale].hostsTitle, icon: Server, topRow: true });
-		// 运维助手等人批准时，人可能不在主机页上：侧栏那一行挂个提醒，也列进通知菜单。人在这一页上时宿主不画。
+		ui.page(PAGE, hostsPage(ui, api, client), { title: (locale) => MESSAGES[locale].hostsTitle, icon: Server });
+		// 运维助手等人批准时，人可能不在主机页上：活动栏那一格挂个提醒，也列进通知菜单。人在这一页上时宿主不画。
 		let asking = false;
 		ui.effect(
 			client.subscribe(() => {

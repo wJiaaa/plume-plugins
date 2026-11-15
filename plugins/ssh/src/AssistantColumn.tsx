@@ -15,19 +15,31 @@ import {
 	PageTopRow,
 	PanelEmpty,
 	Popover,
+	ResizeHandle,
 	Text,
 	TimeAgo,
 	useConfirmer,
 	usePopover,
 } from "@plume/ui";
 import { Check, History, Sparkles, SquarePen, Trash2 } from "@plume/ui/icons";
-import { type MouseEvent, useState } from "react";
+import { type CSSProperties, type MouseEvent, useEffect, useState } from "react";
 import type { AssistantSegment, SshApi } from "./api.ts";
 import { errorText } from "./client.ts";
 import { type Messages, MESSAGES } from "./messages.ts";
 
 /** 输入框里没发的字按这个名字存：离开主机页再回来还在。 */
 const DRAFT_KEY = "plume.ssh.assistant";
+/** 这一列能拖多宽：默认、最窄、最宽。拖过的宽度存在本机，下次打开还是这么宽。 */
+const WIDTH = { key: "plume.ssh.assistant.width", initial: 360, min: 300, max: 560 };
+
+function storedWidth(): number {
+	try {
+		const saved = Number(localStorage.getItem(WIDTH.key));
+		return saved >= WIDTH.min && saved <= WIDTH.max ? saved : WIDTH.initial;
+	} catch {
+		return WIDTH.initial;
+	}
+}
 
 type Host = Pick<UiContext, "Conversation" | "notify" | "useSession">;
 
@@ -36,6 +48,12 @@ export function AssistantColumn({ ui, api, sessionId, text }: { ui: Host; api: R
 	const view = ui.useSession(sessionId ?? undefined);
 	const [segments, setSegments] = useState<AssistantSegment[] | null>(null);
 	const confirmer = useConfirmer();
+	const [width, setWidth] = useState(storedWidth);
+	useEffect(() => {
+		try {
+			localStorage.setItem(WIDTH.key, String(width));
+		} catch {}
+	}, [width]);
 	const report = (cause: unknown) => ui.notify(errorText(cause), "error");
 	const send = async (message: string | OutgoingMessage, choice?: SessionChoice) => {
 		await api.ask(
@@ -67,9 +85,23 @@ export function AssistantColumn({ ui, api, sessionId, text }: { ui: Host; api: R
 	};
 
 	return (
-		<section className="ssh-assistant" aria-label={text.assistantTitle} data-ssh-assistant="">
+		<section
+			className="ssh-assistant"
+			aria-label={text.assistantTitle}
+			data-ssh-assistant=""
+			style={{ "--ssh-assistant-width": `${width}px` } as CSSProperties}
+		>
+			<ResizeHandle
+				edge="start"
+				width={width}
+				min={WIDTH.min}
+				max={WIDTH.max}
+				onResize={(next) => setWidth(Math.round(next))}
+				onReset={() => setWidth(WIDTH.initial)}
+				label={text.resizeAssistant}
+			/>
 			<PageTopRow className="ssh-row">
-				<Sparkles size={15} className="ssh-accent" />
+				<Sparkles size={15} className="ssh-muted" />
 				<Text size="label" weight="medium" className="ssh-ellipsis">
 					{text.assistantTitle}
 				</Text>

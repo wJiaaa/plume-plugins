@@ -5,15 +5,27 @@
  */
 
 import type { Remote, UiContext } from "@plume/contract/ui";
-import { Button, IconButton, Input, Scroller, Text, useConfirmer, useI18n } from "@plume/ui";
+import { Button, IconButton, Input, ResizeHandle, Scroller, Text, useConfirmer, useI18n } from "@plume/ui";
 import { ArrowUp, Download, File, Folder, FolderPlus, Link, Pencil, RotateCw, Trash2, Upload, X } from "@plume/ui/icons";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import type { DirectoryListing, RemoteEntry, SshApi } from "./api.ts";
 import { errorText, type SshClient, useSshState } from "./client.ts";
 import { bytes, parentPath } from "./format.ts";
 import { MESSAGES } from "./messages.ts";
 
 type Host = Pick<UiContext, "notify" | "droppedPaths">;
+
+/** 文件栏能拖多宽：默认、最窄、最宽。拖过的宽度存在本机，各条连接共用，下次打开还是这么宽。 */
+const WIDTH = { key: "plume.ssh.sftp.width", initial: 320, min: 220, max: 560 };
+
+function storedWidth(): number {
+	try {
+		const saved = Number(localStorage.getItem(WIDTH.key));
+		return saved >= WIDTH.min && saved <= WIDTH.max ? saved : WIDTH.initial;
+	} catch {
+		return WIDTH.initial;
+	}
+}
 
 export function SftpPane({ ui, api, client, connection, onClose }: { ui: Host; api: Remote<SshApi>; client: SshClient; connection: string; onClose(): void }) {
 	const text = MESSAGES[useI18n().resolvedLocale];
@@ -28,6 +40,12 @@ export function SftpPane({ ui, api, client, connection, onClose }: { ui: Host; a
 	const [creating, setCreating] = useState(false);
 	const [draft, setDraft] = useState("");
 	const [dragging, setDragging] = useState(false);
+	const [width, setWidth] = useState(storedWidth);
+	useEffect(() => {
+		try {
+			localStorage.setItem(WIDTH.key, String(width));
+		} catch {}
+	}, [width]);
 	const request = useRef(0);
 	const finished = useRef(new Set<string>());
 	const confirmer = useConfirmer();
@@ -119,6 +137,7 @@ export function SftpPane({ ui, api, client, connection, onClose }: { ui: Host; a
 	return (
 		<div
 			className="ssh-sftp"
+			style={{ "--ssh-sftp-width": `${width}px` } as CSSProperties}
 			data-dragging={dragging || undefined}
 			onDragOver={(event) => {
 				if (!path || !ui.droppedPaths(event.dataTransfer)) return;
@@ -137,6 +156,15 @@ export function SftpPane({ ui, api, client, connection, onClose }: { ui: Host; a
 				void act(() => api.upload(connection, path, paths), false);
 			}}
 		>
+			<ResizeHandle
+				edge="start"
+				width={width}
+				min={WIDTH.min}
+				max={WIDTH.max}
+				onResize={(next) => setWidth(Math.round(next))}
+				onReset={() => setWidth(WIDTH.initial)}
+				label={text.resizeSftp}
+			/>
 			<div className="ssh-sftp-toolbar">
 				<IconButton
 					size="sm"

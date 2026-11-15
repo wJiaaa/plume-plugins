@@ -1,18 +1,19 @@
 /**
- * 主机页上一个终端标签的内容：顶上一条状态栏（账号地址、资源占用、查找、问 AI、SFTP、断开），下面是终端，SFTP 开着时
- * 文件面板在终端右边；第一次连这台机器先在终端上方核对指纹。
+ * 主机页上一个终端标签的内容：终端，SFTP 开着时文件面板在终端右边；第一次连这台机器先在终端上方核对指纹。查找、问 AI、
+ * SFTP 的按钮在主机页的标签行上，经 `ref` 交过来的 `PaneControls` 操作这里；账号地址、资源占用、断开在那一行弹出的
+ * 连接卡片（`ConnectionCard`）里。
  *
  * 连接在逻辑入口里，组件卸了不断：离开主机页再回来按连接 id 接上，先回放最近的输出。
  */
 
 import type { Remote, UiContext } from "@plume/contract/ui";
-import { ActionSpinner, Button, ContextMenu, IconButton, macKeyboard, MenuItem, MenuSeparator, Text } from "@plume/ui";
-import { ClipboardPaste, Copy, FolderOpen, MessageSquarePlus, RotateCw, Search, ShieldCheck, TriangleAlert, Unplug, X } from "@plume/ui/icons";
+import { ActionSpinner, Button, ContextMenu, macKeyboard, MenuItem, MenuSeparator, Text, Toggle } from "@plume/ui";
+import { ClipboardPaste, Copy, MessageSquarePlus, RotateCw, ShieldCheck, TriangleAlert, Unplug, X } from "@plume/ui/icons";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { Terminal } from "@xterm/xterm";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type Ref, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import type { ConnectionView, SshApi } from "./api.ts";
 import { errorText, type SshClient } from "./client.ts";
 import { address, percent, rate } from "./format.ts";
@@ -24,6 +25,8 @@ import { TerminalSearch } from "./TerminalSearch.tsx";
 
 /** 「问 AI」没选中东西时带上最近这么多行。 */
 const RECENT_LINES = 200;
+/** 连接卡片里占用到这个百分比就标成警告色：再往上就该有人去看了。 */
+const HIGH_USAGE = 80;
 
 const CODE_DEFAULTS = {
 	codeFont: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
@@ -32,14 +35,22 @@ const CODE_DEFAULTS = {
 
 type Host = Pick<UiContext, "notify" | "droppedPaths">;
 
+/** 标签行上的按钮操作这个标签里的终端。 */
+export interface PaneControls {
+	find(): void;
+	ask(): void;
+}
+
 export function ConnectionPane({
 	ui,
 	api,
 	client,
 	connection,
-	monitoring,
 	shown,
+	sftp,
 	text,
+	ref,
+	onSftp,
 	onReconnect,
 	onAsk,
 }: {
@@ -47,14 +58,16 @@ export function ConnectionPane({
 	api: Remote<SshApi>;
 	client: SshClient;
 	connection: ConnectionView;
-	monitoring: boolean;
 	shown: boolean;
+	/** SFTP 文件面板开没开：开关在标签行上。 */
+	sftp: boolean;
 	text: Messages;
+	ref?: Ref<PaneControls>;
+	onSftp(open: boolean): void;
 	onReconnect(): void;
 	/** 「问 AI」：清理过的终端内容交给运维助手。 */
 	onAsk(content: string): void;
 }) {
-	const [sftp, setSftp] = useState(false);
 	const [finding, setFinding] = useState(0);
 	const terminal = useRef<Terminal | null>(null);
 	const search = useRef<SearchAddon | null>(null);
@@ -85,28 +98,10 @@ export function ConnectionPane({
 			report(error);
 		}
 	};
+	useImperativeHandle(ref, () => ({ find: () => setFinding((count) => count + 1), ask: () => void ask() }));
 
 	return (
-		<div className="ssh-connection">
-			<div className="ssh-status" data-ssh-state={connection.state}>
-				<span className="ssh-dot" data-state={connection.state} />
-				<Text weight="medium" className="ssh-ellipsis ssh-status-name">
-					{connection.label}
-				</Text>
-				<Text size="detail" tone="faint" mono className="ssh-ellipsis ssh-status-address">
-					{address(connection)}
-				</Text>
-				{monitoring && connected && <Stats connection={connection} text={text} />}
-				<span className="ssh-spacer" />
-				<IconButton size="sm" label={text.find} icon={<Search size={14} />} disabled={!terminal.current} onClick={() => setFinding((count) => count + 1)} />
-				<IconButton size="sm" label={text.askAi} icon={<MessageSquarePlus size={14} />} onClick={() => void ask()} data-ssh-ask="" />
-				<IconButton size="sm" label={text.sftp} icon={<FolderOpen size={14} />} active={sftp} disabled={!connected} onClick={() => setSftp((open) => !open)} />
-				{connection.state === "closed" ? (
-					<IconButton size="sm" label={text.reconnect} icon={<RotateCw size={14} />} onClick={onReconnect} />
-				) : (
-					<IconButton size="sm" label={text.disconnect} icon={<Unplug size={14} />} onClick={() => void api.disconnect(connection.tab).catch(report)} />
-				)}
-			</div>
+		<div className="ssh-connection" data-ssh-state={connection.state}>
 			<div className="ssh-body">
 				<div className="ssh-terminal-wrap">
 					<SshTerminal
@@ -142,7 +137,7 @@ export function ConnectionPane({
 						<HostKeyCard connection={connection} text={text} onAnswer={(accept) => void api.trust(connection.tab, accept).catch(report)} />
 					)}
 				</div>
-				{sftp && connected && <SftpPane ui={ui} api={api} client={client} connection={connection.id} onClose={() => setSftp(false)} />}
+				{sftp && connected && <SftpPane ui={ui} api={api} client={client} connection={connection.id} onClose={() => onSftp(false)} />}
 			</div>
 			{connection.state === "closed" && (
 				<div className="ssh-closed" role="status">
@@ -159,28 +154,128 @@ export function ConnectionPane({
 	);
 }
 
-function Stats({ connection, text }: { connection: ConnectionView; text: Messages }) {
+/**
+ * 标签行上点「资源占用」弹出的连接卡片：这条连接是谁（名字、账号地址）、资源占用的读数和开关、断开或重新连接。
+ * 开关管的是所有连接（逻辑入口里一份），卡片只画当前这一条的读数。
+ */
+export function ConnectionCard({
+	connection,
+	monitoring,
+	text,
+	onMonitoring,
+	onDisconnect,
+	onReconnect,
+}: {
+	connection: ConnectionView;
+	monitoring: boolean;
+	text: Messages;
+	onMonitoring(on: boolean): void;
+	onDisconnect(): void;
+	onReconnect(): void;
+}) {
+	const connected = connection.state === "connected";
 	const stats = connection.stats;
-	if (!stats) return null;
-	if (stats.failed) {
-		return (
-			<Text size="detail" tone="faint">
-				{text.statsFailed}
-			</Text>
-		);
-	}
-	return (
-		<Text size="detail" tone="muted" numeric className="ssh-stats" data-ssh-stats="">
-			<span>CPU {percent(stats.cpu)}</span>
-			<span>
-				{text.memory} {percent(stats.memory)}
-			</span>
-			<span>
-				{text.disk} {percent(stats.disk)}
-			</span>
-			<span>↓ {rate(stats.rxRate)}</span>
-			<span>↑ {rate(stats.txRate)}</span>
+	const note = (body: string) => (
+		<Text as="p" size="detail" tone="muted">
+			{body}
 		</Text>
+	);
+	let body;
+	if (!connected) body = note(text.statsIdle);
+	else if (!monitoring) body = note(text.statsOff);
+	else if (!stats) body = note(text.statsPending);
+	else if (stats.failed)
+		body = (
+			<div>
+				<Text as="p" size="detail" tone="danger">
+					{text.statsFailed}
+				</Text>
+				<Text as="p" size="caption" tone="faint">
+					{text.statsLinuxOnly}
+				</Text>
+			</div>
+		);
+	else
+		body = (
+			<>
+				<div className="ssh-meters" data-ssh-stats="">
+					<Meter label="CPU" value={stats.cpu} />
+					<Meter label={text.memory} value={stats.memory} />
+					<Meter label={text.disk} value={stats.disk} />
+				</div>
+				<div className="ssh-net">
+					<NetRate label={text.netDown} value={stats.rxRate} />
+					<NetRate label={text.netUp} value={stats.txRate} />
+				</div>
+			</>
+		);
+	return (
+		<div className="ssh-card" data-ssh-card="">
+			<div className="ssh-card-head">
+				<span className="ssh-dot" data-state={connection.state} />
+				<span className="ssh-card-who">
+					<Text weight="medium" className="ssh-ellipsis">
+						{connection.label}
+					</Text>
+					<Text size="detail" tone="faint" mono className="ssh-ellipsis">
+						{address(connection)}
+					</Text>
+				</span>
+				<label className="ssh-card-switch">
+					<Text size="detail" tone="muted">
+						{text.monitoring}
+					</Text>
+					<Toggle checked={monitoring} onChange={onMonitoring} ariaLabel={text.monitoring} />
+				</label>
+			</div>
+			{body}
+			<div className="ssh-card-foot">
+				<Text size="caption" tone="faint" className="ssh-grow">
+					{monitoring && connected ? text.statsEvery : ""}
+				</Text>
+				{connection.state === "closed" ? (
+					<Button size="xs" variant="subtle" icon={<RotateCw size={12} />} onClick={onReconnect}>
+						{text.reconnect}
+					</Button>
+				) : (
+					<Button size="xs" variant="subtle" icon={<Unplug size={12} />} onClick={onDisconnect}>
+						{text.disconnect}
+					</Button>
+				)}
+			</div>
+		</div>
+	);
+}
+
+function Meter({ label, value }: { label: string; value: number | null | undefined }) {
+	const share = Math.min(100, Math.max(0, value ?? 0));
+	return (
+		<div className="ssh-meter" data-high={(value ?? 0) >= HIGH_USAGE || undefined}>
+			<span className="ssh-meter-label">
+				<Text size="detail" tone="muted">
+					{label}
+				</Text>
+				<Text size="detail" weight="medium" numeric className="ssh-meter-value">
+					{percent(value)}
+				</Text>
+			</span>
+			<span className="ssh-meter-track">
+				<span style={{ width: `${share}%` }} />
+			</span>
+		</div>
+	);
+}
+
+function NetRate({ label, value }: { label: string; value: number | null | undefined }) {
+	return (
+		<span className="ssh-net-rate">
+			<Text size="detail" tone="muted">
+				{label}
+			</Text>
+			<Text size="detail" weight="medium" numeric>
+				{rate(value)}
+			</Text>
+		</span>
 	);
 }
 

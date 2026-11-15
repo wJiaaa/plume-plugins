@@ -1,7 +1,8 @@
 /**
- * 侧栏「SSH 主机」页：运维台。左边是主机库（搜索名字、地址、标签，按收藏和分组筛，按分组排开），点一台就在中间开一个终端
+ * 活动栏「SSH 主机」页：运维台。左边是主机库（搜索名字、地址、标签，按收藏和分组筛，按分组排开），点一台就在中间开一个终端
  * 标签连上它（已经有它的标签就切过去）；中间是终端标签，一个标签一条连接；右边固定一列「AI 运维助手」，它能请求在这里连着的
- * 任意一条连接上执行命令，每条都要人批准。头上「资源占用」开关管所有连接的状态栏读数，「批量命令」「管理分组」开各自的对话框。
+ * 任意一条连接上执行命令，每条都要人批准。主机库头上的「+」收着新建、导入和管理分组；标签行右边是当前标签的查找、问 AI、
+ * SFTP，「资源占用」弹出当前连接的卡片（读数、所有连接共用的开关、断开），「批量命令」开对话框。
  *
  * 连接住在逻辑入口里：离开这一页再回来，标签和终端里的字都还在。
  */
@@ -20,25 +21,29 @@ import {
 	PageTopRow,
 	PanelEmpty,
 	Popover,
+	ResizeHandle,
 	Scroller,
 	SearchField,
 	Select,
 	Text,
-	Toggle,
 	useConfirmer,
 	useI18n,
 	usePopover,
 } from "@plume/ui";
 import { field, fieldLabel } from "@plume/styles";
 import {
+	Activity,
 	Check,
 	FileSpreadsheet,
+	FolderOpen,
 	FolderTree,
+	MessageSquarePlus,
 	MoreHorizontal,
 	PanelLeftClose,
 	PanelLeftOpen,
 	Pencil,
 	Plus,
+	Search,
 	Server,
 	SquareTerminal,
 	Star,
@@ -46,21 +51,23 @@ import {
 	Trash2,
 	X,
 } from "@plume/ui/icons";
-import { type ReactNode, useMemo, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { ConnectionView, HostGroup, HostInput, HostProfile, SshApi } from "./api.ts";
 import { AssistantColumn } from "./AssistantColumn.tsx";
 import { BatchDialog } from "./BatchDialog.tsx";
 import { errorText, type SshClient, useSshState } from "./client.ts";
-import { ConnectionPane } from "./ConnectionPane.tsx";
+import { ConnectionCard, ConnectionPane, type PaneControls } from "./ConnectionPane.tsx";
 import { address, fuzzyMatch, parseTags } from "./format.ts";
 import { ImportDialog } from "./ImportDialog.tsx";
 import { type Messages, MESSAGES } from "./messages.ts";
 
-type Host = Pick<UiContext, "notify" | "droppedPaths" | "Conversation" | "useSession">;
+type Host = Pick<UiContext, "notify" | "droppedPaths" | "Conversation" | "useSession" | "usePageToolbar">;
 /** 主机列表的筛选：全部、收藏、未分组，或某个分组的 id。 */
 type Filter = "all" | "favorites" | "none" | (string & {});
 
 const HOSTS_KEY = "plume.ssh.hosts.collapsed";
+/** 主机列表能拖多宽：默认、最窄、最宽。拖过的宽度存在本机，下次打开还是这么宽。 */
+const HOSTS_WIDTH = { key: "plume.ssh.hosts.width", initial: 224, min: 200, max: 420 };
 const NO_HOSTS: HostProfile[] = [];
 const NO_GROUPS: HostGroup[] = [];
 const NO_CONNECTIONS: ConnectionView[] = [];
@@ -76,14 +83,33 @@ function storedCollapsed(): boolean {
 	}
 }
 
+function storedWidth(): number {
+	try {
+		const saved = Number(localStorage.getItem(HOSTS_WIDTH.key));
+		return saved >= HOSTS_WIDTH.min && saved <= HOSTS_WIDTH.max ? saved : HOSTS_WIDTH.initial;
+	} catch {
+		return HOSTS_WIDTH.initial;
+	}
+}
+
 export function hostsPage(ui: Host, api: Remote<SshApi>, client: SshClient) {
 	return function HostsPage() {
 		const text = MESSAGES[useI18n().resolvedLocale];
 		const state = useSshState(client);
 		const [active, setActive] = useState<string | null>(lastTab);
 		const [collapsed, setCollapsed] = useState(storedCollapsed);
+		const [hostsWidth, setHostsWidth] = useState(storedWidth);
+		useEffect(() => {
+			try {
+				localStorage.setItem(HOSTS_WIDTH.key, String(hostsWidth));
+			} catch {}
+		}, [hostsWidth]);
 		const [editing, setEditing] = useState<HostProfile | "new" | null>(null);
 		const [dialog, setDialog] = useState<"groups" | "import" | "batch" | null>(null);
+		/** 开着 SFTP 文件面板的标签。 */
+		const [sftpTabs, setSftpTabs] = useState<ReadonlySet<string>>(() => new Set());
+		const panes = useRef(new Map<string, PaneControls>());
+		const card = usePopover();
 		const confirmer = useConfirmer();
 		const report = (cause: unknown) => ui.notify(errorText(cause), "error");
 
@@ -135,10 +161,33 @@ export function hostsPage(ui: Host, api: Remote<SshApi>, client: SshClient) {
 				return !was;
 			});
 		};
+		// 开合主机列表的按钮放在窗口左上角、后退和前进后面，和对话里的侧栏开关同一个位置。
+		ui.usePageToolbar([
+			{
+				id: "hosts",
+				label: collapsed ? text.showHosts : text.hideHosts,
+				icon: collapsed ? PanelLeftOpen : PanelLeftClose,
+				onClick: toggleHosts,
+			},
+		]);
 		const ask = (content: string) => void api.ask(content, undefined).catch(report);
+		const setSftp = (tab: string, open: boolean) =>
+			setSftpTabs((was) => {
+				const next = new Set(was);
+				if (open) next.add(tab);
+				else next.delete(tab);
+				return next;
+			});
+		const monitoring = state?.monitoring ?? false;
+		// 最后一个标签关了，卡片的锚点（标签行上的按钮）也没了：收起来，免得下次开标签时挂在旧锚点上弹出来。
+		const cardOpen = card.open;
+		const closeCard = card.close;
+		useEffect(() => {
+			if (!current && cardOpen) closeCard();
+		}, [current, cardOpen, closeCard]);
 
 		return (
-			<div className="ssh-desk" data-ssh-hosts="">
+			<div className="ssh-desk" data-ssh-hosts="" style={{ "--ssh-hosts-width": `${hostsWidth}px` } as CSSProperties}>
 				{!collapsed && (
 					<HostColumn
 						hosts={hosts}
@@ -147,30 +196,39 @@ export function hostsPage(ui: Host, api: Remote<SshApi>, client: SshClient) {
 						loaded={state !== null}
 						text={text}
 						head={
-							<PageTopRow start className="ssh-row">
-								<IconButton size="sm" label={text.hideHosts} icon={<PanelLeftClose size={15} />} onClick={toggleHosts} />
+							<PageTopRow className="ssh-row">
 								<Text size="label" weight="medium" className="ssh-keep">
 									{text.hostsTitle}
 								</Text>
-								<Text size="detail" tone="faint" numeric className="ssh-ellipsis">
-									{text.deskSummary(hosts.length, live)}
-								</Text>
+								{hosts.length > 0 && (
+									<Text size="detail" tone="faint" numeric className="ssh-ellipsis">
+										{text.deskSummary(hosts.length, live)}
+									</Text>
+								)}
 								<span className="ssh-spacer" />
-								<IconButton size="sm" label={text.manageGroups} icon={<FolderTree size={14} />} onClick={() => setDialog("groups")} />
+								<AddMenu text={text} onNew={() => setEditing("new")} onImport={() => setDialog("import")} onGroups={() => setDialog("groups")} />
 							</PageTopRow>
+						}
+						handle={
+							<ResizeHandle
+								edge="end"
+								width={hostsWidth}
+								min={HOSTS_WIDTH.min}
+								max={HOSTS_WIDTH.max}
+								onResize={(next) => setHostsWidth(Math.round(next))}
+								onReset={() => setHostsWidth(HOSTS_WIDTH.initial)}
+								label={text.resizeHosts}
+							/>
 						}
 						onConnect={connect}
 						onEdit={setEditing}
 						onFavorite={(host) => void api.setFavorite(host.id, !host.favorite).catch(report)}
 						onMove={(host, groupId) => void api.moveHosts([host.id], groupId).catch(report)}
 						onDelete={remove}
-						onNew={() => setEditing("new")}
-						onImport={() => setDialog("import")}
 					/>
 				)}
 				<section className="ssh-terminals" aria-label={text.terminals}>
-					<PageTopRow start={collapsed} className="ssh-row">
-						{collapsed && <IconButton size="sm" label={text.showHosts} icon={<PanelLeftOpen size={15} />} onClick={toggleHosts} />}
+					<PageTopRow className="ssh-row">
 						<div className="ssh-tabs" role="tablist" aria-label={text.terminals}>
 							{connections.map((entry) => (
 								<div key={entry.tab} className="ssh-tab" data-active={entry.tab === current?.tab || undefined}>
@@ -191,33 +249,94 @@ export function hostsPage(ui: Host, api: Remote<SshApi>, client: SshClient) {
 								</div>
 							))}
 						</div>
-						<label className="ssh-monitor">
-							<Text size="detail" tone="muted">
-								{text.monitoring}
-							</Text>
-							<Toggle checked={state?.monitoring ?? false} onChange={(on) => void api.setMonitoring(on).catch(report)} ariaLabel={text.monitoring} />
-						</label>
-						<IconButton size="sm" label={text.batch} icon={<SquareTerminal size={14} />} onClick={() => setDialog("batch")} data-ssh-batch="" />
+						{current && (
+							<>
+								<IconButton size="sm" label={text.find} icon={<Search size={14} />} onClick={() => panes.current.get(current.tab)?.find()} />
+								<IconButton
+									size="sm"
+									label={text.askAi}
+									icon={<MessageSquarePlus size={14} />}
+									onClick={() => panes.current.get(current.tab)?.ask()}
+									data-ssh-ask=""
+								/>
+								<IconButton
+									size="sm"
+									label={text.sftp}
+									icon={<FolderOpen size={14} />}
+									active={sftpTabs.has(current.tab)}
+									disabled={current.state !== "connected"}
+									onClick={() => setSftp(current.tab, !sftpTabs.has(current.tab))}
+								/>
+								<span className="ssh-divider" />
+								{/* 开着资源占用时右上角挂个小绿点：不打开卡片也看得出在不在读数。 */}
+								<span className="ssh-pip" data-on={monitoring || undefined}>
+									<IconButton size="sm" label={text.monitoring} icon={<Activity size={14} />} menu={card.open} onClick={card.toggle} data-ssh-card-open="" />
+								</span>
+								{card.open && (
+									<Popover
+										anchor={card.anchor}
+										onClose={card.close}
+										placement="bottom"
+										align="end"
+										width="panel"
+										role="dialog"
+										label={text.monitoring}
+										surface="panel"
+									>
+										<ConnectionCard
+											connection={current}
+											monitoring={monitoring}
+											text={text}
+											onMonitoring={(on) => void api.setMonitoring(on).catch(report)}
+											onDisconnect={() => void api.disconnect(current.tab).catch(report)}
+											onReconnect={() => void api.connect(current.tab, current.serverId).catch(report)}
+										/>
+									</Popover>
+								)}
+								<IconButton size="sm" label={text.batch} icon={<SquareTerminal size={14} />} onClick={() => setDialog("batch")} data-ssh-batch="" />
+							</>
+						)}
 					</PageTopRow>
 					{current ? (
 						connections.map((entry) => (
 							<div key={entry.tab} className="ssh-tab-body" hidden={entry.tab !== current.tab}>
 								<ConnectionPane
+									ref={(controls) => {
+										if (controls) panes.current.set(entry.tab, controls);
+										return () => void panes.current.delete(entry.tab);
+									}}
 									ui={ui}
 									api={api}
 									client={client}
 									connection={entry}
-									monitoring={state?.monitoring ?? false}
 									shown={entry.tab === current.tab}
+									sftp={sftpTabs.has(entry.tab)}
 									text={text}
+									onSftp={(open) => setSftp(entry.tab, open)}
 									onReconnect={() => void api.connect(entry.tab, entry.serverId).catch(report)}
 									onAsk={ask}
 								/>
 							</div>
 						))
+					) : state !== null && hosts.length === 0 ? (
+						<div className="ssh-start">
+							<Server size={26} className="ssh-faint" />
+							<Text size="title">{text.firstHost}</Text>
+							<Text as="p" size="detail" tone="faint">
+								{text.firstHostHint}
+							</Text>
+							<div className="ssh-start-actions">
+								<Button size="sm" variant="primary" icon={<Plus size={14} />} onClick={() => setEditing("new")} data-ssh-new-host="">
+									{text.newHost}
+								</Button>
+								<Button size="sm" icon={<FileSpreadsheet size={14} />} onClick={() => setDialog("import")} data-ssh-import="">
+									{text.importExcel}
+								</Button>
+							</div>
+						</div>
 					) : (
 						<PanelEmpty icon={Terminal} title={text.noTerminals}>
-							{hosts.length > 0 ? text.noTerminalsHint : text.noHostsHint}
+							{text.noTerminalsHint}
 						</PanelEmpty>
 					)}
 				</section>
@@ -240,13 +359,12 @@ function HostColumn({
 	loaded,
 	text,
 	head,
+	handle,
 	onConnect,
 	onEdit,
 	onFavorite,
 	onMove,
 	onDelete,
-	onNew,
-	onImport,
 }: {
 	hosts: HostProfile[];
 	groups: HostGroup[];
@@ -255,17 +373,25 @@ function HostColumn({
 	text: Messages;
 	/** 这一栏顶上那一行（`PageTopRow`）。 */
 	head: ReactNode;
+	/** 右边拖宽度的拖把（`ResizeHandle`），贴着这一栏的右边。 */
+	handle: ReactNode;
 	onConnect(host: HostProfile, fresh?: boolean): void;
 	onEdit(host: HostProfile): void;
 	onFavorite(host: HostProfile): void;
 	onMove(host: HostProfile, groupId: string | null): void;
 	onDelete(host: HostProfile): void;
-	onNew(): void;
-	onImport(): void;
 }) {
 	const [query, setQuery] = useState("");
 	const [filter, setFilter] = useState<Filter>("all");
-	const connected = useMemo(() => new Set(connections.filter((entry) => entry.state === "connected").map((entry) => entry.serverId)), [connections]);
+	// 主机的点：有一条连着就是绿的，没有连着的但有一条在连（含等着核对指纹）就是黄的，别的不画点。
+	const states = useMemo(() => {
+		const map = new Map<string, "connected" | "connecting">();
+		for (const entry of connections) {
+			if (entry.state === "connected") map.set(entry.serverId, "connected");
+			else if ((entry.state === "connecting" || entry.state === "hostkey") && !map.has(entry.serverId)) map.set(entry.serverId, "connecting");
+		}
+		return map;
+	}, [connections]);
 	// 按分组排开（分组按名字，未分组在最后），组里收藏的在前、再按最近连接。
 	const sections = useMemo(() => {
 		const recent = (host: HostProfile) => Date.parse(host.lastConnectedAt ?? "") || 0;
@@ -297,37 +423,21 @@ function HostColumn({
 						if (first) onConnect(first);
 					}}
 				/>
-				<div className="ssh-chips" role="group" aria-label={text.groups}>
-					<Button size="xs" variant="subtle" pressed={filter === "all"} onClick={() => setFilter("all")}>
-						{text.allGroups}
-					</Button>
-					<Button
-						size="xs"
-						variant="subtle"
-						pressed={filter === "favorites"}
-						icon={<Star size={12} fill={filter === "favorites" ? "currentColor" : "none"} />}
-						onClick={() => setFilter("favorites")}
-					>
-						{text.favoritesOnly}
-					</Button>
-					{groups.map((entry) => (
-						<Button key={entry.id} size="xs" variant="subtle" pressed={filter === entry.id} onClick={() => setFilter(entry.id)}>
-							{entry.name}
-						</Button>
+				<div className="ssh-filters" role="group" aria-label={text.groups}>
+					{[{ id: "all", name: text.allGroups }, { id: "favorites", name: text.favoritesOnly }, ...groups].map((entry) => (
+						<button key={entry.id} type="button" className="ssh-filter" aria-pressed={filter === entry.id} onClick={() => setFilter(entry.id)}>
+							<Text size="detail" tone={filter === entry.id ? "default" : "faint"} weight={filter === entry.id ? "medium" : "normal"}>
+								{entry.name}
+							</Text>
+						</button>
 					))}
 				</div>
 			</div>
 			<Scroller className="ssh-host-scroll" contentClassName="ssh-host-list">
 				{loaded && hosts.length === 0 ? (
-					<div className="ssh-host-none">
-						<Server size={20} className="ssh-faint" />
-						<Text as="p" tone="muted">
-							{text.noHosts}
-						</Text>
-						<Text as="p" size="detail" tone="faint">
-							{text.noHostsHint}
-						</Text>
-					</div>
+					<Text as="p" size="detail" tone="faint" className="ssh-host-none">
+						{text.noHosts}
+					</Text>
 				) : loaded && sections.length === 0 ? (
 					<Text as="p" size="detail" tone="faint" className="ssh-host-none">
 						{text.noMatch}
@@ -349,7 +459,7 @@ function HostColumn({
 										onClick={() => onConnect(host)}
 										data-ssh-connect={host.id}
 									>
-										<span className="ssh-dot" data-state={connected.has(host.id) ? "connected" : "idle"} />
+										<span className="ssh-dot" data-state={states.get(host.id) ?? "idle"} />
 										<span className="ssh-host-text">
 											<span className="ssh-host-title">
 												<Text weight="medium" className="ssh-ellipsis">
@@ -378,15 +488,38 @@ function HostColumn({
 					))
 				)}
 			</Scroller>
-			<div className="ssh-host-foot">
-				<Button size="sm" variant="primary" icon={<Plus size={14} />} onClick={onNew} data-ssh-new-host="">
-					{text.newHost}
-				</Button>
-				<Button size="sm" icon={<FileSpreadsheet size={14} />} onClick={onImport} data-ssh-import="">
-					{text.import}
-				</Button>
-			</div>
+			{handle}
 		</div>
+	);
+}
+
+/** 主机库头上的「+」：新建主机、从 Excel 导入、管理分组。 */
+function AddMenu({ text, onNew, onImport, onGroups }: { text: Messages; onNew(): void; onImport(): void; onGroups(): void }) {
+	const menu = usePopover();
+	const pick = (run: () => void) => () => {
+		menu.close();
+		run();
+	};
+	return (
+		<>
+			<IconButton size="sm" label={text.addHost} icon={<Plus size={15} />} menu={menu.open} onClick={menu.toggle} data-ssh-add="" />
+			{menu.open && (
+				<Popover anchor={menu.anchor} onClose={menu.close} placement="bottom" align="end" width="default">
+					<MenuBody insetIcons>
+						<MenuItem icon={<Server size={14} />} onClick={pick(onNew)}>
+							{text.newHost}
+						</MenuItem>
+						<MenuItem icon={<FileSpreadsheet size={14} />} onClick={pick(onImport)}>
+							{text.importExcel}
+						</MenuItem>
+						<MenuSeparator />
+						<MenuItem icon={<FolderTree size={14} />} onClick={pick(onGroups)}>
+							{text.manageGroups}
+						</MenuItem>
+					</MenuBody>
+				</Popover>
+			)}
+		</>
 	);
 }
 

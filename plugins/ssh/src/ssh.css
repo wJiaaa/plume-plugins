@@ -35,6 +35,11 @@
 	color: var(--plume-ink-faint);
 }
 
+.ssh-muted {
+	flex-shrink: 0;
+	color: var(--plume-ink-muted);
+}
+
 .ssh-accent {
 	flex-shrink: 0;
 	color: var(--plume-accent);
@@ -86,37 +91,97 @@
 	flex: 1 1 0%;
 	flex-direction: column;
 	min-height: 0;
-	container-type: inline-size;
 }
 
-.ssh-status {
+/* —— 连接卡片：标签行上「资源占用」弹出来的，见 ConnectionPane.tsx 的 ConnectionCard —— */
+
+.ssh-card {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	padding: 14px 14px 10px;
+}
+
+.ssh-card-head {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	min-width: 0;
+}
+
+.ssh-card-head > .ssh-dot {
+	margin-top: 7px;
+}
+
+.ssh-card-who {
+	display: flex;
+	flex: 1 1 0%;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.ssh-card-switch {
 	display: flex;
 	flex-shrink: 0;
 	align-items: center;
+	gap: 6px;
+}
+
+.ssh-meters {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.ssh-meter-label {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+}
+
+.ssh-meter[data-high] .ssh-meter-value {
+	color: var(--plume-warning);
+}
+
+.ssh-meter-track {
+	display: block;
+	height: 4px;
+	margin-top: 5px;
+	overflow: hidden;
+	border-radius: var(--plume-radius-item);
+	background: var(--plume-elevated);
+}
+
+.ssh-meter-track > span {
+	display: block;
+	height: 100%;
+	border-radius: var(--plume-radius-item);
+	background: var(--plume-ink-muted);
+}
+
+.ssh-meter[data-high] .ssh-meter-track > span {
+	background: var(--plume-warning);
+}
+
+.ssh-net {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+	padding-top: 12px;
+	border-top: 1px solid var(--plume-line-soft);
+}
+
+.ssh-net-rate {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.ssh-card-foot {
+	display: flex;
+	align-items: center;
 	gap: 8px;
 	min-width: 0;
-	padding: 4px 8px 4px 12px;
-	border-bottom: 1px solid var(--plume-line-soft);
-}
-
-/* 窄的时候先让地址缩、再藏起来，名字留着：主机库和助手那一列都挤着终端。 */
-.ssh-status-name {
-	flex-shrink: 0;
-	max-width: 45%;
-}
-
-@container (max-width: 420px) {
-	.ssh-status-address {
-		display: none;
-	}
-}
-
-.ssh-stats {
-	display: flex;
-	gap: 10px;
-	min-width: 0;
-	overflow: hidden;
-	white-space: nowrap;
 }
 
 .ssh-body {
@@ -228,11 +293,13 @@
 
 /* —— SFTP —— */
 
+/* 不裁切溢出：左边拖宽度的拖把（ResizeHandle）一大半悬在终端上。终端窄时最多占一半多，不把终端挤没。 */
 .ssh-sftp {
+	position: relative;
 	display: flex;
 	flex: 0 0 auto;
 	flex-direction: column;
-	width: min(320px, 45%);
+	width: min(var(--ssh-sftp-width), 60%);
 	min-width: 220px;
 	min-height: 0;
 	border-left: 1px solid var(--plume-line-soft);
@@ -347,11 +414,13 @@
 	gap: 6px;
 }
 
+/* 不裁切溢出：右边拖宽度的拖把（ResizeHandle）一大半悬在终端那一栏上。 */
 .ssh-host-column {
+	position: relative;
 	display: flex;
 	flex-shrink: 0;
 	flex-direction: column;
-	width: calc(224px + var(--plume-top-row-inset, 0px));
+	width: var(--ssh-hosts-width);
 	min-height: 0;
 	border-right: 1px solid var(--plume-line-soft);
 }
@@ -363,11 +432,24 @@
 	padding: 2px 10px 8px;
 }
 
-.ssh-chips {
+/* 筛选是一行纯文字：选中的用正文色、加粗，别的淡。分组多了横着滑。 */
+.ssh-filters {
 	display: flex;
-	flex-wrap: wrap;
 	align-items: center;
-	gap: 4px;
+	gap: 14px;
+	padding: 0 4px;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+
+.ssh-filter {
+	flex-shrink: 0;
+	padding: 2px 0;
+	white-space: nowrap;
+}
+
+.ssh-filter[aria-pressed="false"]:hover > * {
+	color: var(--plume-ink-muted);
 }
 
 .ssh-host-scroll {
@@ -403,6 +485,16 @@
 	text-align: left;
 }
 
+/* 点对齐名字那一行；没连着的主机不画点，只留位置，名字仍然对齐。 */
+.ssh-host-open > .ssh-dot {
+	align-self: flex-start;
+	margin-top: 7px;
+}
+
+.ssh-host-open > .ssh-dot[data-state="idle"] {
+	background: transparent;
+}
+
 .ssh-host-text {
 	display: flex;
 	flex: 1 1 0%;
@@ -418,24 +510,7 @@
 }
 
 .ssh-host-none {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 6px;
-	padding: 32px 12px;
-	text-align: center;
-}
-
-.ssh-host-foot {
-	display: flex;
-	flex-shrink: 0;
-	gap: 6px;
-	padding: 8px 10px;
-	border-top: 1px solid var(--plume-line-soft);
-}
-
-.ssh-host-foot > * {
-	flex: 1 1 0%;
+	padding: 16px 8px;
 }
 
 .ssh-terminals {
@@ -506,11 +581,64 @@
 	gap: 6px;
 }
 
+.ssh-divider {
+	flex-shrink: 0;
+	width: 1px;
+	height: 16px;
+	margin: 0 2px;
+	background: var(--plume-line-soft);
+}
+
+/* 资源占用开着时按钮右上角的小绿点。 */
+.ssh-pip {
+	position: relative;
+	display: flex;
+	flex-shrink: 0;
+}
+
+.ssh-pip[data-on]::after {
+	content: "";
+	position: absolute;
+	top: 4px;
+	right: 4px;
+	width: 5px;
+	height: 5px;
+	clip-path: circle(50%);
+	background: var(--plume-ok);
+	pointer-events: none;
+}
+
+/* 一台主机都没有时终端那一栏：说一次怎么开始，直接给按钮。 */
+.ssh-start {
+	display: flex;
+	flex: 1 1 0%;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 24px;
+	text-align: center;
+}
+
+.ssh-start > svg {
+	margin-bottom: 6px;
+}
+
+.ssh-start-actions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 8px;
+	margin-top: 12px;
+}
+
+/* 不裁切溢出：左边拖宽度的拖把（ResizeHandle）一大半悬在终端那一栏上。 */
 .ssh-assistant {
+	position: relative;
 	display: flex;
 	flex-shrink: 0;
 	flex-direction: column;
-	width: clamp(300px, 30%, 420px);
+	width: var(--ssh-assistant-width);
 	min-height: 0;
 	border-left: 1px solid var(--plume-line-soft);
 }
