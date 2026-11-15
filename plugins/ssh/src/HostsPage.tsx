@@ -135,7 +135,7 @@ export function hostsPage(ui: Host, api: Remote<SshApi>, client: SshClient) {
 				return !was;
 			});
 		};
-		const ask = (content: string) => void api.ask(content).catch(report);
+		const ask = (content: string) => void api.ask(content, undefined).catch(report);
 
 		return (
 			<div className="ssh-desk" data-ssh-hosts="">

@@ -288,7 +288,7 @@ export interface SshApi {
 	writeTemplate(): Promise<string>;
 
 	/** 对运维助手说一句，等这一轮结束；还没有这一段时照 `choice`（人在第一句之前选的模型和档位）开一段。 */
-	ask(message: string | AssistantMessage, choice?: SessionChoice): Promise<void>;
+	ask(message: string | AssistantMessage, choice: SessionChoice | undefined): Promise<void>;
 	stopAssistant(): void;
 	/** 「新开一段」：这一段留在历史里，下一句话开新的一段。 */
 	newAssistant(): Promise<void>;
