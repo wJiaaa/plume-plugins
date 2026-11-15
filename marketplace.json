@@ -75,10 +75,6 @@
       "source": "./plugins/summary"
     },
     {
-      "name": "terminal",
-      "source": "./plugins/terminal"
-    },
-    {
       "name": "usage",
       "source": "./plugins/usage"
     },

@@ -7,7 +7,7 @@ Plume 的插件市场是一个静态目录：这个仓库的 CI（`.github/workf
 收录清单，每条一个插件：
 
 ```json
-{ "name": "terminal", "source": "./plugins/terminal" }
+{ "name": "ssh", "source": "./plugins/ssh" }
 ```
 
 - `name` 是插件目录名（也是安装目录名、`plume-plugin://` 的主机名），只用小写字母、数字和连字符；三个分组里不能重名。
@@ -43,16 +43,16 @@ plugins/<name>/<version>/<平台>-<架构>.tgz   装下的文件
 
 ```json
 {
-  "name": "terminal",
-  "displayName": "终端",
+  "name": "ssh",
+  "displayName": "SSH",
   "description": "…",
   "version": "0.1.0",
   "kind": "plugin",
   "category": "工具",
-  "icon": "assets/terminal/icon.png",
-  "readme": "assets/terminal/README.md",
+  "icon": "assets/ssh/icon.png",
+  "readme": "assets/ssh/README.md",
   "builds": {
-    "darwin-arm64": { "path": "plugins/terminal/0.1.0/darwin-arm64.tgz", "sha256": "…", "size": 2712345, "fingerprint": "…" }
+    "darwin-arm64": { "path": "plugins/ssh/0.1.0/darwin-arm64.tgz", "sha256": "…", "size": 2712345, "fingerprint": "…" }
   }
 }
 ```
