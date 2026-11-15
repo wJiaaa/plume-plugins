@@ -91,7 +91,7 @@ function fixture() {
 	const layers = new Map<string, unknown>();
 	const observers: Array<(observation: SessionObservation) => void> = [];
 	const posted: Posted[] = [];
-	/** 给了就让寄信抛这句错，和本体拒寄（往来链太长）时一样。 */
+	/** 给了就让寄信抛这句错，和本体拒寄（对方刚好不在了）时一样。 */
 	const refuse: { reason?: string } = {};
 	let letters = 0;
 	const post = (from: string, to: string, input: LetterInput): Posted => {

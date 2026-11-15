@@ -1,7 +1,7 @@
 /**
  * 会话之间那封信发不发得出去：太长、发得太快、刚发过一模一样的拦下来。不查权限宽窄
- * （Plume 的权限档是全局的，所有会话一样宽）。往来链太长、太绕由本体拦（`ToolRun.letter` 抛错）：只有它看得见
- * 哪封信叫起了哪一轮，包括它代答的那几封。
+ * （Plume 的权限档是全局的，所有会话一样宽）。几个会话原地来回由本体管（被信接连叫起超过十轮、人没开口时不再叫醒）：
+ * 只有它看得见哪封信叫起了哪一轮。
  *
  * 全是确定的判断——多长、三十秒内是不是同一句话。「两个会话是不是在互相推诿」这种猜测不在这里。
  * 拦下来时给的理由要能让模型据以改做法，文案在 `prompt.ts`。
@@ -35,7 +35,7 @@ export class PeerPacer {
 		this.now = now;
 	}
 
-	/** 这封能不能发；不记账，真寄出去了再 `spend`：本体拒寄（往来链太长）的不扣令牌、不算发过。 */
+	/** 这封能不能发；不记账，真寄出去了再 `spend`：本体拒寄（对方刚好不在了这类，`ToolRun.letter` 抛错）的不扣令牌、不算发过。 */
 	check(from: string, to: string, text: string): PaceRefusal | null {
 		if (text.length > PEER_MAX_CHARS) return "too-long";
 		const now = this.now();
