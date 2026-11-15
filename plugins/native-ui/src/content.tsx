@@ -1,45 +1,33 @@
-import { Card, Scroller, Text, useI18n } from "@plume/ui";
+import type { UiContext } from "@plume/contract/ui";
+import { Text, useI18n } from "@plume/ui";
 import type { ReactNode } from "react";
-import { tableData, type TableData } from "./data.ts";
+import { tableData } from "./data.ts";
 import { text } from "./expression.ts";
 import { MESSAGES } from "./messages.ts";
 
+/**
+ * 一张卡片，或者卡片里的一节。不用工具卡片的 `Card`：那是标题行加分隔线、副标题挤在标题右边一行的外框，
+ * 界面块是回复的一部分，外层一圈淡框、标题压在副标题上面；卡片里再套卡片只铺一层底，不再画框。
+ */
 export function NativeCard({ title, subtitle, nested, children }: { title?: string; subtitle?: string; nested: boolean; children: ReactNode }) {
-	if (nested)
-		return (
-			<section className="native-ui-section">
-				{title && (
-					<Text size="label" weight="semibold">
-						{title}
-					</Text>
-				)}
-				{subtitle && (
-					<Text size="caption" tone="muted">
-						{subtitle}
-					</Text>
-				)}
-				{children}
-			</section>
-		);
 	return (
-		<Card
-			title={
-				title ? (
-					<Text size="label" weight="semibold">
-						{title}
-					</Text>
-				) : null
-			}
-			subtitle={
-				subtitle ? (
-					<Text size="caption" tone="muted">
-						{subtitle}
-					</Text>
-				) : undefined
-			}
-		>
-			<div className="native-ui-stack native-ui-card-body">{children}</div>
-		</Card>
+		<section className="native-ui-card" data-nested={nested || undefined}>
+			{(title || subtitle) && (
+				<header className="native-ui-card-head">
+					{title && (
+						<Text size="label" weight="semibold">
+							{title}
+						</Text>
+					)}
+					{subtitle && (
+						<Text size="caption" tone="muted">
+							{subtitle}
+						</Text>
+					)}
+				</header>
+			)}
+			{children}
+		</section>
 	);
 }
 
@@ -100,48 +88,39 @@ export function Progress({ value, max = 100, label, tone = "info" }: { value: nu
 	);
 }
 
-export function DataTable({ table }: { table: TableData }) {
+let host: UiContext | undefined;
+/** 界面入口启用时交进来：表格交给产品的正文渲染，和回复里的 Markdown 表格同一个样子。 */
+export function setHost(ui: UiContext) {
+	host = ui;
+}
+
+/** 单元格是纯文字，不是 Markdown：ASCII 标点全部转义，换行并成空格，`|` 不会切开列。 */
+function cell(value: unknown): string {
+	return text(value)
+		.replace(/\s*\n\s*/g, " ")
+		.replace(/[!-/:-@[-`{-~]/g, "\\$&");
+}
+
+export function Table({ props }: { props: Record<string, unknown> }) {
 	const messages = MESSAGES[useI18n().resolvedLocale];
+	const table = tableData(props);
+	if (!table.header.length)
+		return (
+			<Text size="label" tone="muted" role="status">
+				{messages.empty}
+			</Text>
+		);
+	const line = (cells: string[]) => `| ${cells.join(" | ")} |`;
+	const markdown = [
+		line(table.header.map(cell)),
+		line(table.numeric.map((numeric) => (numeric ? "---:" : "---"))),
+		...table.cells.map((row) => line(row.map(cell))),
+	].join("\n");
+	const Markdown = host!.Markdown;
 	return (
 		<div className="native-ui-table">
-			<Scroller overscroll="auto" top="none" bottom="none">
-				<table>
-					{table.header.length > 0 && (
-						<thead>
-							<tr>
-								{table.header.map((header, at) => (
-									<th key={at} scope="col" data-numeric={table.numeric[at]}>
-										<Text size="label" weight="medium">
-											{header}
-										</Text>
-									</th>
-								))}
-							</tr>
-						</thead>
-					)}
-					<tbody>
-						{table.cells.map((row, at) => (
-							<tr key={at}>
-								{row.map((value, column) => (
-									<td key={column} data-numeric={table.numeric[column]}>
-										<Text size="label" numeric={table.numeric[column]}>
-											{text(value)}
-										</Text>
-									</td>
-								))}
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</Scroller>
-			{!table.cells.length && (
-				<Text size="label" tone="muted" role="status">
-					{messages.empty}
-				</Text>
-			)}
+			{/* apply 先于 codeBlock 注册交进 host，块画出来时一定在。 */}
+			<Markdown text={markdown} />
 		</div>
 	);
-}
-export function Table({ props }: { props: Record<string, unknown> }) {
-	return <DataTable table={tableData(props)} />;
 }

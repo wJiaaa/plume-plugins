@@ -1,9 +1,9 @@
-import type { CodeBlockProps, UiPlugin } from "@plume/contract/ui";
+import type { CodeBlockProps, UiContext, UiPlugin } from "@plume/contract/ui";
 import { Button, TabStrip, Text, useI18n } from "@plume/ui";
-import { BookOpen } from "@plume/ui/icons";
+import { BookOpen, Check } from "@plume/ui/icons";
 import { Fragment, useMemo, useRef, useState, type CSSProperties, type ReactNode, type SyntheticEvent } from "react";
 import { Chart } from "./Chart.tsx";
-import { Callout, NativeCard, Progress, Stat, Table } from "./content.tsx";
+import { Callout, NativeCard, Progress, setHost, Stat, Table } from "./content.tsx";
 import { copyText } from "./copy.ts";
 import { Field } from "./controls.tsx";
 import { actionOf, prepareBlock, resolveBlock, type Block, type Drawing, type Values } from "./language.ts";
@@ -32,13 +32,16 @@ function Interface({ block, code, sessionId, complete, streaming, send, fallback
 		// 同步保存：换会话或复制可能紧接着这次事件发生，发送完成后即使已卸载也要记回执。
 		if (complete && !streaming) remember(key, next);
 	};
-	const [status, setStatus] = useState<{ pending?: string; failed?: string; local?: boolean }>({});
+	const [status, setStatus] = useState<{ pending?: string; failed?: string }>({});
 	const submission = useRef(createSubmission());
 	const drawingRoot = useRef<HTMLFieldSetElement>(null);
 	const layer = useRef<HTMLDivElement>(null);
 	useArrivals(drawingRoot, layer, streaming);
 	const values = { ...block.initial, ...own.values };
-	const disabled = !complete || streaming || !send || submission.current.busy();
+	const writing = !complete || streaming;
+	// 写的时候整块 inert、照常的样子，不把每个控件画成禁用：选项还在长，只是还不能点。
+	const locked = !send || submission.current.busy();
+	const disabled = writing || locked;
 	const change = (next: Values) => {
 		if (!disabled) {
 			save({ ...current.current, values: { ...current.current.values, ...next } });
@@ -75,11 +78,11 @@ function Interface({ block, code, sessionId, complete, streaming, send, fallback
 			const action = actionOf(block, item.node, values, item.locals);
 			if (!action.payload) {
 				save({ ...current.current, values: action.values });
-				setStatus({ local: true });
+				setStatus({});
 				return;
 			}
 			if (!send) return;
-			const request = submission.current.start(action.payload, () => send(action.payload, event));
+			const request = submission.current.start(action.payload, () => send(action.payload, event, action.words));
 			if (!request) return;
 			setStatus({ pending: action.payload });
 			void request.then(
@@ -237,7 +240,7 @@ function Interface({ block, code, sessionId, complete, streaming, send, fallback
 					case "Choice":
 					case "Toggle":
 					case "Slider":
-						content = <Field kind={node.name} props={props} values={values} disabled={disabled} change={change} />;
+						content = <Field kind={node.name} props={props} values={values} disabled={!writing && locked} change={change} />;
 						break;
 					case "Button": {
 						let action: ReturnType<typeof actionOf> | undefined;
@@ -249,39 +252,23 @@ function Interface({ block, code, sessionId, complete, streaming, send, fallback
 						const payload = action?.payload ?? "";
 						const remembered = own.sent?.button === item.path && JSON.stringify(own.sent.values) === JSON.stringify(values) ? own.sent : undefined;
 						const sent = Boolean(payload) && (submission.current.sent(payload) || Boolean(remembered));
-						const preview = remembered?.payload ?? action?.payload;
-						content = (
-							<div className="native-ui-action" data-native-ui-action="">
-								{sent ? (
-									<Text size="label" tone="muted" role="status" className="native-ui-sent" data-native-ui-sent="">
-										{messages.sent}
-									</Text>
-								) : (
-									<Button
-										variant={props.primary ? "primary" : "ghost"}
-										disabled={disabled || props.disabled === true || !action}
-										loading={Boolean(payload) && status.pending === payload}
-										data-native-ui-send={Boolean(payload)}
-										onClick={(event) => press(item, event)}
-									>
-										{words}
-									</Button>
-								)}
-								{preview ? (
-									<div className="native-ui-send-preview" data-native-ui-preview="">
-										<Text size="caption" tone="muted">
-											{sent ? messages.sentPreview : messages.preview}
-										</Text>
-										<Text as="div" size="caption" mono className="native-ui-payload">
-											{preview}
-										</Text>
-									</div>
-								) : (
-									<Text size="caption" tone="muted">
-										{action ? messages.local : messages.invalid}
-									</Text>
-								)}
-							</div>
+						// 发过的按钮原地换成状态，高度和按钮一样，块不跳；改了值就变回按钮。
+						content = sent ? (
+							<Text size="label" tone="muted" role="status" className="native-ui-sent" data-native-ui-sent="">
+								<Check size={13} strokeWidth={2} aria-hidden />
+								{messages.sent}
+							</Text>
+						) : (
+							<Button
+								variant={props.primary ? "primary" : "ghost"}
+								className="native-ui-button"
+								disabled={(!writing && locked) || props.disabled === true || !action}
+								loading={Boolean(payload) && status.pending === payload}
+								data-native-ui-send={Boolean(payload)}
+								onClick={(event) => press(item, event)}
+							>
+								{words}
+							</Button>
 						);
 						break;
 					}
@@ -296,37 +283,13 @@ function Interface({ block, code, sessionId, complete, streaming, send, fallback
 	return (
 		<Growing active={streaming}>
 			<div className="native-ui-frame">
-				<div className="native-ui" data-native-ui={complete && !streaming ? "ready" : "writing"} aria-busy={streaming || Boolean(status.pending)}>
-					{!complete || streaming ? (
-						<Text size="caption" tone="muted">
-							{messages.writing}
-						</Text>
-					) : !send ? (
-						<Text size="caption" tone="muted">
-							{messages.readOnly}
-						</Text>
-					) : null}
-					<fieldset ref={drawingRoot} disabled={disabled} className="native-ui-body">
+				<div className="native-ui" data-native-ui={writing ? "writing" : "ready"} aria-busy={streaming || Boolean(status.pending)}>
+					<fieldset ref={drawingRoot} disabled={!writing && locked} inert={writing || undefined} className="native-ui-body">
 						{render(drawing)}
 					</fieldset>
 					{status.failed !== undefined && (
 						<Text size="label" tone="danger" role="alert" data-native-ui-error="">
 							{messages.failed}
-						</Text>
-					)}
-					{status.local && (
-						<Text size="caption" tone="muted" role="status">
-							{messages.updated}
-						</Text>
-					)}
-					{own.sent && (
-						<Text as="div" size="caption" tone="muted" role="status" data-native-ui-receipt="">
-							<Text size="caption" weight="medium">
-								{messages.sent}
-							</Text>
-							<Text as="div" size="caption" mono className="native-ui-payload">
-								{own.sent.payload}
-							</Text>
 						</Text>
 					)}
 				</div>
@@ -338,7 +301,8 @@ function Interface({ block, code, sessionId, complete, streaming, send, fallback
 
 export default {
 	name: "plume.native-ui",
-	apply(ui) {
+	apply(ui: UiContext) {
+		setHost(ui);
 		const id = "plume.native-ui";
 		let style = document.querySelector<HTMLStyleElement>(`style[data-plugin-style="${id}"]`);
 		if (!style) {

@@ -302,7 +302,7 @@ export function actionOf(block: Block, node: UiElement, values: Values, locals: 
 	const payload = words ? spoken(words, next) : "";
 	return { values: next, words, payload };
 }
-/** 可见预览和实际提交用同一字符串，用户值不是隐藏的旁路协议。 */
+/** 模型收到的全文：按钮的话连同全部字段值。气泡里只显示那句话（`displayText`）。 */
 export function spoken(words: string, values: Values): string {
 	return Object.keys(values).length ? `${words}\n\n<interface-values>${JSON.stringify(values)}</interface-values>` : words;
 }

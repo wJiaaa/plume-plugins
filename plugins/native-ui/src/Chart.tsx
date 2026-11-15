@@ -1,7 +1,6 @@
 import { Text, useI18n } from "@plume/ui";
 import { useLayoutEffect, useState, type PointerEvent } from "react";
 import { chartData, pieSlices, ticks } from "./data.ts";
-import { DataTable } from "./content.tsx";
 import { MESSAGES } from "./messages.ts";
 
 const HEIGHT: Record<string, number> = { sm: 140, md: 200, lg: 280 };
@@ -48,7 +47,7 @@ export function Chart({ props }: { props: Record<string, unknown> }) {
 	const marks = ticks(Math.min(0, ...all), Math.max(0, ...all));
 	const low = marks[0]!;
 	const high = marks.at(-1)!;
-	const gutter = Math.min(width * 0.35, Math.max(...marks.map((value) => short(value).length)) * 7 + 14);
+	const gutter = Math.min(width * 0.35, Math.max(...marks.map((value) => `${short(value)}${unit}`.length)) * 7 + 14);
 	const plot = { left: gutter, right: Math.max(gutter + 1, width - 10), top: 12, bottom: height - 25 };
 	const span = plot.right - plot.left;
 	const step = span / values.length;
@@ -110,7 +109,12 @@ export function Chart({ props }: { props: Record<string, unknown> }) {
 					<div ref={box} className="native-ui-chart-plot" style={{ height }}>
 						<Text size="caption" as="div">
 							{width > 0 && (
-								<svg width={width} height={height} role="img" aria-label={`${messages.chart}: ${keys.join(", ")}${unit ? ` (${unit})` : ""}`}>
+								<svg
+									width={width}
+									height={height}
+									role="img"
+									aria-label={`${messages.chart}: ${values.map((row, at) => `${labels[at]} ${row.map((value, key) => `${keys[key]} ${value}${unit}`).join(", ")}`).join("; ")}`}
+								>
 									{marks.map((value, at) => (
 										<g key={at}>
 											<line
@@ -122,7 +126,7 @@ export function Chart({ props }: { props: Record<string, unknown> }) {
 												strokeDasharray={value === 0 ? undefined : "2 3"}
 											/>
 											<text x={plot.left - 6} y={yAt(value)} textAnchor="end" dominantBaseline="central">
-												{short(value)}
+												{`${short(value)}${unit}`}
 											</text>
 										</g>
 									))}
@@ -130,7 +134,7 @@ export function Chart({ props }: { props: Record<string, unknown> }) {
 										index % every === 0 ? (
 											<text key={index} x={xAt(index)} y={height - 6} textAnchor="middle">
 												<title>{label}</title>
-												{label.length > 10 ? label.slice(0, 10) : label}
+												{label.length > 10 ? `${label.slice(0, 9)}…` : label}
 											</text>
 										) : null,
 									)}
@@ -197,43 +201,35 @@ export function Chart({ props }: { props: Record<string, unknown> }) {
 										{labels[focus]}
 									</Text>
 									{keys.map((key, at) => (
-										<Text key={key} size="caption" numeric>{`${key}: ${values[focus]![at]}${unit}`}</Text>
+										<span key={key} className="native-ui-tip-row">
+											<span className="native-ui-legend">
+												<span aria-hidden className="native-ui-swatch" style={{ background: COLOURS[at] }} />
+												<Text size="caption" tone="muted">
+													{key}
+												</Text>
+											</span>
+											<Text size="caption" numeric>{`${values[focus]![at]}${unit}`}</Text>
+										</span>
 									))}
 								</div>
 							)}
 						</Text>
 					</div>
-					<figcaption className="native-ui-row" data-gap="sm">
-						{keys.map((key, at) => (
-							<span key={key} className="native-ui-legend">
-								<span aria-hidden className="native-ui-swatch" style={{ background: COLOURS[at] }} />
-								<Text size="caption" tone="muted">
-									{key}
-								</Text>
-							</span>
-						))}
-						{unit && (
-							<Text size="caption" tone="muted">
-								{unit}
-							</Text>
-						)}
-					</figcaption>
+					{/* 只有一个系列时图例只是把数据名再写一遍；单位已经写在刻度上。 */}
+					{keys.length > 1 && (
+						<figcaption className="native-ui-row" data-gap="sm">
+							{keys.map((key, at) => (
+								<span key={key} className="native-ui-legend">
+									<span aria-hidden className="native-ui-swatch" style={{ background: COLOURS[at] }} />
+									<Text size="caption" tone="muted">
+										{key}
+									</Text>
+								</span>
+							))}
+						</figcaption>
+					)}
 				</>
 			)}
-			<details className="native-ui-chart-data">
-				<summary>
-					<Text size="caption" tone="muted">
-						{messages.details}
-					</Text>
-				</summary>
-				<DataTable
-					table={{
-						header: [typeof props.x === "string" ? props.x : messages.chart, ...keys],
-						cells: values.map((row, at) => [labels[at], ...row]),
-						numeric: [false, ...keys.map(() => true)],
-					}}
-				/>
-			</details>
 		</figure>
 	);
 }
