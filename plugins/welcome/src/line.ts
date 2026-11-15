@@ -10,13 +10,13 @@ import type { WelcomeLine } from "@plume/contract/ui";
 /** 写一句最多等这么久；没回来就这次不显示，下次打开欢迎页再试。 */
 export const LINE_TIMEOUT_MS = 20_000;
 
-/** 两行短字，100 个 token 够了；这只是上限，服务商按实际生成的收费。 */
+/** 回复的 token 上限；是否完整收尾另由模型调用检查。 */
 export const LINE_MAX_TOKENS = 100;
 
 /** 记住最近这么多句，写新的时让模型避开，免得隔几天又是同一句。 */
 export const RECENT_LINES = 30;
 
-/** 洗完还超过这么长的不像一句话（模型写成了一段），丢掉、这次不显示。按码点数。 */
+/** 正文长度上限，按码点数；超长时这次不显示。 */
 const TEXT_MAX: Record<Locale, number> = { "zh-CN": 40, en: 110 };
 const SOURCE_MAX = 40;
 
@@ -50,8 +50,8 @@ function unquote(text: string): string {
 	return text.replace(/^[「『《“"'‘`]+|[」』》”"'’`]+$/g, "").trim();
 }
 
-/** 洗掉模型回复里不该显示的东西，拆成这句话和出处。洗完是空的、太长的返回 undefined。 */
-export function parseLine(raw: string, locale: Locale): WelcomeLine | undefined {
+/** 洗掉模型回复里不该显示的东西，拆成这句话和出处。正文为空或太长时抛错，说明原因。 */
+export function parseLine(raw: string, locale: Locale): WelcomeLine {
 	let body = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
 	body = body.replace(/^```[a-z]*\n?([\s\S]*?)```$/i, "$1").trim();
 	const rows = body
@@ -70,6 +70,10 @@ export function parseLine(raw: string, locale: Locale): WelcomeLine | undefined 
 	text = unquote(text.replace(/^(?:今日一句|句子|Line|Quote)\s*[:：]\s*/i, ""));
 	// i18n-exempt：认模型回复里的前缀。
 	source = unquote(source.replace(/^(?:——|—|--|-)\s*/, "").replace(/^(?:出处|来源|Source)\s*[:：]\s*/i, ""));
-	if (!text || [...text].length > TEXT_MAX[locale]) return undefined;
+	// i18n-exempt：日志中的失败原因。
+	if (!text) throw new Error("模型回复中没有可显示的正文");
+	const length = [...text].length;
+	// i18n-exempt：日志中的失败原因。
+	if (length > TEXT_MAX[locale]) throw new Error(`模型回复的正文过长（${length} 字符，上限 ${TEXT_MAX[locale]}）`);
 	return source && [...source].length <= SOURCE_MAX ? { text, source } : { text };
 }

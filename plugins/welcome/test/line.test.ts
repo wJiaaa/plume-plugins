@@ -45,9 +45,11 @@ describe("洗模型的回复", () => {
 		expect(parseLine("慢慢来，比较快。", "zh-CN")).toEqual({ text: "慢慢来，比较快。" });
 	});
 
-	it("空的、太长的不要", () => {
-		expect(parseLine("   ", "zh-CN")).toBeUndefined();
-		expect(parseLine("一".repeat(41), "zh-CN")).toBeUndefined();
-		expect(parseLine("a".repeat(111), "en")).toBeUndefined();
+	it("空的、清洗后为空的和太长的分别说明原因", () => {
+		for (const raw of ["", "   ", "<think>想想</think>", "今日一句：\n出处：Kent Beck"]) {
+			expect(() => parseLine(raw, "zh-CN")).toThrow("模型回复中没有可显示的正文");
+		}
+		expect(() => parseLine("一".repeat(41), "zh-CN")).toThrow("模型回复的正文过长（41 字符，上限 40）");
+		expect(() => parseLine("a".repeat(111), "en")).toThrow("模型回复的正文过长（111 字符，上限 110）");
 	});
 });

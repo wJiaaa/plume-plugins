@@ -2,7 +2,7 @@
  * plume.welcome 的逻辑入口，跑在 agent 进程：欢迎页问候下面的「今日一句」。
  *
  * 每种界面语言每天第一次要时让默认模型写一句，存进插件数据目录的 `line.json`，当天再要直接给存好的，一天只调一次模型。
- * 没配模型、超时、出错、写出来不像一句话时这次不给（欢迎页显示宿主默认的那一行），也不记下来，下次打开欢迎页再试。
+ * 没配模型、超时、出错、回复不完整、正文为空或过长时这次不给（欢迎页显示宿主默认的那一行），也不记下来，下次打开欢迎页再试。
  */
 
 import { readFile, rename, writeFile } from "node:fs/promises";
@@ -61,14 +61,10 @@ export default {
 					systemPrompt: LINE_SYSTEM,
 					prompt: linePrompt(locale, date, (await load()).recent),
 					maxTokens: LINE_MAX_TOKENS,
+					requireComplete: true,
 					signal: AbortSignal.any([stopped.signal, AbortSignal.timeout(LINE_TIMEOUT_MS)]),
 				});
 				const line = parseLine(reply, locale);
-				if (!line) {
-					// i18n-exempt：日志。
-					ctx.log.warn(`今日一句写出来不像一句话，这次不显示：${reply.slice(0, 200)}`);
-					return undefined;
-				}
 				writing = writing
 					.catch(() => undefined)
 					.then(async () => {
