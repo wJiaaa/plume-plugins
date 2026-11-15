@@ -2,14 +2,14 @@
  * 设置页里「截图」那一节：快捷键、输入框按钮、保存位置和完成后做什么。页头由宿主画。
  */
 
-import type { ScreenCapture } from "@plume/contract/ui";
+import type { ScreenCapture, UiContext } from "@plume/contract/ui";
 import { Button, SettingsCard, SettingsRow, SettingsSectionTitle, ShortcutRecorder, shortcutLabel, Toggle, useI18n } from "@plume/ui";
 import { Camera, Eraser, FolderOpen, RotateCcw } from "@plume/ui/icons";
 import type { ScreenshotSettings as Settings } from "./api.ts";
 import { MESSAGES } from "./messages.ts";
 import { type SettingsStore, useSettings, useShortcutStatus } from "./settings-store.ts";
 
-export function ScreenshotSettings({ store, screen }: { store: SettingsStore; screen: ScreenCapture }) {
+export function ScreenshotSettings({ store, screen, pickFolder }: { store: SettingsStore; screen: ScreenCapture; pickFolder: UiContext["pickFolder"] }) {
 	const text = MESSAGES[useI18n().resolvedLocale];
 	const config = useSettings(store);
 	const shortcutStatus = useShortcutStatus(store);
@@ -18,7 +18,7 @@ export function ScreenshotSettings({ store, screen }: { store: SettingsStore; sc
 
 	/** 两个目标用同一个选择器，填进哪个是调用方的事。 */
 	const pickDirectory = async (into: "saveLocation" | "downloadLocation", title: string) => {
-		const dir = await screen.pickDirectory(title);
+		const dir = await pickFolder(title);
 		if (dir) patch({ [into]: dir });
 	};
 

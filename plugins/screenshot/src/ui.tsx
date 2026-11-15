@@ -62,7 +62,7 @@ export default {
 		}
 		ui.composerItem("capture", ComposerButton);
 
-		ui.settingsSection("screenshot", () => <ScreenshotSettings store={store} screen={ui.screen} />, {
+		ui.settingsSection("screenshot", () => <ScreenshotSettings store={store} screen={ui.screen} pickFolder={ui.pickFolder} />, {
 			title: (locale) => MESSAGES[locale].title,
 			icon: Camera,
 			page: "nav",
