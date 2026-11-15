@@ -13,34 +13,43 @@
 	min-width: 0;
 	min-height: 0;
 }
-.plume-pr-list {
+/* 列表外面这一层放拖宽度的拖把：列表自己裁切（收起时滑出去），拖把一大半悬在详情上，不能被裁掉。 */
+.plume-pr-side {
+	position: relative;
 	display: flex;
-	flex-direction: column;
 	flex-shrink: 0;
 	min-height: 0;
-	width: calc(300px + var(--plume-top-row-inset, 0px));
+	width: var(--plume-pr-list-width);
+	transition: margin-left var(--plume-t-base) var(--plume-e-out);
+}
+.plume-pr-list {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
 	overflow: hidden;
 	border-right: 1px solid var(--plume-line-soft);
-	transition:
-		margin-left var(--plume-t-base) var(--plume-e-out),
-		opacity var(--plume-t-base) var(--plume-e-out);
+	transition: opacity var(--plume-t-base) var(--plume-e-out);
 }
-.plume-pr-page[data-expanded="true"]:not([data-narrow="true"]) > .plume-pr-list {
-	margin-left: calc(-300px - var(--plume-top-row-inset, 0px));
+.plume-pr-page[data-expanded="true"]:not([data-narrow="true"]) > .plume-pr-side {
+	margin-left: calc(-1 * var(--plume-pr-list-width));
+}
+.plume-pr-page[data-expanded="true"]:not([data-narrow="true"]) .plume-pr-list {
 	opacity: 0;
 }
-.plume-pr-page[data-narrow="true"] > .plume-pr-list {
+.plume-pr-page[data-narrow="true"] > .plume-pr-side {
 	width: 100%;
+}
+.plume-pr-page[data-narrow="true"] .plume-pr-list {
 	border-right: none;
 }
-.plume-pr-page[data-narrow="true"][data-selected="true"] > .plume-pr-list,
+.plume-pr-page[data-narrow="true"][data-selected="true"] > .plume-pr-side,
 .plume-pr-page[data-narrow="true"][data-selected="false"] > .plume-pr-detail {
 	display: none;
 }
-/* 详情栏在列表收起、展开时变成、不再是贴左边的那一栏，让位的那段跟着滑。 */
 .plume-pr-head {
 	gap: 2px;
-	transition: padding-left var(--plume-t-base) var(--plume-e-out);
 }
 .plume-pr-controls {
 	display: flex;

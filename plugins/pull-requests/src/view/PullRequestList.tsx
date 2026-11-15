@@ -47,7 +47,7 @@ export function PullRequestList({ pr }: { pr: PullRequests }) {
 	const signedOut = pr.ready && !pr.accounts.length;
 	return (
 		<div className="plume-pr-column">
-			<PageTopRow start className="plume-pr-head" data-plume-toprow="pr-list">
+			<PageTopRow className="plume-pr-head" data-plume-toprow="pr-list">
 				{!signedOut &&
 					(["all", "reviewing", "authored"] as const).map((filter) => (
 						<Button key={filter} variant="subtle" size="sm" pressed={pr.filter === filter} onClick={() => pr.setFilter(filter)}>

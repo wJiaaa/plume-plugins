@@ -31,7 +31,7 @@ export default {
 					<PullRequestsPage />
 				</ServicesContext.Provider>
 			),
-			{ title: (locale) => MESSAGES[locale].title, icon: GitPullRequest, order: -10, topRow: true },
+			{ title: (locale) => MESSAGES[locale].title, icon: GitPullRequest, order: -10 },
 		);
 		ui.settingsSection(
 			"forges",

@@ -59,7 +59,7 @@ export function PullRequestDetailView({
 	const slow = useSlowLoad(loading && !detail);
 	return (
 		<div className="plume-pr-column">
-			<PageTopRow start={narrow || expanded} className="plume-pr-head" data-plume-toprow="pr-detail">
+			<PageTopRow className="plume-pr-head" data-plume-toprow="pr-detail">
 				{narrow && <IconButton label={text.back} onClick={onBack} icon={<ArrowLeft size={14} />} />}
 				{expanded && detail && (
 					<Text className="plume-pr-header-title">

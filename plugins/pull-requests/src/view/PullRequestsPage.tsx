@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { useNarrow } from "@plume/ui";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { ResizeHandle, useNarrow } from "@plume/ui";
 import type { PullRequestDetail } from "../api";
 import { format } from "../messages";
 import { useMessages, useServices } from "./context";
@@ -7,6 +7,18 @@ import { PullRequestList } from "./PullRequestList";
 import { PullRequestDetailView } from "./PullRequestDetail";
 import { ReviewBar } from "./ReviewBar";
 import { usePullRequests } from "./usePullRequests";
+
+/** 列表能拖多宽：默认、最窄、最宽。拖过的宽度存在本机，下次打开还是这么宽。 */
+const LIST = { key: "plume.pull-requests.list-width", initial: 300, min: 240, max: 520 };
+
+function storedWidth(): number {
+	try {
+		const saved = Number(localStorage.getItem(LIST.key));
+		return saved >= LIST.min && saved <= LIST.max ? saved : LIST.initial;
+	} catch {
+		return LIST.initial;
+	}
+}
 
 export function PullRequestsPage() {
 	const { ui, api } = useServices();
@@ -16,6 +28,12 @@ export function PullRequestsPage() {
 	const [expanded, setExpanded] = useState(false);
 	const [tab, setTab] = useState<"summary" | "code">("summary");
 	const [chatBusy, setChatBusy] = useState(false);
+	const [listWidth, setListWidth] = useState(storedWidth);
+	useEffect(() => {
+		try {
+			localStorage.setItem(LIST.key, String(listWidth));
+		} catch {}
+	}, [listWidth]);
 	const alive = useRef(true);
 	const opening = useRef<{ cancel(): void } | null>(null);
 	useEffect(() => {
@@ -60,10 +78,31 @@ export function PullRequestsPage() {
 		}
 	};
 	return (
-		<div ref={measure} className="plume-pr-page" data-narrow={narrow} data-expanded={expanded} data-selected={Boolean(pr.selected)}>
-			<aside className="plume-pr-list" inert={(!narrow && expanded) || (narrow && Boolean(pr.selected))}>
-				<PullRequestList pr={pr} />
-			</aside>
+		<div
+			ref={measure}
+			className="plume-pr-page"
+			data-narrow={narrow}
+			data-expanded={expanded}
+			data-selected={Boolean(pr.selected)}
+			style={{ "--plume-pr-list-width": `${listWidth}px` } as CSSProperties}
+		>
+			{/* 列表收起的动画要裁切（`overflow: hidden`），拖把一大半悬在详情上，放在外面这一层里。 */}
+			<div className="plume-pr-side">
+				<aside className="plume-pr-list" inert={(!narrow && expanded) || (narrow && Boolean(pr.selected))}>
+					<PullRequestList pr={pr} />
+				</aside>
+				{!narrow && !expanded && (
+					<ResizeHandle
+						edge="end"
+						width={listWidth}
+						min={LIST.min}
+						max={LIST.max}
+						onResize={(next) => setListWidth(Math.round(next))}
+						onReset={() => setListWidth(LIST.initial)}
+						label={text.resizeList}
+					/>
+				)}
+			</div>
 			<main className="plume-pr-detail" inert={narrow && !pr.selected}>
 				<PullRequestDetailView
 					selected={pr.selected}
