@@ -1,5 +1,5 @@
 /**
- * plume.image 的界面入口，跑在渲染进程：对话里 `image_generate` 的卡片，侧栏的「画廊」页。
+ * plume.image 的界面入口，跑在渲染进程：对话里 `image_generate` 的卡片，活动栏的「画廊」页。
  *
  * 画廊的数据在逻辑入口那边（扫会话），经 `ui.remote()` 取；图本身经 `ui.mediaUrl` 直接读媒体目录。
  */
@@ -32,6 +32,6 @@ export default {
 		const api = ui.remote<ImageApi>();
 		ui.toolLine(IMAGE_TOOL, { verb: (locale) => MESSAGES[locale].generateImage, subject: promptSubject, icon: ImageIcon });
 		ui.toolCard(IMAGE_TOOL, imageCard(ui));
-		ui.page("gallery", () => <GalleryPage ui={ui} api={api} />, { title: (locale) => GALLERY_MESSAGES[locale].title, icon: Images, topRow: true });
+		ui.page("gallery", () => <GalleryPage ui={ui} api={api} />, { title: (locale) => GALLERY_MESSAGES[locale].title, icon: Images });
 	},
 } satisfies UiPlugin;

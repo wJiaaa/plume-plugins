@@ -6,9 +6,9 @@
  */
 
 import type { UiContext } from "@plume/contract/ui";
-import { Button, IconButton, motionReduced, PageTopRow, Scroller, Text, useI18n } from "@plume/ui";
+import { Button, IconButton, motionReduced, PageTopRow, ResizeHandle, Scroller, Text, useI18n } from "@plume/ui";
 import { ArrowLeft, ArrowUpRight, Check, ChevronLeft, ChevronRight, Copy, Download } from "@plume/ui/icons";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { editInConversation } from "./actions.ts";
 import { EditBar } from "./EditBar.tsx";
 import { TILE_THUMB } from "./GalleryGrid.tsx";
@@ -61,6 +61,18 @@ function tileOf(media: string): HTMLElement | null {
 	return tile;
 }
 
+/** 右边信息栏能拖多宽：默认、最窄、最宽。拖过的宽度存在本机，下次打开还是这么宽。 */
+const PANEL = { key: "plume.image.gallery.panel-width", initial: 340, min: 280, max: 520 };
+
+function storedPanelWidth(): number {
+	try {
+		const saved = Number(localStorage.getItem(PANEL.key));
+		return saved >= PANEL.min && saved <= PANEL.max ? saved : PANEL.initial;
+	} catch {
+		return PANEL.initial;
+	}
+}
+
 export function GalleryDetail({
 	ui,
 	entry,
@@ -104,6 +116,12 @@ export function GalleryDetail({
 	const drawing = drawingFor(entry, index);
 	const at = order.findIndex((item) => item.media === entry.media);
 	const src = ui.mediaUrl(entry.media);
+	const [panelWidth, setPanelWidth] = useState(storedPanelWidth);
+	useEffect(() => {
+		try {
+			localStorage.setItem(PANEL.key, String(panelWidth));
+		} catch {}
+	}, [panelWidth]);
 
 	useLayoutEffect(() => {
 		const el = stage.current;
@@ -266,9 +284,8 @@ export function GalleryDetail({
 		<div data-image-gallery-detail={entry.media} className="image-gallery-detail">
 			<div ref={backdrop} aria-hidden className="image-gallery-backdrop" />
 			<div className="image-gallery-main">
-				{/* 返回、翻页这一行坐在窗口顶行上（页面登记了 topRow），从顶边开始。 */}
+				{/* 返回、翻页这一行：详情盖满整页，从卡片顶边开始。 */}
 				<PageTopRow
-					start
 					ref={(el) => {
 						keep(el);
 						back.current = el;
@@ -316,7 +333,23 @@ export function GalleryDetail({
 					/>
 				</div>
 			</div>
-			<aside ref={keep} data-image-gallery-panel="" className="image-gallery-panel">
+			<aside
+				ref={keep}
+				data-image-gallery-panel=""
+				className="image-gallery-panel"
+				style={{ "--image-gallery-panel-width": `${panelWidth}px` } as CSSProperties}
+			>
+				{!narrow && (
+					<ResizeHandle
+						edge="start"
+						width={panelWidth}
+						min={PANEL.min}
+						max={PANEL.max}
+						onResize={(next) => setPanelWidth(Math.round(next))}
+						onReset={() => setPanelWidth(PANEL.initial)}
+						label={m.resizePanel}
+					/>
+				)}
 				<Scroller className="image-gallery-panel-scroll" contentClassName="image-gallery-panel-content">
 					<section>
 						<button type="button" data-image-gallery-session="" disabled={!drawing} onClick={reveal} className="image-gallery-session">

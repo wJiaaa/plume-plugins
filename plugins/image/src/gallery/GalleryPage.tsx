@@ -5,7 +5,7 @@
  */
 
 import type { Remote, UiContext } from "@plume/contract/ui";
-import { Button, PageTopRow, Scroller, SearchField, SkeletonBar, Text, useI18n, useLiveRefresh, useNarrow } from "@plume/ui";
+import { Button, Scroller, SearchField, SkeletonBar, Text, useI18n, useLiveRefresh, useNarrow } from "@plume/ui";
 import { Images } from "@plume/ui/icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ImageApi } from "../api.ts";
@@ -60,8 +60,6 @@ export function GalleryPage({ ui, api }: { ui: UiContext; api: Remote<ImageApi> 
 		<div ref={measure} data-image-gallery="" data-narrow={narrow ? "" : undefined} className="image-gallery-page">
 			{/* 开着一张图时相册照样排着——图要飞回去——但不接键盘。 */}
 			<div inert={Boolean(opened)} className="image-gallery-album">
-				{/* 相册上面那一行空着拖窗口；页面自己画它，是因为详情要从顶边开始。 */}
-				<PageTopRow start />
 				<Scroller className="image-gallery-scroll" contentClassName="image-gallery-content">
 					<header className="image-gallery-header">
 						<div className="image-gallery-heading">

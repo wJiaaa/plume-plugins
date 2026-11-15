@@ -315,12 +315,13 @@
 	padding: 12px;
 }
 
+/* 不裁切溢出：左边拖宽度的拖把（ResizeHandle）一大半悬在图那一边。 */
 .image-gallery-panel {
 	position: relative;
 	display: flex;
 	flex-shrink: 0;
 	flex-direction: column;
-	width: 340px;
+	width: var(--image-gallery-panel-width);
 	min-height: 0;
 	border-left: 1px solid var(--plume-line-soft);
 }
