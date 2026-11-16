@@ -7,8 +7,8 @@
 
 import type { EnvironmentSectionProps, Remote, UiContext, UiPlugin } from "@plume/contract/ui";
 import { relativeTime, SkeletonBar, Text, useI18n, useNow } from "@plume/ui";
-import { useEffect, useMemo, useState } from "react";
-import type { SummaryApi, SummaryState } from "./api.ts";
+import { useMemo, useState } from "react";
+import { STATE_KEY, type SummaryApi, type SummarySettings, type SummaryState } from "./api.ts";
 import { MESSAGES } from "./messages.ts";
 import { lastSpoken } from "./summary.ts";
 import css from "./summary.css";
@@ -19,19 +19,7 @@ let api: Remote<SummaryApi>;
 const EMPTY: SummaryState = { summary: null, pending: false };
 
 function useSummary(sessionId: string): SummaryState {
-	const [held, setHeld] = useState<{ sessionId: string; state: SummaryState }>({ sessionId, state: EMPTY });
-	useEffect(() => {
-		const call = api.watch(sessionId);
-		void (async () => {
-			try {
-				for await (const state of call) setHeld({ sessionId, state });
-			} catch {
-				// 换会话、卸下、插件停用时这条连接跟着断。
-			}
-		})();
-		return () => call.cancel();
-	}, [sessionId]);
-	return held.sessionId === sessionId ? held.state : EMPTY;
+	return ui.useSessionStore<SummaryState>(STATE_KEY, sessionId) ?? EMPTY;
 }
 
 /** 「2 分钟前更新」。刚生成的那一刻说「刚刚更新」：「刚刚前」不成话。 */
@@ -113,43 +101,20 @@ function SummarySection({ session }: EnvironmentSectionProps) {
 function ModelSetting() {
 	const text = MESSAGES[useI18n().resolvedLocale];
 	const defaults = ui.useModelDefaults();
-	const [model, setModel] = useState<string | undefined>(undefined);
-	const [busy, setBusy] = useState(true);
-	useEffect(() => {
-		let alive = true;
-		void api
-			.model()
-			.then(
-				(value: string | undefined) => {
-					if (alive) setModel(value);
-				},
-				(error: unknown) => ui.notify(error instanceof Error ? error.message : String(error), "error"),
-			)
-			.finally(() => {
-				if (alive) setBusy(false);
-			});
-		return () => {
-			alive = false;
-		};
-	}, []);
+	const [settings, set] = ui.useSettings<SummarySettings>();
 	const inherited = defaults.sessionModel ?? defaults.defaultModel;
 	return (
 		<ui.ModelSelect
 			ariaLabel={text.modelTitle}
-			value={model ?? ""}
-			disabled={busy}
+			value={settings?.model ?? ""}
+			disabled={settings === undefined}
 			inheritLabel={text.followMain}
 			{...(inherited ? { inheritedModelId: inherited } : {})}
 			inheritedSource={text.followMainShort}
 			inheritDetail={text.modelDetail}
-			onChange={(next) => {
-				const previous = model;
-				setModel(next || undefined);
-				void api.setModel(next || undefined).catch((error: unknown) => {
-					setModel(previous);
-					ui.notify(error instanceof Error ? error.message : String(error), "error");
-				});
-			}}
+			onChange={(next) =>
+				void set({ model: next || undefined }).catch((error: unknown) => ui.notify(error instanceof Error ? error.message : String(error), "error"))
+			}
 		/>
 	);
 }

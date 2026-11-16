@@ -34,8 +34,22 @@ async function harness(
 	let reset: ((sessionId: string) => void) | undefined;
 	let deleted: ((sessionId: string) => void) | undefined;
 	let api: MemoryApi | undefined;
+	let settings: Record<string, unknown> = {};
+	let changed: (() => void) | undefined;
 	const ctx = {
 		dataDir: dir,
+		settings: async (defaults: Record<string, unknown>) => {
+			settings = { ...defaults };
+			return {
+				get: () => settings,
+				set: async (patch: Record<string, unknown>) => {
+					settings = { ...settings, ...patch };
+					changed?.();
+					return settings;
+				},
+				onChange: (listener: () => void) => void (changed = listener),
+			};
+		},
 		locale: () => "zh-CN",
 		tools: { register() {} },
 		hook: (_name: string, value: HookLayer<"model.context">) => void (layer = value),
@@ -59,6 +73,10 @@ async function harness(
 		layer!({ sessionId, cwd: dir, sections, tools: [] } as unknown as ModelContext, async (value) => value);
 	return {
 		api: api!,
+		setSettings: async (patch: Record<string, unknown>) => {
+			settings = { ...settings, ...patch };
+			changed?.();
+		},
 		context,
 		reset: (sessionId: string) => reset!(sessionId),
 		deleted: (sessionId: string) => deleted!(sessionId),
@@ -105,7 +123,7 @@ it("后台总结要求完整回复，拒绝后原样保留 MEMORY.md、learned.m
 		complete,
 		finished: () => finish!(),
 	});
-	await host.api.setSettings({ extraction: true });
+	await host.setSettings({ extraction: true });
 	await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
 	await finished;
 	expect(complete).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ requireComplete: true, signal: expect.any(AbortSignal) }));
@@ -131,7 +149,7 @@ it("后台总结只跑最近在用的项目，等它空闲满 5 分钟：有会�
 	});
 	const complete = vi.fn(async () => "（没有）");
 	const host = await harness({ sessions, complete, finished: () => finish!() });
-	await host.api.setSettings({ extraction: true });
+	await host.setSettings({ extraction: true });
 	await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
 	// 在跑：等着，也不去跑别的项目。
 	expect(complete).not.toHaveBeenCalled();
@@ -173,7 +191,7 @@ it("按类别认段：记忆插在项目指令（conventions）前面，后台�
 	];
 	const result = await host.context("s1", sections);
 	expect(result.sections.map((section) => section.id)).toEqual(["guidelines", "userInstructions", "userMemory", "projectInstructions", "workspace"]);
-	await host.api.setSettings({ extraction: true });
+	await host.setSettings({ extraction: true });
 	await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
 	await finished;
 	const prompt = (complete.mock.calls[0] as unknown as [ModelCompletion])[0].prompt;

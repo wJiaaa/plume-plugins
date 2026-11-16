@@ -4,14 +4,13 @@
  * 什么时候生成跟着运行状态走（`ctx.sessions.observe` 的 `running`），不管环境卡片开没开：花钱只跟「这个会话刚干完一段活」走，
  * 翻旧会话只读存着的那份。做成单独的插件，是因为它会在后台调模型：要不要这笔花销，按装不装来选。
  *
- * 用哪个模型在设置 › 智能体 › 会话里选，存在 `settings.json`；没选就用这个会话自己的模型。调模型时不带 `sessionId`：
+ * 用哪个模型在设置 › 智能体 › 会话里选（`ctx.settings`）；没选就用这个会话自己的模型。每个会话的摘要状态经 `ctx.sessionStore`
+ * 推给界面，界面先订阅的、这次还没算过的会话从存着的那份读起。调模型时不带 `sessionId`：
  * 花销记在会话之外，会话的用量不因为一份摘要跟着变。
  */
 
-import { readFile, rename, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import type { Plugin } from "@plume/contract";
-import type { StoredSummary, SummaryApi, SummaryState } from "./api.ts";
+import { normalizeSettings, STATE_KEY, type StoredSummary, type SummaryApi, type SummaryState } from "./api.ts";
 import { SummaryStore } from "./store.ts";
 import { cleanSessionSummary, SUMMARY_MAX_TOKENS, SUMMARY_SYSTEM, SUMMARY_TIMEOUT_MS, summarizeAfterTurn, summaryMaterial } from "./summary.ts";
 
@@ -24,25 +23,24 @@ export default {
 		const lifecycle = new AbortController();
 		ctx.effect(() => lifecycle.abort());
 
-		const settingsFile = join(ctx.dataDir, "settings.json");
-		const saved = await readFile(settingsFile, "utf8").then(
-			(text) => (JSON.parse(text) as { model?: unknown }).model,
-			() => undefined,
-		);
-		let chosenModel = typeof saved === "string" ? saved : undefined;
-		let writing: Promise<void> = Promise.resolve();
+		const settings = await ctx.settings({ model: undefined }, normalizeSettings);
 
 		/** 正在跑的会话：到点时它已经接上下一轮就不要。 */
 		const running = new Set<string>();
 		/** 后台正在生成、上一次失败的原因；只在这次运行里记，重启后从存着的那份开始。 */
 		const states = new Map<string, { pending: boolean; error?: string }>();
 		const inFlight = new Map<string, Promise<SummaryState>>();
-		/** 界面上在看的：每次变了叫它们一声，它们自己重读。 */
-		const watchers = new Map<string, Set<() => void>>();
-		const changed = (id: string) => {
-			for (const wake of watchers.get(id) ?? []) wake();
-		};
 		const stateOf = async (id: string): Promise<SummaryState> => ({ summary: await store.read(id), pending: false, ...states.get(id) });
+		const shown = ctx.sessionStore<SummaryState>(STATE_KEY, { summary: null, pending: false }, stateOf);
+		/** 每个会话的重读排着队：先开始的先写进去，后一次总是更新的那份。 */
+		const refreshing = new Map<string, Promise<void>>();
+		const changed = (id: string) => {
+			const next = (refreshing.get(id) ?? Promise.resolve()).then(async () => shown.set(id, await stateOf(id))).catch(() => undefined);
+			refreshing.set(id, next);
+			void next.finally(() => {
+				if (refreshing.get(id) === next) refreshing.delete(id);
+			});
+		};
 
 		async function generate(id: string): Promise<StoredSummary | null> {
 			const previous = await store.read(id);
@@ -54,7 +52,7 @@ export default {
 			if (!material) return previous;
 			// 选的模型、会话记着的模型已经不在了就往下退，都不在就用默认模型。
 			const models = await ctx.sessions.models();
-			const model = [chosenModel, meta.model].find((ref) => ref && models.some((entry) => entry.id === ref));
+			const model = [settings.get().model, meta.model].find((ref) => ref && models.some((entry) => entry.id === ref));
 			const reply = await ctx.model.complete({
 				systemPrompt: SUMMARY_SYSTEM,
 				prompt: material.prompt,
@@ -113,7 +111,6 @@ export default {
 			running.delete(id);
 			states.delete(id);
 			void store.remove(id).catch(() => undefined);
-			changed(id);
 		});
 
 		const checked = (id: unknown): string => {
@@ -121,49 +118,10 @@ export default {
 			return id;
 		};
 		ctx.serve({
-			async *watch(sessionId, call) {
-				const id = checked(sessionId);
-				let dirty = true;
-				let wake: (() => void) | undefined;
-				const listener = () => {
-					dirty = true;
-					wake?.();
-				};
-				const stop = () => wake?.();
-				let set = watchers.get(id);
-				if (!set) watchers.set(id, (set = new Set()));
-				set.add(listener);
-				call.signal.addEventListener("abort", stop);
-				try {
-					while (!call.signal.aborted) {
-						if (!dirty) await new Promise<void>((resolve) => (wake = resolve));
-						wake = undefined;
-						if (call.signal.aborted) break;
-						dirty = false;
-						yield await stateOf(id);
-					}
-				} finally {
-					call.signal.removeEventListener("abort", stop);
-					set.delete(listener);
-					if (!set.size) watchers.delete(id);
-				}
-			},
 			async summarize(sessionId) {
 				const id = checked(sessionId);
 				if (!(await ctx.sessions.get(id))) throw new Error(`No such session: ${id}`);
 				return summarize(id);
-			},
-			model: async () => chosenModel,
-			setModel(next) {
-				const value = typeof next === "string" && next ? next : undefined;
-				writing = writing
-					.catch(() => undefined)
-					.then(async () => {
-						await writeFile(`${settingsFile}.tmp`, JSON.stringify(value ? { model: value } : {}, null, 2));
-						await rename(`${settingsFile}.tmp`, settingsFile);
-						chosenModel = value;
-					});
-				return writing;
 			},
 		} satisfies SummaryApi);
 	},

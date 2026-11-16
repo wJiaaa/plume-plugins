@@ -19,7 +19,7 @@ import { learnTool } from "./learn.ts";
 import { MESSAGES } from "./messages.ts";
 import { memoryHome, projectDir } from "./paths.ts";
 import { forgetAllLessons, forgetExtractedMemory, forgetLesson, readExtractedMemory, readLessons } from "./project-memory.ts";
-import { createSettings } from "./settings.ts";
+import { DEFAULT_SETTINGS, normalizeSettings } from "./settings.ts";
 import { addMemoryEntry, clearAllMemory, loadMemory, removeMemoryEntry } from "./user-memory.ts";
 
 /** 一轮结束（或刚加载）之后，等多久算「空闲」：人多半还会接着说，别在他两句话之间跑。 */
@@ -31,8 +31,10 @@ export default {
 	name: "plume.memory",
 	async apply(ctx) {
 		const { dataDir } = ctx;
-		const settings = await createSettings(dataDir);
+		const settings = await ctx.settings(DEFAULT_SETTINGS, normalizeSettings);
 		const injector = createInjector(dataDir);
+		// 人在设置里改了开关，之后作废快照：他要的是改动从下一次请求起就生效。
+		settings.onChange(() => injector.invalidate());
 		ctx.sessions.onContextReset(injector.refresh);
 		ctx.sessions.onDeleted(injector.refresh);
 		/**
@@ -113,17 +115,13 @@ export default {
 			};
 		}
 
-		/** 人在设置里改了记忆或开关，之后作废快照：他要的是改动从下一次请求起就生效。 */
+		/** 人在设置里改了记忆，之后作废快照：他要的是改动从下一次请求起就生效。 */
 		const edited = <T>(result: T): T => {
 			injector.invalidate();
 			return result;
 		};
 
 		const api: MemoryApi = {
-			settings: async () => settings.get(),
-			setSettings: async (change) => edited(await settings.set(change)),
-			model: async () => settings.model(),
-			setModel: (model) => settings.setModel(model),
 			async list() {
 				const [entries, injected] = await Promise.all([loadMemory(dataDir), readInjected(userInjectedFile(dataDir))]);
 				return entries.map((entry) => (injected[entry.id] === undefined ? entry : { ...entry, lastInjectedAt: injected[entry.id] }));
@@ -180,7 +178,7 @@ export default {
 					read: (sessionId) => ctx.sessions.messages(sessionId),
 					instructions: instructions.get(dir) ?? "",
 					complete: (systemPrompt, prompt) => {
-						const model = settings.model();
+						const model = settings.get().model;
 						return ctx.model.complete({ systemPrompt, prompt, ...(model ? { model } : {}), requireComplete: true, signal: stop.signal });
 					},
 				});

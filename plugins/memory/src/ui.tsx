@@ -34,13 +34,13 @@ export default {
 		mountStyles();
 		const api = ui.remote<MemoryApi>();
 		function MemorySection() {
-			return <MemorySettings api={api} />;
+			return <MemorySettings ui={ui} api={api} />;
 		}
 		// 转录里 `learn` 那一行说记下的是哪一条（开头 40 个字）：只说「学习」，几次 learn 并在一起时分不出各记了什么。
 		ui.toolLine("learn", { verb: (locale) => MESSAGES[locale].learn, subject: learnSubject });
 		ui.settingsSection("memory", MemorySection, { title: (locale) => MESSAGES[locale].title, page: "personalization" });
 		function ModelSection() {
-			return <MemoryModel ui={ui} api={api} />;
+			return <MemoryModel ui={ui} />;
 		}
 		ui.settingsSection("model", ModelSection, {
 			title: (locale) => MESSAGES[locale].modelTitle,

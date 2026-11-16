@@ -1,5 +1,5 @@
 /**
- * 逻辑入口经 ctx.serve 开给设置分区的接口，两个入口共用这一份类型。记忆存在逻辑入口那边，设置分区只是读写它。
+ * 逻辑入口经 ctx.serve 开给设置分区的接口和插件的设置（`ctx.settings`），两个入口共用这一份类型。记忆存在逻辑入口那边，设置分区只是读写它。
  */
 
 export interface MemorySettings {
@@ -9,6 +9,8 @@ export interface MemorySettings {
 	project: boolean;
 	/** 后台从旧会话总结项目记忆。会把会话内容发给模型，默认关。 */
 	extraction: boolean;
+	/** 后台总结用的模型（`SessionModel.id`）；没选时是 undefined，用新会话的默认模型。 */
+	model: string | undefined;
 }
 
 /** `user` 是人在设置里加的；`auto`、`session` 留给以后自动记下的用户记忆，现在不会出现。 */
@@ -39,11 +41,6 @@ export interface ProjectMemoryView {
 }
 
 export interface MemoryApi {
-	settings(): Promise<MemorySettings>;
-	setSettings(change: Partial<MemorySettings>): Promise<MemorySettings>;
-	/** 后台总结用的模型（`SessionModel.id`）；没选时是 undefined，用新会话的默认模型。 */
-	model(): Promise<string | undefined>;
-	setModel(model: string | undefined): Promise<void>;
 	/** 用户记忆，新加的在前。 */
 	list(): Promise<MemoryEntry[]>;
 	add(content: string): Promise<MemoryEntry>;
