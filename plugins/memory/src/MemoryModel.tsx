@@ -3,51 +3,27 @@
  * 它不在哪个会话里跑，没选时用的是新会话的默认模型，不是「主会话」的。
  */
 
-import type { Remote, UiContext } from "@plume/contract/ui";
+import type { UiContext } from "@plume/contract/ui";
 import { useI18n } from "@plume/ui";
-import { useEffect, useState } from "react";
-import type { MemoryApi } from "./api.ts";
+import type { MemorySettings } from "./api.ts";
 import { MESSAGES } from "./messages.ts";
 
-export function MemoryModel({ ui, api }: { ui: UiContext; api: Remote<MemoryApi> }) {
+export function MemoryModel({ ui }: { ui: UiContext }) {
 	const text = MESSAGES[useI18n().resolvedLocale];
 	const defaults = ui.useModelDefaults();
-	const [model, setModel] = useState<string | undefined>(undefined);
-	const [busy, setBusy] = useState(true);
-	useEffect(() => {
-		let alive = true;
-		void api
-			.model()
-			.then(
-				(value: string | undefined) => {
-					if (alive) setModel(value);
-				},
-				(error: unknown) => ui.notify(error instanceof Error ? error.message : String(error), "error"),
-			)
-			.finally(() => {
-				if (alive) setBusy(false);
-			});
-		return () => {
-			alive = false;
-		};
-	}, [api, ui]);
+	const [settings, set] = ui.useSettings<MemorySettings>();
 	return (
 		<ui.ModelSelect
 			ariaLabel={text.modelTitle}
-			value={model ?? ""}
-			disabled={busy}
+			value={settings?.model ?? ""}
+			disabled={settings === undefined}
 			inheritLabel={text.followDefault}
 			{...(defaults.defaultModel ? { inheritedModelId: defaults.defaultModel } : {})}
 			inheritedSource={text.byDefault}
 			inheritDetail={text.modelDetail}
-			onChange={(next) => {
-				const previous = model;
-				setModel(next || undefined);
-				void api.setModel(next || undefined).catch((error: unknown) => {
-					setModel(previous);
-					ui.notify(error instanceof Error ? error.message : String(error), "error");
-				});
-			}}
+			onChange={(next) =>
+				void set({ model: next || undefined }).catch((error: unknown) => ui.notify(error instanceof Error ? error.message : String(error), "error"))
+			}
 		/>
 	);
 }

@@ -10,15 +10,15 @@ import { useCallback, useEffect, useState } from "react";
 import { field } from "@plume/styles";
 import { Button, IconButton, InlineSelect, Input, SettingsCard, SettingsRow, SettingsSectionTitle, Text, Toggle, useConfirmer, useI18n } from "@plume/ui";
 import { Brain, Plus, Trash2 } from "@plume/ui/icons";
-import type { Remote } from "@plume/contract/ui";
+import type { Remote, UiContext } from "@plume/contract/ui";
 import type { MemoryApi, MemoryEntry, MemorySettings as Settings, ProjectMemoryView } from "./api.ts";
 import { MemoryMeta } from "./MemoryMeta.tsx";
 import { MESSAGES } from "./messages.ts";
 
-export function MemorySettings({ api }: { api: Remote<MemoryApi> }) {
+export function MemorySettings({ ui, api }: { ui: UiContext; api: Remote<MemoryApi> }) {
 	const text = MESSAGES[useI18n().resolvedLocale];
 	const confirm = useConfirmer();
-	const [settings, setSettings] = useState<Settings | null>(null);
+	const [settings, setSettings] = ui.useSettings<Settings>();
 	const [entries, setEntries] = useState<MemoryEntry[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [draft, setDraft] = useState("");
@@ -41,7 +41,6 @@ export function MemorySettings({ api }: { api: Remote<MemoryApi> }) {
 	}, [api]);
 
 	useEffect(() => {
-		void api.settings().then(setSettings);
 		void api.projects().then(setProjects);
 		void loadEntries();
 	}, [api, loadEntries]);
@@ -57,7 +56,9 @@ export function MemorySettings({ api }: { api: Remote<MemoryApi> }) {
 
 	useEffect(() => loadProjectMemory(), [loadProjectMemory]);
 
-	const change = async (patch: Partial<Settings>) => setSettings(await api.setSettings(patch));
+	const change = async (patch: Partial<Settings>) => {
+		await setSettings(patch);
+	};
 
 	const add = async () => {
 		if (!draft.trim()) return;
