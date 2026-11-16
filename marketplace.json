@@ -15,10 +15,6 @@
       "source": "./plugins/hooks"
     },
     {
-      "name": "im",
-      "source": "./plugins/im"
-    },
-    {
       "name": "image",
       "source": "./plugins/image"
     },
