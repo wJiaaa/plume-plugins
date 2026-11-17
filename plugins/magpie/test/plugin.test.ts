@@ -70,6 +70,7 @@ describe("插件", () => {
 		await plugin.apply({
 			name: "plume.magpie",
 			dataDir: dir,
+			appDataDir: dir,
 			log: { warn: () => {} },
 			use: () => ({ offer: (owner: string, label: string, servers: Record<string, unknown> | null) => void offers.push([owner, label, servers]) }),
 			hook: (_name: string, fn: HookLayer<"model.context">) => void (layer = fn),

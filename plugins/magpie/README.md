@@ -4,7 +4,7 @@
 
 ## 它做了什么
 
-Magpie 那边要装上配套的 Agent 插件：源码在 [plugins/magpie/magpie-agent](https://github.com/wJiaaa/plume-plugins/tree/main/plugins/magpie/magpie-agent)，不随这个插件安装，要手动加进 Magpie（见下面「用法」）。它把东西写进这个插件的数据目录 `~/.plume/plugin-data/plume.magpie/`：
+Magpie 那边经 Agent 插件把东西写进这个插件的数据目录 `~/.plume/plugin-data/plume.magpie/`；Agent 插件由这个插件放好，在 Magpie 里添加一下就行（见下面「用法」）：
 
 - **模型**：在 Magpie 的 Agent 页给 Plume 选一个模型，Magpie 把网关（地址、key、模型目录）和选中的模型写进 `credentials.json`。网关成为设置 › 模型里的「Magpie」供应商，排在你自己的后面，标着由这个插件提供：能重命名、启停、改连接和密钥、增删改模型、测试、设默认，也能删除，改动都写回这份文件，不进 Plume 自己的 `settings.json`、不进导出的供应商文件。Magpie 再次同步时覆盖连接、密钥和模型列表。
   - **默认模型**：Magpie 选了模型就设成 Plume 的默认模型，并记下原来的那个（`default-model.json`）；在 Magpie 里选回原来的模型或关掉开关时，Plume 的默认模型还是 Magpie 设的那个，就换回原来的，你在 Plume 里另选过就不动。Plume 关着时 Magpie 改的，下次启动跟上。
@@ -20,28 +20,11 @@ Magpie 那边要装上配套的 Agent 插件：源码在 [plugins/magpie/magpie-
 
 ## 用法
 
-1. 在 Plume 的插件市场装上这个插件：装上才有它的数据目录，Magpie 才会列出 Plume。
-2. 把 Magpie 用的 Agent 插件下载到本机。它的位置：
+1. 在 Plume 的插件市场装上这个插件。它会把 Magpie 用的 Agent 插件放在这个文件夹（插件更新时跟着更新）：
 
-   ```
-   https://github.com/wJiaaa/plume-plugins/tree/main/plugins/magpie/magpie-agent
-   ```
+   `~/.plume/plugin-data/plume.magpie/magpie-agent`
 
-   macOS 上在终端里整段执行，下到 `~/.config/magpie/plume-agent`（Magpie 直接读这个文件夹，别放在会被挪走的地方）：
+2. 打开 Magpie 的「设置 → 插件」，添加上面这个文件夹。
+3. 在 Magpie 的 Agent 页给 Plume 选模型。要分发全局指令和 MCP 服务，在资源库里选择 Plume。
 
-   ```sh
-   mkdir -p ~/.config/magpie/plume-agent && cd ~/.config/magpie/plume-agent
-   for f in package.json plume.agent.js icon.js README.md; do curl -fsSLO "https://raw.githubusercontent.com/wJiaaa/plume-plugins/main/plugins/magpie/magpie-agent/$f"; done
-   ```
-
-3. 把这个文件夹加进 Magpie：在 Magpie 的「设置 → 插件」里添加 `~/.config/magpie/plume-agent`，或在终端执行：
-
-   ```sh
-   /Applications/Magpie.app/Contents/MacOS/magpie plugin add ~/.config/magpie/plume-agent
-   ```
-
-4. 在 Magpie 的 Agent 页给 Plume 选模型；要分发全局指令和 MCP 服务，在资源库里选择 Plume。
-
-更新 Agent 插件时重新执行第 2 步，覆盖原来的文件。
-
-使用自定义 `PLUME_HOME` 时，把 Magpie 那边 Agent 插件的 `dir`、`config` 和 `library` 路径一起改成 `<PLUME_HOME>/plugin-data/plume.magpie/` 下对应的绝对路径。
+使用自定义 `PLUME_HOME` 时，文件夹在 `<PLUME_HOME>/plugin-data/plume.magpie/magpie-agent`。
