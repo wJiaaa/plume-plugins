@@ -64,22 +64,23 @@ describe("MCP 服务", () => {
 });
 
 describe("插件", () => {
-	function start() {
+	async function start() {
 		const offers: [string, string, Record<string, unknown> | null][] = [];
 		let layer: HookLayer<"model.context"> | undefined;
-		plugin.apply({
+		await plugin.apply({
 			name: "plume.magpie",
 			dataDir: dir,
 			log: { warn: () => {} },
 			use: () => ({ offer: (owner: string, label: string, servers: Record<string, unknown> | null) => void offers.push([owner, label, servers]) }),
 			hook: (_name: string, fn: HookLayer<"model.context">) => void (layer = fn),
 			effect: (stop: () => void) => void dispose.push(stop),
+			providers: { provide: () => {}, defaultModel: async () => undefined, setDefaultModel: async () => {} },
 		} as unknown as PluginContext);
 		return { offers, layer: () => layer! };
 	}
 
 	it("启动时登记一次；Magpie 改了、撤回了当场重登记", async () => {
-		const { offers } = start();
+		const { offers } = await start();
 		await vi.waitFor(() => expect(offers).toEqual([["plume.magpie", "Magpie", {}]]));
 		await writeFile(join(dir, "mcp.json"), JSON.stringify({ mcpServers: { local: { command: "node" } } }));
 		await vi.waitFor(() => expect(offers.at(-1)).toEqual(["plume.magpie", "Magpie", { local: { command: "node" } }]), { timeout: 5_000 });
@@ -88,7 +89,7 @@ describe("插件", () => {
 	});
 
 	it("每次调模型前现读全局指令，放在里层组好的项目约定前面", async () => {
-		const { layer } = start();
+		const { layer } = await start();
 		const conventions: PromptSection = { id: "project", text: "P", category: "conventions" };
 		const run = () => layer()({ sections: [] } as unknown as ModelContext, async (input) => ({ ...input, sections: [...input.sections, conventions] }));
 		expect((await run()).sections).toEqual([conventions]);
