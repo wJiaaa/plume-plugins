@@ -1,6 +1,6 @@
 /** 启用时写出 Magpie 用的 Agent 插件：路径指着这个插件的数据目录，Magpie 能加载；内容没变不重写。 */
 
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -26,7 +26,11 @@ describe("Magpie 用的 Agent 插件", () => {
 	});
 
 	it("写出来能当 ES 模块加载，connect 交回 Magpie 要写的键；再写一遍内容没变不重写", async () => {
+		await mkdir(join(dir, "data", "magpie-agent"), { recursive: true });
 		const agentDir = await writeAgent(join(dir, "data"), dir);
+		expect(agentDir).toBe(join(dir, "data", "plume"));
+		await expect(access(join(dir, "data", "magpie-agent"))).rejects.toThrow();
+		expect(await readFile(join(agentDir, "README.md"), "utf8")).toMatch(/^# Plume\n/);
 		expect(JSON.parse(await readFile(join(agentDir, "package.json"), "utf8")).magpie.agent).toBe("./plume.agent.js");
 		const loaded = await import(join(agentDir, "plume.agent.js"));
 		expect(loaded.agent).toMatchObject({ id: "plume", prefix: "magpie/", model: "defaultModel" });
