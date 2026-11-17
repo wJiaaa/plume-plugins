@@ -5,14 +5,7 @@ Plume 的新一轮就走 Magpie 的网关，用量记在 Plume 名下。
 
 它是插件仓库里 `plugins/magpie`（Plume 市场插件「Magpie」，`plume.magpie`）配套的另一半，放在同一个目录下一起改，但不随插件安装，要手动加进 Magpie。
 
-先在 Plume 的插件市场装上「Magpie」插件，再把这个文件夹加进 Magpie。Magpie 直接读这个文件夹，所以先拷到不会被挪走的地方：
-
-```sh
-cp -R plugins/magpie/magpie-agent ~/.config/magpie/plume-agent
-magpie plugin add ~/.config/magpie/plume-agent
-```
-
-也可以在 Magpie 应用的「设置 → 插件」里添加这个文件夹。更新时重新拷一遍覆盖。Magpie 用 `~/.plume/plugin-data/plume.magpie` 目录判断 Plume 装没装：
+先在 Plume 的插件市场装上「Magpie」插件，再把这个文件夹下载到不会被挪走的地方、加进 Magpie。下载和添加的命令见上一级的 [README](../README.md)「用法」。Magpie 用 `~/.plume/plugin-data/plume.magpie` 目录判断 Plume 装没装：
 装上 `plume.magpie` 才有这个目录，没装时 Magpie 不列出 Plume。
 
 ## Magpie 写了什么
