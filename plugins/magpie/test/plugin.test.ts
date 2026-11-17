@@ -74,7 +74,7 @@ describe("插件", () => {
 			use: () => ({ offer: (owner: string, label: string, servers: Record<string, unknown> | null) => void offers.push([owner, label, servers]) }),
 			hook: (_name: string, fn: HookLayer<"model.context">) => void (layer = fn),
 			effect: (stop: () => void) => void dispose.push(stop),
-			providers: { provide: () => {}, defaultModel: async () => undefined, setDefaultModel: async () => {} },
+			providers: { provide: () => {}, changed: () => {}, defaultModel: async () => undefined, setDefaultModel: async () => {} },
 		} as unknown as PluginContext);
 		return { offers, layer: () => layer! };
 	}

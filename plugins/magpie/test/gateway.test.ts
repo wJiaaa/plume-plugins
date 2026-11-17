@@ -35,6 +35,7 @@ const gateway = {
 /** 插件跑在一个假的本体上：默认模型是 `host.defaultModel`，设的时候和本体一样按现有的供应商校验。 */
 async function start(host: { defaultModel?: ModelRef }) {
 	let source: ProviderSource | undefined;
+	const changed = vi.fn();
 	const setDefaultModel = vi.fn(async (model: ModelRef) => {
 		const [providerId, modelId] = [model.slice(0, model.indexOf("/")), model.slice(model.indexOf("/") + 1)];
 		const found = source?.list().find((provider) => provider.id === providerId);
@@ -48,9 +49,9 @@ async function start(host: { defaultModel?: ModelRef }) {
 		use: () => ({ offer: () => {} }),
 		hook: () => {},
 		effect: (stop: () => void) => void dispose.push(stop),
-		providers: { provide: (next: ProviderSource) => void (source = next), defaultModel: async () => host.defaultModel, setDefaultModel },
+		providers: { provide: (next: ProviderSource) => void (source = next), changed, defaultModel: async () => host.defaultModel, setDefaultModel },
 	} as unknown as PluginContext);
-	return { source: source!, setDefaultModel };
+	return { source: source!, setDefaultModel, changed };
 }
 
 describe("Magpie 写的形状", () => {
@@ -93,12 +94,17 @@ describe("Magpie 写的形状", () => {
 });
 
 describe("插件的供应商", () => {
-	it("启用时建好只给本人读写的空文件；Magpie 写了网关当场出现", async () => {
-		const { source } = await start({});
+	it("启用时建好只给本人读写的空文件；Magpie 写了网关当场出现、告诉界面重取，内容没变不再说", async () => {
+		const { source, changed } = await start({});
 		expect((await stat(file())).mode & 0o777).toBe(0o600);
 		expect(source.list()).toEqual([]);
+		expect(changed).not.toHaveBeenCalled();
 		await writeFile(file(), JSON.stringify({ magpie: gateway }));
 		await vi.waitFor(() => expect(source.list().map((provider) => provider.id)).toEqual(["magpie"]), { timeout: 5_000 });
+		expect(changed).toHaveBeenCalledTimes(1);
+		await writeFile(file(), JSON.stringify({ magpie: gateway, other: 1 }));
+		await new Promise((resolve) => setTimeout(resolve, 500));
+		expect(changed).toHaveBeenCalledTimes(1);
 	});
 
 	it("设置页的改写回 magpie 块、别的键不动；删除只拿掉 magpie 块", async () => {

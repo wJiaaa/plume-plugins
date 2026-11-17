@@ -53,7 +53,12 @@ export default {
 			async () => {
 				const credentials = await readCredentials(ctx.dataDir, ctx.log);
 				if (!credentials) return;
-				provider = magpieProvider(credentials);
+				const next = magpieProvider(credentials);
+				// 真变了才让界面重取：设置页改了写回文件，这里会再读到同一份。
+				if (JSON.stringify(next) !== JSON.stringify(provider)) {
+					provider = next;
+					ctx.providers.changed();
+				}
 				// 先换好供应商再设默认模型：设的时候本体按现在的供应商校验。
 				await syncDefaultModel(ctx, credentials);
 			},
