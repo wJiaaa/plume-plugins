@@ -13,7 +13,7 @@ Magpie 那边经 Agent 插件把东西写进这个插件的数据目录 `~/.plum
 - **全局指令**：Magpie 写进 `AGENTS.md`。每次调模型前现读，作为单独一段放进系统提示词，排在项目指令前面：项目自己的规矩优先，和设置里写的全局指令一样。最多放 100 KiB，超过的只放开头。
 - **MCP 服务**：Magpie 写进 `mcp.json`（Claude 格式的 `mcpServers`）。这个插件把它们登记给 Plume 自带的 MCP 插件，出现在「插件市场 › 连接器」里，标着「由 Magpie 管理」：名称、开关、启动方式、变量和删除都锁住，在 Magpie 里改；连接状态、工具列表、重连和 OAuth 登录照常。
 - **当场生效**：插件盯着数据目录，Magpie 改了网关、默认模型或 MCP 服务，下一轮就用上，设置页和模型列表当场跟着变，MCP 服务当场重连。
-- **不留副本**：都不抄进 Plume 自己的设置。在 Magpie 里撤回，或在插件市场停用、卸载这个插件，它们就没了；默认模型指着 Magpie 的模型时，按 Plume 的规则落到第一个可用的。
+- **不留副本**：都不抄进 Plume 自己的设置。在 Magpie 里撤回，或在插件市场停用、卸载这个插件，它们就不生效了；卸载只删插件本身，数据目录里的文件（含 `credentials.json` 里的 key 和 Agent 插件文件夹）留着，重新安装接着用，不要了就手动删掉 `~/.plume/plugin-data/plume.magpie`，再在 Magpie 里移除 Agent 插件；默认模型指着 Magpie 的模型时，按 Plume 的规则落到第一个可用的。
 - **出错时**：文件读不了、格式不对时只记一句诊断（不转述文件内容，里面有 key 和令牌），保留上一次读到的；某一条 MCP 服务格式不对或和已有的服务重名时跳过它，保留已有的；网关的 id `magpie` 和你自己的供应商重名时保留你自己的。
 
 技能不经过这个插件：Magpie 直接写进 `~/.plume/skills/`，由 Plume 自带的技能插件发现。
@@ -22,9 +22,11 @@ Magpie 那边经 Agent 插件把东西写进这个插件的数据目录 `~/.plum
 
 1. 在 Plume 的插件市场装上这个插件。它会把 Magpie 用的 Agent 插件放在这个文件夹（插件更新时跟着更新）：
 
-   `~/.plume/plugin-data/plume.magpie/magpie-agent`
+   `~/.plume/plugin-data/plume.magpie/plume`
 
 2. 打开 Magpie 的「设置 → 插件」，添加上面这个文件夹。
 3. 在 Magpie 的 Agent 页给 Plume 选模型。要分发全局指令和 MCP 服务，在资源库里选择 Plume。
 
-使用自定义 `PLUME_HOME` 时，文件夹在 `<PLUME_HOME>/plugin-data/plume.magpie/magpie-agent`。
+使用自定义 `PLUME_HOME` 时，文件夹在 `<PLUME_HOME>/plugin-data/plume.magpie/plume`。
+
+0.1.2 把这个文件夹放在 `magpie-agent`，现在改名为 `plume`，旧文件夹启用时删掉；在 Magpie 里添加过旧文件夹的，改成添加新的。

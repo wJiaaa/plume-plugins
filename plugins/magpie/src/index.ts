@@ -1,13 +1,14 @@
 /**
  * plume.magpie 的逻辑入口，跑在 agent 进程：把 Magpie（usemagpie.ai）交给 Plume 的东西交给 Plume。
  *
- * Magpie 那一侧的 Agent 插件由这个插件启用时写到数据目录的 `magpie-agent/`（见 `magpie-agent.ts`），人在 Magpie 里添加它；
+ * Magpie 那一侧的 Agent 插件由这个插件启用时写到数据目录的 `plume/`（见 `magpie-agent.ts`），人在 Magpie 里添加它；
  * 它把这几样写进这个插件的数据目录：
  * - `credentials.json`：网关和默认模型（见 `gateway.ts`）。网关经 `ctx.providers` 成为设置页里的「Magpie」供应商，
  *   设置页的改和删写回这份文件；Magpie 选了模型就设成 Plume 的默认模型，断开时把 Plume 原来的默认模型换回来（见 `default-model.ts`）。
  * - `AGENTS.md`、`mcp.json`：全局指令和 MCP 服务（见 `library.ts`）。全局指令每次调模型前现读，经 `model.context` 放成单独一段；
  *   MCP 服务经服务 `mcp.servers` 登记给 MCP 插件。
- * 盯着数据目录，Magpie 改了当场重读。都不抄进 Plume 自己的设置：在 Magpie 里撤回、或停用这个插件，就都没了。
+ * 盯着数据目录，Magpie 改了当场重读。都不抄进 Plume 自己的设置：在 Magpie 里撤回、或停用这个插件，就都不生效了
+ * （卸载只删插件目录，数据目录里的文件留着，重新安装接着用）。
  */
 
 import { watch } from "node:fs";
