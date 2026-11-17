@@ -7,7 +7,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { PromptSection } from "@plume/contract";
 
-export const INSTRUCTIONS_FILE = "AGENTS.md";
+const INSTRUCTIONS_FILE = "AGENTS.md";
 export const MCP_FILE = "mcp.json";
 
 /** 全局指令最多放进提示词多少个字符。shortcut：超过的只放开头；需要更长时改成截断后告诉模型去读全文。 */
