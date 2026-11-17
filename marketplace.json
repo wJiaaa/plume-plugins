@@ -27,6 +27,10 @@
       "source": "./plugins/lsp"
     },
     {
+      "name": "magpie",
+      "source": "./plugins/magpie"
+    },
+    {
       "name": "memory",
       "source": "./plugins/memory"
     },
