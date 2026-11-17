@@ -45,6 +45,7 @@ async function start(host: { defaultModel?: ModelRef }) {
 	await plugin.apply({
 		name: "plume.magpie",
 		dataDir: dir,
+		appDataDir: dir,
 		log: { warn: () => {} },
 		use: () => ({ offer: () => {} }),
 		hook: () => {},

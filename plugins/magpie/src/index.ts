@@ -1,7 +1,8 @@
 /**
  * plume.magpie 的逻辑入口，跑在 agent 进程：把 Magpie（usemagpie.ai）交给 Plume 的东西交给 Plume。
  *
- * Magpie 的 Agent 插件写进这个插件的数据目录：
+ * Magpie 那一侧的 Agent 插件由这个插件启用时写到数据目录的 `magpie-agent/`（见 `magpie-agent.ts`），人在 Magpie 里添加它；
+ * 它把这几样写进这个插件的数据目录：
  * - `credentials.json`：网关和默认模型（见 `gateway.ts`）。网关经 `ctx.providers` 成为设置页里的「Magpie」供应商，
  *   设置页的改和删写回这份文件；Magpie 选了模型就设成 Plume 的默认模型，断开时把 Plume 原来的默认模型换回来（见 `default-model.ts`）。
  * - `AGENTS.md`、`mcp.json`：全局指令和 MCP 服务（见 `library.ts`）。全局指令每次调模型前现读，经 `model.context` 放成单独一段；
@@ -16,6 +17,7 @@ import type { Plugin, PluginProvider } from "@plume/contract";
 import { syncDefaultModel } from "./default-model.ts";
 import { CREDENTIALS_FILE, type Credentials, magpieGateway, magpieProvider, readCredentials, writeCredentials } from "./gateway.ts";
 import { MCP_FILE, readInstructions, readMcpServers, withInstructions } from "./library.ts";
+import { writeAgent } from "./magpie-agent.ts";
 import { MESSAGES } from "./messages.ts";
 
 /** 连接器页上「由 … 管理」的那个名字。 */
@@ -83,6 +85,8 @@ export default {
 		await writeFile(join(ctx.dataDir, CREDENTIALS_FILE), "{}\n", { flag: "wx", mode: 0o600 }).catch((error: NodeJS.ErrnoException) => {
 			if (error.code !== "EEXIST") throw error;
 		});
+		// Magpie 用的 Agent 插件放进数据目录，人在 Magpie 里添加这个文件夹；写不出来不拖垮别的。
+		await writeAgent(ctx.dataDir, ctx.appDataDir).catch((error: unknown) => ctx.log.warn(`写 Magpie 用的 Agent 插件失败：${messageOf(error)}`));
 		// 等第一次读完再算启用好：开机就有 Magpie 的供应商，不会先落到别的默认模型上。
 		await loadGateway();
 		void offer();

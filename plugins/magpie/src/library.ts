@@ -1,13 +1,13 @@
 /**
  * Magpie 资源库写进这个插件数据目录的两样东西：全局指令 `AGENTS.md` 和 MCP 服务 `mcp.json`（Claude 格式的 `mcpServers`）。
- * 写的一方是 Magpie 的 Agent 插件（同目录的 `magpie-agent/`），撤回时删掉。
+ * 写的一方是 Magpie 的 Agent 插件（这个插件写出的，见 `magpie-agent.ts`），撤回时删掉。
  */
 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { PromptSection } from "@plume/contract";
 
-const INSTRUCTIONS_FILE = "AGENTS.md";
+export const INSTRUCTIONS_FILE = "AGENTS.md";
 export const MCP_FILE = "mcp.json";
 
 /** 全局指令最多放进提示词多少个字符。shortcut：超过的只放开头；需要更长时改成截断后告诉模型去读全文。 */
