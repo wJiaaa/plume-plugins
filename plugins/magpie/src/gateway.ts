@@ -1,7 +1,7 @@
 /**
  * Magpie 接管 Plume 的模型时写进这个插件数据目录 `credentials.json` 的东西，以及它变成的供应商。
  *
- * 写的一方是 Magpie 的 Agent 插件（Plume 仓库的 `integrations/magpie`）：它只会按点分路径原地改 JSON 的对象键，
+ * 写的一方是 Magpie 的 Agent 插件（同目录的 `magpie-agent/`）：它只会按点分路径原地改 JSON 的对象键，
  * 写的是顶层的 `magpie` 块和 `defaultModel`，断开时逐键恢复或删除，删空的 `magpie` 留成 `{}`（所以缺字段是常态，不是损坏）；
  * 它还靠「它写的 key 还在原处」判断这一行是否仍然接着。在 Plume 里的编辑也写回 `magpie` 块，模型沿用 Magpie 的字段名，
  * 额外的能力、价格和档位直接留在同一条模型上。文件里有网关的明文 key，只给本人读写。

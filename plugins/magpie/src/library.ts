@@ -1,6 +1,6 @@
 /**
  * Magpie 资源库写进这个插件数据目录的两样东西：全局指令 `AGENTS.md` 和 MCP 服务 `mcp.json`（Claude 格式的 `mcpServers`）。
- * 写的一方是 Magpie 的 Agent 插件（Plume 仓库的 `integrations/magpie`），撤回时删掉。
+ * 写的一方是 Magpie 的 Agent 插件（同目录的 `magpie-agent/`），撤回时删掉。
  */
 
 import { readFile } from "node:fs/promises";

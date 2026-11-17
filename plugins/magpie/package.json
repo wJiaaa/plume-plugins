@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/magpie",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "把 Magpie 交给 Plume 的模型网关、全局指令和 MCP 服务交给 Plume：网关成为模型设置里的「Magpie」供应商，指令每轮放进提示词，MCP 服务出现在连接器页、由 Magpie 管理。",
   "author": "Plume",
   "keywords": [

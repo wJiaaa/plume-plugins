@@ -4,7 +4,7 @@
 
 ## 它做了什么
 
-Magpie 那边用的是 Plume 仓库里的 Agent 插件 `integrations/magpie`，它把东西写进这个插件的数据目录 `~/.plume/plugin-data/plume.magpie/`：
+Magpie 那边要装上配套的 Agent 插件：源码在插件仓库的 `plugins/magpie/magpie-agent/`，不随这个插件安装，要手动加进 Magpie（见下面「用法」）。它把东西写进这个插件的数据目录 `~/.plume/plugin-data/plume.magpie/`：
 
 - **模型**：在 Magpie 的 Agent 页给 Plume 选一个模型，Magpie 把网关（地址、key、模型目录）和选中的模型写进 `credentials.json`。网关成为设置 › 模型里的「Magpie」供应商，排在你自己的后面，标着由这个插件提供：能重命名、启停、改连接和密钥、增删改模型、测试、设默认，也能删除，改动都写回这份文件，不进 Plume 自己的 `settings.json`、不进导出的供应商文件。Magpie 再次同步时覆盖连接、密钥和模型列表。
   - **默认模型**：Magpie 选了模型就设成 Plume 的默认模型，并记下原来的那个（`default-model.json`）；在 Magpie 里选回原来的模型或关掉开关时，Plume 的默认模型还是 Magpie 设的那个，就换回原来的，你在 Plume 里另选过就不动。Plume 关着时 Magpie 改的，下次启动跟上。
@@ -21,6 +21,6 @@ Magpie 那边用的是 Plume 仓库里的 Agent 插件 `integrations/magpie`，�
 ## 用法
 
 1. 在 Plume 的插件市场装上这个插件：装上才有它的数据目录，Magpie 才会列出 Plume。
-2. 在 Magpie 里添加 Plume 仓库的 `integrations/magpie`（`magpie plugin add <路径>`，或在 Magpie 的「设置 → 插件」里添加），在 Agent 页给 Plume 选模型，在资源库里选择 Plume 分发指令和 MCP 服务。
+2. 把插件仓库的 `plugins/magpie/magpie-agent/` 加进 Magpie（`magpie plugin add <路径>`，或在 Magpie 的「设置 → 插件」里添加），在 Agent 页给 Plume 选模型，在资源库里选择 Plume 分发指令和 MCP 服务。Magpie 直接读这个文件夹，所以把它放在不会被挪走的地方（比如先拷到 `~/.config/magpie/plume-agent`）。
 
 使用自定义 `PLUME_HOME` 时，把 Magpie 那边 Agent 插件的 `dir`、`config` 和 `library` 路径一起改成 `<PLUME_HOME>/plugin-data/plume.magpie/` 下对应的绝对路径。
