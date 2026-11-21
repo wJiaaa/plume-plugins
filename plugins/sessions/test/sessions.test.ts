@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import type {
 	HookLayer,
@@ -19,6 +23,7 @@ import plugin from "../src/index.ts";
 import type { SessionsApi } from "../src/api.ts";
 import { PEER_DEDUP_MS } from "../src/pacing.ts";
 import { familyOf, resolveSession, sessionAddress, together } from "../src/peers.ts";
+import { repositories } from "../src/repository.ts";
 
 /** 会话摘要；`kind` 和本体一样按 `parentId`、`owner` 算。 */
 const summary = (id: string, extra: Partial<SessionSummary> = {}): SessionSummary =>
@@ -60,8 +65,8 @@ interface Posted {
 }
 
 /**
- * 几个会话：`plan` 在项目 p1；`exec` 是从它开出来的、开在别处（短名 exec）；`near` 在同一个目录；`far` 在别处；`side` 是 `plan` 的子会话；
- * `grand` 是从 `exec` 开出来的。
+ * 几个会话：`plan` 在项目 p1；`exec` 是从它开出来的、开在别处（短名 exec）；`near` 也在 p1，在它的子目录里；`far` 在别处；
+ * `side` 是 `plan` 的子会话；`grand` 是从 `exec` 开出来的。目录都不存在，git 认不出仓库。
  */
 function fixture() {
 	const sessions: SessionSummary[] = [
@@ -71,7 +76,7 @@ function fixture() {
 			cwd: "/elsewhere",
 			spawnedFrom: { sessionId: "aaaaaa11-0000-4000-8000-000000000000", toolCallId: "c1", name: "exec" },
 		}),
-		summary("cccccc33-0000-4000-8000-000000000000", { title: "旁边", cwd: "/w/app/src", running: true }),
+		summary("cccccc33-0000-4000-8000-000000000000", { title: "旁边", cwd: "/w/app/src", project: "p1", running: true }),
 		summary("dddddd44-0000-4000-8000-000000000000", { title: "别处", cwd: "/other" }),
 		summary("eeeeee55-0000-4000-8000-000000000000", {
 			title: "侧边",
@@ -87,17 +92,20 @@ function fixture() {
 	];
 	const [plan, exec, near, far, side, grand] = sessions as [SessionSummary, SessionSummary, SessionSummary, SessionSummary, SessionSummary, SessionSummary];
 	const messages = new Map<string, Message[]>([[plan.id, [said("user", "做个计划"), said("assistant", "选 SQLite，因为单机。")]]]);
+	/** 读过谁的整段记录：列表时在做哪一步该从钩子记下的取，不每次读。 */
+	const reads: string[] = [];
 	const tools = new Map<string, ToolDefinition>();
 	const layers = new Map<string, unknown>();
 	const observers: Array<(observation: SessionObservation) => void> = [];
 	const posted: Posted[] = [];
-	/** 给了就让寄信抛这句错，和本体拒寄（对方刚好不在了）时一样。 */
-	const refuse: { reason?: string } = {};
+	/** 给了就让寄信抛这句错，和本体拒寄（对方刚好不在了）时一样；`held` 时回执说叫不醒对方。 */
+	const refuse: { reason?: string; held?: boolean } = {};
 	let letters = 0;
 	const post = (from: string, to: string, input: LetterInput): Posted => {
 		const fate = Promise.withResolvers<LetterFate>();
 		const busy = sessions.find((session) => session.id === to)?.running === true;
-		return { from, to, input, settle: (result) => fate.resolve(result), receipt: { id: `letter-${++letters}`, queued: busy, read: fate.promise } };
+		const receipt = { id: `letter-${++letters}`, queued: busy, held: refuse.held === true, read: fate.promise };
+		return { from, to, input, settle: (result) => fate.resolve(result), receipt };
 	};
 	let served: SessionsApi | undefined;
 	const ctx = {
@@ -108,7 +116,10 @@ function fixture() {
 		sessions: {
 			list: async () => structuredClone(sessions),
 			get: async (id: string) => structuredClone(sessions.find((session) => session.id === id)),
-			messages: async (id: string) => structuredClone(messages.get(id) ?? []),
+			messages: async (id: string) => {
+				reads.push(id);
+				return structuredClone(messages.get(id) ?? []);
+			},
 			observe: (listener: (observation: SessionObservation) => void) => void observers.push(listener),
 			onDeleted() {},
 		},
@@ -140,17 +151,21 @@ function fixture() {
 			} as unknown as ModelContext,
 			async (input) => input,
 		);
-	const approval = (sessionId: string, waiting: boolean) => {
-		const event = { type: "approval", sessionId, approval: waiting ? { toolCallId: "t" } : undefined } as unknown as SessionObservation["event"];
-		for (const listener of observers) listener({ sessionId, at: 0, timestamp: 0, event });
+	const observed = (sessionId: string, event: unknown) => {
+		for (const listener of observers) listener({ sessionId, at: 0, timestamp: 0, event: event as SessionObservation["event"] });
 	};
-	return { plan, exec, near, far, side, grand, posted, refuse, call, context, approval, api: () => served! };
+	const approval = (sessionId: string, waiting: boolean) =>
+		observed(sessionId, { type: "approval", sessionId, approval: waiting ? { toolCallId: "t" } : undefined });
+	/** 某个会话里一件工具交回了这些 `details`（经钩子 tool.execute）。 */
+	const toolDone = (sessionId: string, details: unknown, isError = false) =>
+		(layers.get("tool.execute") as HookLayer<"tool.execute">)({ sessionId } as never, async () => ({ output: "ok", details, ...(isError ? { isError } : {}) }));
+	return { plan, exec, near, far, side, grand, posted, refuse, reads, messages, call, context, approval, observed, toolDone, api: () => served! };
 }
 
 /** 等读到这些 `then` 跑完。 */
 const settled = () => new Promise((resolve) => setTimeout(resolve, 10));
 
-test("地址是「名字 [ref]」，ref 说了算；重名不猜；同一个项目、目录套着、开出来的彼此看得见", () => {
+test("地址是「名字 [ref]」，ref 说了算；重名不猜；同一个项目、同一个仓库、开出来的彼此看得见，只是目录挨着的看不见", () => {
 	const f = fixture();
 	assert.equal(sessionAddress({ id: f.plan.id, title: " 定 [计划]\n", cwd: "/w" }), "定 计划 [aaaaaa]");
 	assert.equal(sessionAddress({ id: f.plan.id, title: "", cwd: "/w/app" }), "app [aaaaaa]");
@@ -166,11 +181,22 @@ test("地址是「名字 [ref]」，ref 说了算；重名不猜；同一个项�
 	assert.equal(together(f.plan, f.exec), true);
 	assert.equal(together(f.near, f.far), false);
 	assert.equal(together({ ...f.far, project: "p1" }, f.plan), true);
-	// 会话目录是 git 工作树时，主工作树也算它的目录。
+	// 只是目录套着不算：开在上层目录（主目录）里的看不见下面的；同一个目录也一样（不在项目里的聊天都开在同一处）。
+	const home = { ...f.far, cwd: "/w" };
+	assert.equal(together(home, { ...f.near, project: undefined }), false);
+	assert.equal(together(home, { ...f.far, id: "x", cwd: "/w" }), false);
+	// 同一个仓库算：工作树和主树、仓库里的子目录；不同仓库不算。
 	const tree = { ...f.far, cwd: "/data/worktrees/app-1" };
-	assert.equal(together(tree, f.near), false);
-	assert.equal(together(tree, f.near, new Map([[tree.cwd, ["/w/app"]]])), true);
-	assert.equal(together(f.near, tree, new Map([[tree.cwd, ["/w/app"]]])), true);
+	const sub = { ...f.far, id: "y", cwd: "/w/app/src/lib" };
+	const repos = new Map([
+		[tree.cwd, "/w/app/.git"],
+		[sub.cwd, "/w/app/.git"],
+		[f.far.cwd, "/other/.git"],
+	]);
+	assert.equal(together(tree, sub), false);
+	assert.equal(together(tree, sub, repos), true);
+	assert.equal(together(sub, tree, repos), true);
+	assert.equal(together(tree, f.far, repos), false);
 });
 
 test("read_session 读得到看得见的会话；看不见的、自己、子会话里调都退回", async () => {
@@ -181,17 +207,26 @@ test("read_session 读得到看得见的会话；看不见的、自己、子会�
 	assert.equal(page.sessionId, f.plan.id);
 	assert.equal(page.totalMessages, 2);
 	assert.match(page.messages[1]!.text, /选 SQLite/);
-	assert.match((await f.call("read_session", f.near.id, { to: "别处" })).output, /^别处 \[dddddd\] is not reachable/);
+	// 看不见的和没有的一样说没有，不报出它的名字；完整 id 也一样。
+	assert.match((await f.call("read_session", f.near.id, { to: "别处" })).output, /^No conversation is addressed "别处"/);
+	assert.match((await f.call("read_session", f.near.id, { to: f.far.id })).output, /^No conversation is addressed/);
 	assert.equal((await f.call("read_session", f.plan.id, { to: "定计划" })).output, "That address is this conversation.");
 	assert.match((await f.call("read_session", f.plan.id, { to: "侧边" })).output, /^No conversation is addressed "侧边"/);
 	assert.match((await f.call("read_session", f.side.id, { to: "旁边" })).output, /only work in a main conversation/);
 	assert.equal((await f.call("read_session", f.plan.id, { to: "旁边", start: -1 })).isError, true);
+	// 别处有个重名的：只在看得见的里面找，不算重名，也不把别处的列出来。
+	f.far.title = "旁边";
+	const near = await f.call("read_session", f.plan.id, { to: "旁边" });
+	assert.equal(near.isError, undefined);
+	assert.equal((JSON.parse(near.output) as { sessionId: string }).sessionId, f.near.id);
+	f.far.title = "别处";
 
 	const list = await f.call("list_sessions", f.plan.id, {});
 	assert.deepEqual(list.output.split("\n"), [
 		`执行 [bbbbbb] · ${f.exec.id} · name: exec · idle · /elsewhere`,
 		`旁边 [cccccc] · ${f.near.id} · working · /w/app/src`,
 	]);
+	assert.equal((await f.call("list_sessions", f.far.id, {})).output, "No other conversation is in this project or folder right now.");
 	// 只列一家子的：开出来的、开出来的又开出来的（不在一处也列），不列旁边的。
 	assert.deepEqual(
 		(await f.call("list_sessions", f.plan.id, { linked: true })).output.split("\n").map((row) => row.split(" · ")[0]),
@@ -254,7 +289,14 @@ test("send_message 寄一封单向的信：带发件方的地址和处理说明�
 		`You sent the same message to 定计划 [aaaaaa] less than ${PEER_DEDUP_MS / 1000} seconds ago; it was not sent again.`,
 	);
 	assert.match((await f.call("send_message", f.side.id, { to: "aaaaaa", message: "x" })).output, /only work in a main conversation/);
-	assert.equal(f.posted.length, 2);
+	// 本体说叫不醒对方（它的人按了停、被接连叫起到了上限）：照实告诉模型，回执上记着。
+	f.refuse.held = true;
+	const held = await f.call("send_message", f.exec.id, { to: "aaaaaa", message: "还在吗" });
+	assert.match(held.output, /will not start a turn for this .* when its user next speaks/);
+	assert.equal((held.details as { held?: boolean }).held, true);
+	assert.match((await f.call("send_message", f.plan.id, { to: "旁边", message: "y" })).output, /It is working but will not be woken/);
+	delete f.refuse.held;
+	assert.equal(f.posted.length, 4);
 });
 
 test("send_message 的下落记在内存里给界面：读到了、拦下了；本体拒寄时把它的话原样交给模型，不算发过", async () => {
@@ -290,4 +332,51 @@ test("正在做的那一项认最新一份成功的进度清单（details.checkl
 	assert.equal(currentStep([result(items("改路由")), result(items("写测试"))]), "写测试");
 	assert.equal(currentStep([result(items("改路由")), result(items("坏的"), true), result({ other: 1 })]), "改路由");
 	assert.equal(currentStep([result(items("改路由")), result({ checklist: [{ content: "读代码", status: "completed" }] })]), undefined);
+});
+
+test("列表里在做哪一步从工具交回的清单记下，不每次读整段记录；撤回过的、没记过的读一次", async () => {
+	const f = fixture();
+	const checklist = (doing: string) => ({ checklist: [{ content: doing, status: "in_progress" }] });
+	await f.toolDone(f.near.id, checklist("改路由"));
+	await f.toolDone(f.near.id, { other: 1 });
+	await f.toolDone(f.near.id, checklist("坏的"), true);
+	const row = async () => (await f.call("list_sessions", f.plan.id, {})).output.split("\n").find((line) => line.startsWith("旁边"));
+	assert.match((await row()) ?? "", / · on: 改路由$/);
+	assert.equal(f.reads.includes(f.near.id), false);
+	// 没记过的读一次记下，之后不再读。
+	await row();
+	assert.equal(f.reads.filter((id) => id === f.exec.id).length, 1);
+	// 撤回截掉了清单：重读记录。
+	f.observed(f.near.id, { type: "rewound" });
+	assert.doesNotMatch((await row()) ?? "", / · on: /);
+	assert.equal(f.reads.filter((id) => id === f.near.id).length, 1);
+	await f.toolDone(f.near.id, checklist("写测试"));
+	assert.match((await row()) ?? "", / · on: 写测试$/);
+});
+
+test("仓库认共用的 .git：工作树、子目录算同一个；不在仓库里的只信一分钟，之后 git init 的认得出来", async () => {
+	const root = await realpath(await mkdtemp(join(tmpdir(), "plume-sessions-")));
+	try {
+		const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, stdio: "ignore" });
+		const app = join(root, "app");
+		const sub = join(app, "src");
+		const tree = join(root, "tree");
+		const loose = join(root, "loose");
+		await mkdir(sub, { recursive: true });
+		await mkdir(loose);
+		git(app, "init", "-q");
+		git(app, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "x");
+		git(app, "worktree", "add", "-q", tree);
+		const now = Date.now();
+		const found = await repositories([app, sub, tree, loose], now);
+		assert.equal(found.get(app), join(app, ".git"));
+		assert.equal(found.get(sub), found.get(app));
+		assert.equal(found.get(tree), found.get(app));
+		assert.equal(found.has(loose), false);
+		git(loose, "init", "-q");
+		assert.equal((await repositories([loose], now + 1_000)).has(loose), false);
+		assert.equal((await repositories([loose], now + 61_000)).get(loose), join(loose, ".git"));
+	} finally {
+		await rm(root, { recursive: true, force: true });
+	}
 });

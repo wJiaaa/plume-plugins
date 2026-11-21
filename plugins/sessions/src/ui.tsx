@@ -4,8 +4,9 @@
  * 和别的会话往来只是这段活里交代一句，归成一类（`group`），和读文件、跑命令接成一段，不单独一行把活切成好几截；
  * `send_message` 的卡片只是补上回执（`inline`），那一行照样并进去。
  *
- * 回执从记录里认：对方的记录里有这封信（`peer` 上的 id）是已送达；之后对方给这边发了消息是已回复；逻辑入口记着它没送到
- * （钩子拦下、对方删掉）是未送达；别的都是排队中——对方在忙、还没读到，或者应用重启前寄出、没了下落。
+ * 回执从对方的记录里认：里面有这封信（`peer` 上的 id）是已送达；读到它以后，对方又给这边发了消息（它记录里一次成功的 `send_message`）
+ * 是已回复——两边的信擦肩而过、它读到这封之前寄出的那封不算。逻辑入口记着它没送到（钩子拦下、对方删掉）是未送达；寄出时就知道叫不醒对方
+ * （`held`）的是等对方开口；别的都是排队中——对方在忙、还没读到，或者应用重启前寄出、没了下落。
  */
 
 import type { ToolCardProps, UiContext, UiPlugin, Remote } from "@plume/contract/ui";
@@ -30,6 +31,7 @@ interface SentDetails {
 	to: string;
 	sessionId: string;
 	letterId: string;
+	held?: boolean;
 }
 
 function isSent(value: unknown): value is SentDetails {
@@ -37,20 +39,24 @@ function isSent(value: unknown): value is SentDetails {
 	return one?.kind === "session_message" && typeof one.sessionId === "string" && typeof one.letterId === "string" && typeof one.to === "string";
 }
 
-type Receipt = "queued" | "delivered" | "replied" | "dropped" | "closed";
+type Receipt = "queued" | "held" | "delivered" | "replied" | "dropped" | "closed";
 
-function useReceipt(sessionId: string, callId: string, sent: SentDetails): Receipt {
-	const own = ui.useSession(sessionId)?.messages;
+function useReceipt(sessionId: string, sent: SentDetails): Receipt {
 	const target = ui.useSession(sent.sessionId)?.messages;
-	const delivered = useMemo(
-		() => target?.some((message) => message.role === "user" && message.peer?.some((letter) => letter.id === sent.letterId)) ?? false,
+	/** 这封信在对方记录里的位置；还没读到是 -1。 */
+	const at = useMemo(
+		() => target?.findIndex((message) => message.role === "user" && message.peer?.some((letter) => letter.id === sent.letterId)) ?? -1,
 		[target, sent.letterId],
 	);
-	const replied = useMemo(() => {
-		if (!own) return false;
-		const at = own.findIndex((message) => message.role === "toolResult" && message.toolCallId === callId);
-		return at >= 0 && own.slice(at + 1).some((message) => message.role === "user" && message.peer?.some((letter) => letter.sessionId === sent.sessionId));
-	}, [own, callId, sent.sessionId]);
+	const delivered = at >= 0;
+	const replied = useMemo(
+		() =>
+			delivered &&
+			target!
+				.slice(at + 1)
+				.some((message) => message.role === "toolResult" && !message.isError && isSent(message.details) && message.details.sessionId === sessionId),
+		[target, at, delivered, sessionId],
+	);
 	const [fate, setFate] = useState<string>();
 	// 对方的记录变了（读到了、被拦下了）再问一次下落；已经认出送达就不用问。
 	const seen = target?.length ?? 0;
@@ -68,14 +74,15 @@ function useReceipt(sessionId: string, callId: string, sent: SentDetails): Recei
 	if (replied) return "replied";
 	if (delivered || fate === "read") return "delivered";
 	if (fate === "dropped" || fate === "closed") return fate;
-	return "queued";
+	return sent.held ? "held" : "queued";
 }
 
 function SentRow({ sessionId, call, sent }: { sessionId: string; call: ToolCardProps["call"]; sent: SentDetails }) {
 	const text = MESSAGES[useI18n().resolvedLocale];
-	const receipt = useReceipt(sessionId, call.id, sent);
+	const receipt = useReceipt(sessionId, sent);
 	const label = receipt === "dropped" || receipt === "closed" ? text.undelivered : text[receipt];
 	const why = receipt === "dropped" ? text.undeliveredDropped : receipt === "closed" ? text.undeliveredClosed : undefined;
+	const hint = why ?? (receipt === "held" ? text.heldHint : undefined);
 	const message = typeof call.args.message === "string" ? call.args.message : "";
 	return (
 		<div data-peer-message={sent.letterId} data-peer-receipt={receipt}>
@@ -85,7 +92,7 @@ function SentRow({ sessionId, call, sent }: { sessionId: string; call: ToolCardP
 				summary={peerName(sent.to)}
 				trailing={
 					<>
-						<Text size="caption" tone={why ? "danger" : "faint"} title={why}>
+						<Text size="caption" tone={why ? "danger" : "faint"} title={hint}>
 							{label}
 						</Text>
 						<ChevronRight size={12} strokeWidth={2} aria-hidden />

@@ -88,20 +88,26 @@ export function readHistory(sessionId: string, messages: readonly Message[], arg
 }
 
 /**
- * 它清单上正在做的那一项：最新一份进度清单里 `in_progress` 的那条。列出会话时据此说它在做什么。
- * 清单认工具结果 `details` 里的 `checklist`（`ChecklistDetails`，会话里最新一条成功的那份算数），不认是哪个工具记的。
+ * 一条成功的工具结果带的进度清单上正在做的那一项（`in_progress` 的那条）：没带清单是 `null`，带了、没有在做的是 undefined。
+ * 清单认 `details` 里的 `checklist`（`ChecklistDetails`），不认是哪个工具记的。
  */
+export function checklistStep(details: unknown): string | undefined | null {
+	const checklist = (details as Partial<ChecklistDetails> | undefined)?.checklist;
+	if (!Array.isArray(checklist)) return null;
+	const step = checklist.find(
+		(item): item is ChecklistItem =>
+			typeof item === "object" && item !== null && item.status === "in_progress" && typeof (item as { content?: unknown }).content === "string",
+	);
+	return step?.content;
+}
+
+/** 它清单上正在做的那一项：会话里最新一条成功的、带清单的工具结果算数（`checklistStep`）。列出会话时据此说它在做什么。 */
 export function currentStep(messages: readonly Message[]): string | undefined {
 	for (let index = messages.length - 1; index >= 0; index--) {
 		const message = messages[index];
 		if (message?.role !== "toolResult" || message.isError) continue;
-		const checklist = (message.details as Partial<ChecklistDetails> | undefined)?.checklist;
-		if (!Array.isArray(checklist)) continue;
-		const step = checklist.find(
-			(item): item is ChecklistItem =>
-				typeof item === "object" && item !== null && item.status === "in_progress" && typeof (item as { content?: unknown }).content === "string",
-		);
-		return step?.content;
+		const step = checklistStep(message.details);
+		if (step !== null) return step;
 	}
 	return undefined;
 }

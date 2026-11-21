@@ -1,7 +1,8 @@
 /**
  * plume.sessions 的逻辑入口：对话之间互相看一眼、递一句话。
  *
- * - `list_sessions` 看看有谁、在忙还是在等它的人，`read_session` 读它的记录：不叫醒它、不花它的钱，能查到的不问。
+ * - `list_sessions` 看看有谁、在忙还是在等它的人、清单上在做哪一步，`read_session` 读它的记录：不叫醒它、不花它的钱，能查到的不问。
+ *   在做哪一步在工具交回清单时记下（钩子 tool.execute），不为列一次表把每个会话的整段记录读出来。
  * - `send_message` 发一条消息：单向的，当场返回回执（对方此刻在忙还是闲着）。对方闲着开一轮，忙着在下一步读到；它要回话就再发一条过来。
  *   回执之后的下落（读到了、没送到）记在内存里，界面在工具那一行上标出来：排队中、已送达、已回复、未送达。
  *
@@ -12,11 +13,12 @@
  * - 互相开出来的一家子（`spawnedFrom` 连起来的），系统提示词里多一节名册：谁是谁、id 是什么，找人只看它。
  * - 从别的会话开出来的（计划交给新会话执行、开出来的新会话），来源还在侧栏里时系统提示词多一段，告诉它来源在哪、拿不准时先读再问。
  * - 不查权限宽窄：Plume 的权限档是全局的，所有会话一样宽。
+ * - 回执照实说对方什么时候读到：对方叫不醒（它的人按了停、被接连叫起到了上限，`LetterReceipt.held`）时说清楚，别让模型以为对方接手了。
  */
 
 import type { LetterFate, LetterInput, LetterReceipt, Plugin, SessionSummary, ToolDefinition, ToolOutput, ToolRun } from "@plume/contract";
 import type { SessionsApi } from "./api.ts";
-import { currentStep, HISTORY_PROPERTIES, invalidHistoryArgs, READ_LIMIT, readHistory, type HistoryArgs } from "./history.ts";
+import { checklistStep, currentStep, HISTORY_PROPERTIES, invalidHistoryArgs, READ_LIMIT, readHistory, type HistoryArgs } from "./history.ts";
 import { familyOf, listed, resolveSession, sessionAddress, together } from "./peers.ts";
 import {
 	LETTER_GUIDE,
@@ -34,7 +36,7 @@ import {
 	TO,
 } from "./prompt.ts";
 import { PeerPacer } from "./pacing.ts";
-import { mainWorktrees } from "./worktree.ts";
+import { repositories } from "./repository.ts";
 
 const TOOLS = new Set(["list_sessions", "read_session", "send_message"]);
 /** 记着多少封信的下落；再多就忘掉最早的（界面上那几封退回「排队中」，只在很久以前的记录里）。 */
@@ -57,12 +59,33 @@ export default {
 		const pacer = new PeerPacer();
 		/** 正弹着审批卡、等它的人批准或回答的会话：`list_sessions` 照实说它在等人，免得别的会话以为它卡住了。 */
 		const waitingOnUser = new Set<string>();
-		ctx.sessions.observe(({ event }) => {
+		/**
+		 * 每个会话清单上正在做的那一项（`checklistStep`），工具交回清单时记下。没记过的（重启以后还没交过清单）、撤回截掉过的，
+		 * 列表时从它的记录里读一次再记下。
+		 */
+		const steps = new Map<string, string | undefined>();
+		ctx.sessions.observe(({ sessionId, event }) => {
+			if (event.type === "rewound") steps.delete(sessionId);
 			if (event.type !== "approval") return;
 			if (event.approval) waitingOnUser.add(event.sessionId);
 			else waitingOnUser.delete(event.sessionId);
 		});
-		ctx.sessions.onDeleted((sessionId) => waitingOnUser.delete(sessionId));
+		ctx.sessions.onDeleted((sessionId) => {
+			waitingOnUser.delete(sessionId);
+			steps.delete(sessionId);
+		});
+		ctx.hook("tool.execute", async (input, next) => {
+			const output = await next(input);
+			const step = output.isError ? null : checklistStep(output.details);
+			if (step !== null) steps.set(input.sessionId, step);
+			return output;
+		});
+		async function stepOf(sessionId: string): Promise<string | undefined> {
+			if (steps.has(sessionId)) return steps.get(sessionId);
+			const step = currentStep(await ctx.sessions.messages(sessionId).catch(() => []));
+			steps.set(sessionId, step);
+			return step;
+		}
 		/** 寄出的信的下落（`LetterFate`），按信的 id；界面据此在工具那一行标出没送到的。 */
 		const fates = new Map<string, LetterFate["status"]>();
 		const remember = (receipt: LetterReceipt) =>
@@ -77,17 +100,23 @@ export default {
 		};
 		ctx.serve(api);
 
-		/** 解析地址：从 `fromId` 看出去，谁是 `to`。 */
+		/** 从 `from` 看得见的会话（见 `peers.ts`），不含自己。 */
+		async function reachable(from: SessionSummary, all: readonly SessionSummary[]): Promise<SessionSummary[]> {
+			const others = all.filter((session) => listed(session) && session.id !== from.id);
+			const repos = await repositories([from.cwd, ...others.map((session) => session.cwd)]);
+			return others.filter((session) => together(from, session, repos));
+		}
+
+		/** 解析地址：从 `fromId` 看出去，谁是 `to`。只在看得见的会话和自己里找，见 `peers.ts`。 */
 		async function lookup(fromId: string, to: string): Promise<Missed | { kind: "found"; from: SessionSummary; target: SessionSummary; to: string }> {
 			const all = await ctx.sessions.list();
 			const from = all.find((session) => session.id === fromId);
 			if (!from) return { kind: "none" };
-			const found = resolveSession(to, all.filter(listed));
+			const found = resolveSession(to, [from, ...(await reachable(from, all))]);
 			if (found.kind === "none") return { kind: "none" };
 			if (found.kind === "ambiguous") return { kind: "ambiguous", candidates: found.candidates.map(sessionAddress) };
 			const target = found.session;
 			if (target.id === from.id) return { kind: "self" };
-			if (!together(from, target, await mainWorktrees([from.cwd, target.cwd]))) return { kind: "unreachable", to: sessionAddress(target) };
 			return { kind: "found", from, target, to: sessionAddress(target) };
 		}
 
@@ -184,17 +213,14 @@ export default {
 				const all = await ctx.sessions.list();
 				const from = all.find((session) => session.id === run.sessionId);
 				if (!from) return { output: none };
-				const others = linked ? familyOf(from, all) : all.filter((session) => listed(session) && session.id !== from.id);
-				const mains = linked ? new Map<string, string[]>() : await mainWorktrees([from.cwd, ...others.map((session) => session.cwd)]);
+				const others = linked ? familyOf(from, all) : await reachable(from, all);
 				const rows = await Promise.all(
-					others
-						.filter((session) => linked || together(from, session, mains))
-						.map(async (session) => {
-							const doing = currentStep(await ctx.sessions.messages(session.id).catch(() => []));
-							const state = waitingOnUser.has(session.id) ? "waiting for its user" : session.running ? "working" : "idle";
-							const name = session.spawnedFrom?.name ? [`name: ${session.spawnedFrom.name}`] : [];
-							return [sessionAddress(session), session.id, ...name, state, session.cwd, ...(doing ? [`on: ${doing}`] : [])].join(" · ");
-						}),
+					others.map(async (session) => {
+						const doing = await stepOf(session.id);
+						const state = waitingOnUser.has(session.id) ? "waiting for its user" : session.running ? "working" : "idle";
+						const name = session.spawnedFrom?.name ? [`name: ${session.spawnedFrom.name}`] : [];
+						return [sessionAddress(session), session.id, ...name, state, session.cwd, ...(doing ? [`on: ${doing}`] : [])].join(" · ");
+					}),
 				);
 				return { output: rows.length > 0 ? rows.join("\n") : none };
 			},
@@ -232,10 +258,20 @@ export default {
 				const { message, found, letter } = ready;
 				const posted = post(run.sessionId, found, letter, { text: message, guide: LETTER_GUIDE });
 				if ("refused" in posted) return posted.refused;
-				remember(posted.receipt);
+				const { receipt } = posted;
+				remember(receipt);
+				// 旧版本的本体不给 `held`：当作叫得醒，和那时的行为一致。
+				const held = receipt.held === true;
 				return {
-					output: sent(found.to, posted.receipt.queued),
-					details: { kind: "session_message", to: found.to, sessionId: found.target.id, letterId: posted.receipt.id, queued: posted.receipt.queued },
+					output: sent(found.to, { queued: receipt.queued, held }),
+					details: {
+						kind: "session_message",
+						to: found.to,
+						sessionId: found.target.id,
+						letterId: receipt.id,
+						queued: receipt.queued,
+						...(held ? { held } : {}),
+					},
 				};
 			},
 		};

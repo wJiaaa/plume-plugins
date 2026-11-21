@@ -14,7 +14,7 @@ export const TO = {
 } as const;
 
 export const LIST_SESSIONS_DESCRIPTION =
-	"List the other conversations in this one's project or folder (same project, same or nested folder, worktrees of one repository, or started from one another), with whether each is working, waiting for its user or idle, and the step it is on when it keeps a task list. " +
+	"List the other conversations that work alongside this one (same project, same git repository including its worktrees and subfolders, or started from one another), with whether each is working, waiting for its user or idle, and the step it is on when it keeps a task list. " +
 	'With {"linked": true}, only the sessions linked to this one (started from one another) — the ones in the "Linked sessions" section. ' +
 	"Each row starts with its address, `name [ref]`, then its id: either works as `to` for the other session tools.";
 
@@ -69,13 +69,12 @@ export function rosterSection(entries: readonly RosterEntry[]): string {
 	].join("\n");
 }
 
-export type Missed = { kind: "none" } | { kind: "self" } | { kind: "unreachable"; to: string } | { kind: "ambiguous"; candidates: string[] };
+/** 几种「没找到人」。看不见的会话和没有的一样说「没有」：别处的会话不该从这里露出名字。 */
+export type Missed = { kind: "none" } | { kind: "self" } | { kind: "ambiguous"; candidates: string[] };
 
 /** 几件工具共用的那几种「没找到人」。 */
 export function missed(outcome: Missed, wanted: string): string {
 	switch (outcome.kind) {
-		case "unreachable":
-			return `${outcome.to} is not reachable: it is not in this conversation's project or folder.`;
 		case "none":
 			return `No conversation is addressed "${wanted}". Use list_sessions to see who is reachable.`;
 		case "self":
@@ -103,10 +102,17 @@ export function paced(reason: PaceRefusal, to: string, length: number): string {
 	}
 }
 
-/** 寄出去以后告诉模型的话：对方什么时候读到，没有答复可等。 */
-export function sent(to: string, queued: boolean): string {
-	return (
-		`Sent to ${to}. ${queued ? "It is busy, so it reads it after its current step." : "It is idle, so it starts a turn to read it."} ` +
-		"This is not a conversation: if it replies, the reply arrives here as a message of its own. Do not wait, poll or send again."
-	);
+/**
+ * 寄出去以后告诉模型的话：对方什么时候读到，没有答复可等。`held`：这封叫不醒对方（它的人按了停，或被接连叫起到了上限），
+ * 照实说，别让模型以为对方已经接手了。
+ */
+export function sent(to: string, receipt: { queued: boolean; held?: boolean }): string {
+	const when = receipt.held
+		? receipt.queued
+			? "It is working but will not be woken for messages right now (its user stopped it, or it has been woken by messages too many times in a row): it may read this between its current steps, otherwise when its user next speaks. Do not count on it picking this up; if it matters, tell your user."
+			: "It will not start a turn for this (its user stopped it, or it has been woken by messages too many times in a row): it reads it when its user next speaks. Do not count on it picking this up; if it matters, tell your user."
+		: receipt.queued
+			? "It is busy, so it reads it after its current step."
+			: "It is idle, so it starts a turn to read it.";
+	return `Sent to ${to}. ${when} This is not a conversation: if it replies, the reply arrives here as a message of its own. Do not wait, poll or send again.`;
 }

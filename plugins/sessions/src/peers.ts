@@ -5,12 +5,14 @@
  * 改名之前抄下的地址来，名字对不上、ref 对得上，照样认得。重名又没带 ref 的，不猜，把候选列出来让它挑——猜错一次
  * 就是读了另一个项目里的会话。完整的 id（名册里写的）和开出它的一方起的短名（`spawnedFrom.name`）也认。
  *
- * 看得见的：侧栏里的会话（顶层、没归档的），不是自己，并且和自己在一处——同一个项目、目录相同或一个套着另一个
- * （会话目录是 git 工作树时，它的主工作树也算它的目录，见 `worktree.ts`），或者一个是从另一个开出来的（`spawnedFrom`：计划交出去执行的那个会话要读得到原会话，哪怕它开在别的目录）。
+ * 看得见的：侧栏里的会话（顶层、没归档的），不是自己，并且和自己在一处——同一个项目、同一个 git 仓库（含它的工作树和子目录，
+ * 见 `repository.ts`），或者一个是从另一个开出来的（`spawnedFrom`：计划交出去执行的那个会话要读得到原会话，哪怕它开在别的目录）。
+ * 只是目录挨着不算：开在主目录里的聊天不该看见它下面每一个会话，不在项目里的聊天都开在本体的同一个目录里，彼此也不相干。
  * 子会话（子 Agent、侧边聊天）不在其列：它们是父会话的一部分，读父会话就够了。
+ *
+ * 找人只在看得见的里面找（`reachable` 之后再 `resolveSession`）：重名、ref 撞上的只算看得见的，别处的会话名字也不会出现在退回的话里。
  */
 
-import { resolve, sep } from "node:path";
 import type { SessionSummary } from "@plume/contract";
 
 const REF = /^(.*?)\s*\[([0-9a-f]{6,12})\]$/i;
@@ -56,22 +58,15 @@ export function listed(session: SessionSummary): boolean {
 	return session.kind === "top" && !session.archived;
 }
 
-function within(child: string, parent: string): boolean {
-	const a = resolve(child);
-	const b = resolve(parent);
-	return a === b || a.startsWith(b.endsWith(sep) ? b : b + sep);
-}
-
 /**
  * 两个会话在不在一处（见文件头）。不查自己、不查是否在侧栏，那两条由调用方先判。
- * `mains` 是会话目录还算哪些目录（`worktree.ts` 的 `mainWorktrees`），没给的当不是工作树。
+ * `repos` 是会话目录在哪个仓库（`repository.ts` 的 `repositories`），没有的当不在仓库里。
  */
-export function together(from: SessionSummary, to: SessionSummary, mains: ReadonlyMap<string, readonly string[]> = new Map()): boolean {
+export function together(from: SessionSummary, to: SessionSummary, repos: ReadonlyMap<string, string> = new Map()): boolean {
 	if (from.project && from.project === to.project) return true;
-	const roots = (cwd: string) => [cwd, ...(mains.get(cwd) ?? [])];
-	const theirs = roots(to.cwd);
-	if (roots(from.cwd).some((a) => theirs.some((b) => within(a, b) || within(b, a)))) return true;
-	return from.spawnedFrom?.sessionId === to.id || to.spawnedFrom?.sessionId === from.id;
+	if (from.spawnedFrom?.sessionId === to.id || to.spawnedFrom?.sessionId === from.id) return true;
+	const repo = repos.get(from.cwd);
+	return repo !== undefined && repo === repos.get(to.cwd);
 }
 
 /**
