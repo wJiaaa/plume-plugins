@@ -12,6 +12,35 @@ function preset(id: string, name: string, base: StudioSkin["base"], values: read
 }
 
 export const PRESETS: readonly StudioSkin[] = [
+	// 复刻 t3code 的默认主题：面、线和强调色取自 T3_CODE_*_THEME_COLORS；次要文字略作可读性调整，以满足所有表面的对比度校验。
+	preset("light-t3-code", "T3 Code Light", "light", [
+		"#FCFCFC",
+		"#FCFCFC",
+		"#FAFAFA",
+		"#FFFFFF",
+		"#F4F4F5",
+		"#E4E4E7",
+		"#27272A",
+		"#5F5F68",
+		"#71717B",
+		"#1B4ED8",
+		"#E0E6F7",
+		"#E4E4E7",
+	]),
+	preset("dark-t3-code", "T3 Code Dark", "dark", [
+		"#0A0A0A",
+		"#0A0A0A",
+		"#000000",
+		"#111111",
+		"#141414",
+		"#1A1B1B",
+		"#F5F5F5",
+		"#A3A3A3",
+		"#818181",
+		"#346BF1",
+		"#121B34",
+		"#191919",
+	]),
 	preset("light-mint", "Mint Morning", "light", [
 		"#E8EEEA",
 		"#F6FBF8",

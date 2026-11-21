@@ -49,6 +49,8 @@ const zhCN = {
 	aiReady: "设计要求已追加到输入框，可补充偏好后发送。",
 	aiFailed: "未能把设计要求放入输入框，请重试。",
 	builtinNames: {
+		"light-t3-code": "T3 Code 浅色",
+		"dark-t3-code": "T3 Code 深色",
 		"light-mint": "薄荷清晨",
 		"light-peach": "蜜桃奶油",
 		"dark-graphite": "石墨",
@@ -110,6 +112,8 @@ export const MESSAGES: Record<Locale, typeof zhCN> = {
 		aiReady: "Design instructions added to the composer. Add your preferences before sending.",
 		aiFailed: "Could not add the design instructions. Try again.",
 		builtinNames: {
+			"light-t3-code": "T3 Code Light",
+			"dark-t3-code": "T3 Code Dark",
 			"light-mint": "Mint Morning",
 			"light-peach": "Peach Cream",
 			"dark-graphite": "Graphite",

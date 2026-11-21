@@ -21,8 +21,8 @@ async function fixture(t: { after(callback: () => Promise<void>): void }) {
 	return { dir, stop, store: await createStudioStore(dir, stop.signal) };
 }
 
-test("八套预设均有12色，文字在所有表面可读，映射不丢角色", () => {
-	assert.equal(PRESETS.length, 8);
+test("十套预设均有12色，文字在所有表面可读，映射不丢角色", () => {
+	assert.equal(PRESETS.length, 10);
 	for (const preset of PRESETS) {
 		const skin = parseSkin(preset);
 		assert.equal(Object.keys(skin.colors).length, 12);
@@ -54,8 +54,8 @@ function lightness(hex: string): number {
 	return 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
 }
 
-test("每套预设的侧栏（外圈）都比会话窗暗一档，浅色的悬停在侧栏上也看得出", () => {
-	for (const preset of PRESETS) {
+test("原创预设的侧栏（外圈）都比会话窗暗一档，浅色的悬停在侧栏上也看得出", () => {
+	for (const preset of PRESETS.filter((skin) => !skin.id.endsWith("t3-code"))) {
 		const { bgRoot, bgMain, bgHover } = preset.colors;
 		assert.ok(lightness(bgMain) - lightness(bgRoot) >= 0.035, `${preset.id}：侧栏 ${bgRoot} 和会话窗 ${bgMain} 太接近`);
 		if (preset.base === "light" && !preset.backdrop) assert.ok(lightness(bgRoot) - lightness(bgHover) >= 0.02, `${preset.id}：侧栏上的悬停看不出来`);
