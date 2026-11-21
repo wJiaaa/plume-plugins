@@ -71,10 +71,6 @@
       "source": "./plugins/ssh"
     },
     {
-      "name": "summary",
-      "source": "./plugins/summary"
-    },
-    {
       "name": "usage",
       "source": "./plugins/usage"
     },
