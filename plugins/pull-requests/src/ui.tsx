@@ -49,8 +49,7 @@ export default {
 					<BranchPullRequest session={session} />
 				</ServicesContext.Provider>
 			),
-			// 60：环境卡片里排在定时唤醒之后、侧边聊天之前。
-			{ label: (locale) => MESSAGES[locale].title, order: 60 },
+			{ label: (locale) => MESSAGES[locale].title, place: "output", order: 60 },
 		);
 		/* oxlint-enable react/jsx-no-constructed-context-values */
 	},

@@ -53,11 +53,6 @@ function SummarySection({ session }: EnvironmentSectionProps) {
 	};
 	return (
 		<div className="plume-summary">
-			<div className="plume-summary-label">
-				<Text size="caption" tone="faint">
-					{text.section}
-				</Text>
-			</div>
 			<div className="plume-summary-body">
 				{state.summary ? (
 					<Text as="p" size="detail" tone="muted" data-environment-summary>
@@ -136,8 +131,7 @@ export default {
 		ui = context;
 		api = context.remote<SummaryApi>();
 		mountStyles();
-		// 80：环境卡片里排在侧边聊天之后、压缩记录之前。
-		context.environmentSection("summary", SummarySection, { label: (locale) => MESSAGES[locale].section, order: 80 });
+		context.environmentSection("summary", SummarySection, { label: (locale) => MESSAGES[locale].section, place: "head", order: 80 });
 		context.settingsSection("model", ModelSetting, {
 			title: (locale) => MESSAGES[locale].modelTitle,
 			detail: (locale) => MESSAGES[locale].modelDetail,

@@ -1,12 +1,6 @@
-/* 环境卡片里「摘要」那一节：小标题和别的节一样高、一样缩进。 */
-.plume-summary-label {
-	display: flex;
-	align-items: center;
-	height: 28px;
-	padding: 0 8px;
-}
+/* 环境卡片页头里的会话摘要：目录行下面直接是一段人话，不再重复“摘要”小标题。 */
 .plume-summary-body {
-	padding: 0 8px 4px;
+	min-width: 0;
 }
 .plume-summary-skeleton {
 	display: flex;
@@ -19,7 +13,7 @@
 	align-items: center;
 	gap: 6px;
 	min-width: 0;
-	margin-top: 6px;
+	margin-top: 5px;
 }
 .plume-summary-truncate {
 	display: block;

@@ -9,7 +9,7 @@
  */
 
 import type { EnvironmentSectionProps } from "@plume/contract/ui";
-import { Text } from "@plume/ui";
+import { EnvironmentRow } from "@plume/ui";
 import { CircleCheck, CircleDashed, GitPullRequest, GitPullRequestDraft, XCircle } from "@plume/ui/icons";
 import { useEffect, useState } from "react";
 import type { PullRequestSummary } from "../api";
@@ -101,24 +101,17 @@ export function BranchPullRequest({ session }: EnvironmentSectionProps) {
 	if (!pr) return null;
 	const Icon = pr.isDraft ? GitPullRequestDraft : GitPullRequest;
 	return (
-		<button
-			type="button"
-			className="plume-pr-branch-row"
-			data-environment-pull-request={pr.number}
-			data-plume-tip={`${pr.repo}#${pr.number}\n${pr.title}`}
+		<EnvironmentRow
+			icon={<Icon size={14} />}
+			title={`#${pr.number} ${pr.title}`}
+			fact={<CheckMark state={pr.checkState} />}
+			running={pr.checkState === "pending"}
+			tip={`${pr.repo}#${pr.number}\n${pr.title}`}
 			onClick={() => {
 				store.focus({ accountId: pr.accountId, repo: pr.repo, number: pr.number });
 				ui.openPage("pull-requests");
 			}}
-		>
-			<Icon size={14} className="plume-pr-branch-icon" data-draft={pr.isDraft} />
-			<Text size="label" className="plume-pr-branch-title">
-				<Text tone="faint" numeric>
-					#{pr.number}
-				</Text>{" "}
-				{pr.title}
-			</Text>
-			<CheckMark state={pr.checkState} />
-		</button>
+			data-environment-pull-request={String(pr.number)}
+		/>
 	);
 }

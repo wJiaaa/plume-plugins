@@ -546,49 +546,7 @@
 	}
 }
 
-/* 环境卡片里当前分支的拉取请求：和卡片里别的行一样高、一样的悬停底色。 */
-.plume-pr-branch-row {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	width: 100%;
-	min-width: 0;
-	min-height: 32px;
-	padding: 5px 8px;
-	border-radius: var(--plume-radius-field);
-	text-align: left;
-	color: var(--plume-ink);
-	transition: background-color var(--plume-t-quick);
-}
-.plume-pr-branch-row:hover {
-	background: var(--plume-card-hover);
-}
-.plume-pr-branch-row:active {
-	background: var(--plume-elevated);
-}
-.plume-pr-branch-icon {
-	flex-shrink: 0;
-	color: var(--plume-ok);
-}
-.plume-pr-branch-icon[data-draft="true"] {
-	color: var(--plume-ink-faint);
-}
-.plume-pr-branch-title {
-	flex: 1;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
+/* 检查状态是统一环境行右端的一项事实，跟随它的淡色，不再给每种状态另上一种颜色。 */
 .plume-pr-branch-check {
 	flex-shrink: 0;
-}
-.plume-pr-branch-check[data-state="pass"] {
-	color: var(--plume-ok);
-}
-.plume-pr-branch-check[data-state="fail"] {
-	color: var(--plume-danger);
-}
-.plume-pr-branch-check[data-state="pending"] {
-	color: var(--plume-ink-faint);
 }
