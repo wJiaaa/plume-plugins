@@ -12,14 +12,15 @@ function preset(id: string, name: string, base: StudioSkin["base"], values: read
 }
 
 export const PRESETS: readonly StudioSkin[] = [
-	// 复刻 t3code 的默认主题：面、线和强调色取自 T3_CODE_*_THEME_COLORS；次要文字略作可读性调整，以满足所有表面的对比度校验。
+	// 复刻 t3code 的默认主题：面、线和强调色取自 T3_CODE_*_THEME_COLORS；浅色保持会话窗最白、侧栏与外圈微灰，
+	// 深色保持会话窗更黑、侧栏与外圈略亮，使主窗口、停靠侧栏（宿主以 OKLab 6:4 混 shell 与 sidebar）与设置弹窗分层方向一致。
 	preset("light-t3-code", "T3 Code Light", "light", [
-		"#FCFCFC",
-		"#FCFCFC",
-		"#FAFAFA",
+		"#F7F7F8",
 		"#FFFFFF",
-		"#F4F4F5",
-		"#E4E4E7",
+		"#F0F0F2",
+		"#FAFAFA",
+		"#E8E8EC",
+		"#DFDFE4",
 		"#27272A",
 		"#5F5F68",
 		"#71717B",
@@ -29,17 +30,17 @@ export const PRESETS: readonly StudioSkin[] = [
 	]),
 	preset("dark-t3-code", "T3 Code Dark", "dark", [
 		"#0A0A0A",
-		"#0A0A0A",
-		"#000000",
+		"#050505",
 		"#111111",
-		"#141414",
-		"#1A1B1B",
+		"#111111",
+		"#18181A",
+		"#222224",
 		"#F5F5F5",
 		"#A3A3A3",
 		"#818181",
 		"#346BF1",
 		"#121B34",
-		"#191919",
+		"#1E1E20",
 	]),
 	preset("light-mint", "Mint Morning", "light", [
 		"#E8EEEA",

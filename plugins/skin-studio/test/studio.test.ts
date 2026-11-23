@@ -62,6 +62,16 @@ test("原创预设的侧栏（外圈）都比会话窗暗一档，浅色的悬�
 	}
 });
 
+test("T3 Code 浅色会话窗亮于侧栏与外圈，深色侧栏与外圈亮于会话窗", () => {
+	const light = PRESETS.find((skin) => skin.id === "light-t3-code")!;
+	assert.ok(lightness(light.colors.bgMain) - lightness(light.colors.bgSidebar) >= 0.02, "浅色侧栏应明显灰于会话窗");
+	assert.ok(lightness(light.colors.bgMain) > lightness(light.colors.bgRoot), "浅色外圈应灰于会话窗");
+
+	const dark = PRESETS.find((skin) => skin.id === "dark-t3-code")!;
+	assert.ok(lightness(dark.colors.bgSidebar) - lightness(dark.colors.bgMain) >= 0.02, "深色侧栏应明显亮于会话窗");
+	assert.ok(lightness(dark.colors.bgRoot) > lightness(dark.colors.bgMain), "深色外圈应亮于会话窗");
+});
+
 test("色调皮肤由色相推出，外圈是纯渐变、不带颗粒；没有底纹的皮肤不写 root-image", () => {
 	const tones = PRESETS.filter((preset) => preset.backdrop);
 	assert.deepEqual(
