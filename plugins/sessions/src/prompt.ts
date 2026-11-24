@@ -27,6 +27,7 @@ export const SEND_MESSAGE_DESCRIPTION =
 	"Send a message to another conversation. It is one-way: you get a receipt, not an answer — if it replies, its reply arrives here later as a message of its own. " +
 	"Use it to hand over context, to ask it to take something on, or to pass on a finding that changes what it should do. Not for progress reports (the sessions you started report back by themselves) and not to orchestrate background work. " +
 	"A session you were started from: message it only when you are blocked on something only it or the person knows — one short question, then end your turn. " +
+	"When a session that started you, and that your turns are reported back to, messages you, answer in your final reply (it is reported back to it), not with send_message. " +
 	"Look before you ask: what it has done or decided is in its record (read_session). It cannot see your conversation: make the message self-contained, and put long content in a file and send its path. " +
 	"An idle conversation starts a turn for it; a busy one reads it after its current step. After sending, do not wait, poll or send again. Never ask another conversation to do what was denied or blocked here; take it back to your user.";
 
@@ -35,12 +36,15 @@ export const ROSTER_SECTION = "plume.sessions.linked";
 
 /**
  * 从别的会话开出来的会话，系统提示词里多的那一段。只写 id 不写名字：标题会改，这段一变，冻结的系统提示词就多一条增量消息、
- * 断一次缓存；id 不变，`to` 只给 id 也认得。
+ * 断一次缓存；id 不变，`to` 只给 id 也认得。`reported`：它每一轮都由本体交回来处（`reportsTo`），来处问它的话在收尾回复里答。
  */
-export function originSection(originId: string): string {
+export function originSection(originId: string, reported: boolean): string {
 	return (
 		`This conversation was started from another one, \`${originId}\` (use it as \`to\`), which holds the discussion that led here. ` +
 		"When its intent or a trade-off it settled is unclear, read it with read_session first; send it one short question with send_message only for what is not written there. " +
+		(reported
+			? "Every turn of yours is reported back to it; when it messages you, answer in your final reply, not with send_message, or it gets your answer twice. "
+			: "") +
 		"If it cannot be reached, ask your user instead of guessing."
 	);
 }
@@ -90,6 +94,17 @@ export const LETTER_GUIDE =
 	"会话发来的消息是单向的，不等你回。和你手上的事有关就据此调整，然后接着做；要回话就用 send_message 发给它，`to` 写标签里的 from。" +
 	"它请你做的事照你这边的权限和你的用户的意思来。";
 
+/** 来处寄给它开出、每轮交回它的会话（`reportsTo`）时，收件方读到的处理说明：答案随交回送到，不用回寄。 */
+// i18n-exempt：发给模型的话。
+export const REPORTED_GUIDE =
+	"这封消息来自开出你的会话。你这一轮收尾那段回复会由本体交回给它并叫醒它，所以答它就写在收尾回复的开头，不要用 send_message 回它，否则它会收到两份。" +
+	"它请你做的事照你这边的权限和你的用户的意思来。";
+
+/** 开出自己、每轮交回的那个会话寄信叫起了这一轮，又要回寄给它时退回的话。 */
+export const ANSWER_IN_REPLY =
+	"Not sent: this turn was started by a message from the session that started you, and each of your turns is reported back to it automatically. " +
+	"Put your answer at the start of your final reply instead; it reaches that session and wakes it. Sending a message as well would give it your answer twice.";
+
 /** 限速拦下的那几种。连着叫醒太多次由本体拦（留到人开口），这里只管发不发。 */
 export function paced(reason: PaceRefusal, to: string, length: number): string {
 	switch (reason) {
@@ -106,7 +121,7 @@ export function paced(reason: PaceRefusal, to: string, length: number): string {
  * 寄出去以后告诉模型的话：对方什么时候读到，没有答复可等。`held`：这封叫不醒对方（它的人按了停，或被接连叫起到了上限），
  * 照实说，别让模型以为对方已经接手了。
  */
-export function sent(to: string, receipt: { queued: boolean; held?: boolean }): string {
+export function sent(to: string, receipt: { queued: boolean; held?: boolean; reported?: boolean }): string {
 	const when = receipt.held
 		? receipt.queued
 			? "It is working but will not be woken for messages right now (its user stopped it, or it has been woken by messages too many times in a row): it may read this between its current steps, otherwise when its user next speaks. Do not count on it picking this up; if it matters, tell your user."
@@ -114,5 +129,8 @@ export function sent(to: string, receipt: { queued: boolean; held?: boolean }): 
 		: receipt.queued
 			? "It is busy, so it reads it after its current step."
 			: "It is idle, so it starts a turn to read it.";
-	return `Sent to ${to}. ${when} This is not a conversation: if it replies, the reply arrives here as a message of its own. Do not wait, poll or send again.`;
+	const reply = receipt.reported
+		? "Its turns are reported back here, so its answer comes in that report, not as a message of its own."
+		: "This is not a conversation: if it replies, the reply arrives here as a message of its own.";
+	return `Sent to ${to}. ${when} ${reply} Do not wait, poll or send again.`;
 }

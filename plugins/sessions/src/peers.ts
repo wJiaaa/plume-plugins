@@ -70,6 +70,14 @@ export function together(from: SessionSummary, to: SessionSummary, repos: Readon
 }
 
 /**
+ * `session` 每结束一轮都由本体交回 `to`：它是从 `to` 开出来的，开的时候要了交回（`spawnedFrom.reportBack`）。
+ * 这时 `to` 问它的话，答案在它收尾那段回复里、随交回送到，不用再寄一封回来。
+ */
+export function reportsTo(session: Pick<SessionSummary, "spawnedFrom">, to: Pick<SessionSummary, "id">): boolean {
+	return session.spawnedFrom?.sessionId === to.id && session.spawnedFrom.reportBack === true;
+}
+
+/**
  * 和 `self` 互相开出来的那一家子（顺着 `spawnedFrom` 往上找到头，再把头下面的都算上），不含自己，只算侧栏里的。
  * 只有自己时是空的。
  */

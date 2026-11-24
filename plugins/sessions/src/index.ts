@@ -14,13 +14,17 @@
  * - 从别的会话开出来的（计划交给新会话执行、开出来的新会话），来源还在侧栏里时系统提示词多一段，告诉它来源在哪、拿不准时先读再问。
  * - 不查权限宽窄：Plume 的权限档是全局的，所有会话一样宽。
  * - 回执照实说对方什么时候读到：对方叫不醒（它的人按了停、被接连叫起到了上限，`LetterReceipt.held`）时说清楚，别让模型以为对方接手了。
+ * - 开出来、每轮交回来处的会话（`spawnedFrom.reportBack`）回答来处，答案写在收尾那段回复里，随本体的交回送到：来处寄给它时
+ *   换一段处理说明（`REPORTED_GUIDE`）；它在来处的信叫起的那一轮（`session.cause`）又要回寄来处时退回，免得来处收到两份。
+ *   它在一轮中途主动问来处照常能寄。信是在它一轮中途读到的，那一轮不算信叫起的，拦不住，只靠处理说明。
  */
 
 import type { LetterFate, LetterInput, LetterReceipt, Plugin, SessionSummary, ToolDefinition, ToolOutput, ToolRun } from "@plume/contract";
 import type { SessionsApi } from "./api.ts";
 import { checklistStep, currentStep, HISTORY_PROPERTIES, invalidHistoryArgs, READ_LIMIT, readHistory, type HistoryArgs } from "./history.ts";
-import { familyOf, listed, resolveSession, sessionAddress, together } from "./peers.ts";
+import { familyOf, listed, reportsTo, resolveSession, sessionAddress, together } from "./peers.ts";
 import {
+	ANSWER_IN_REPLY,
 	LETTER_GUIDE,
 	LIST_SESSIONS_DESCRIPTION,
 	missed,
@@ -29,6 +33,7 @@ import {
 	originSection,
 	paced,
 	READ_SESSION_DESCRIPTION,
+	REPORTED_GUIDE,
 	ROSTER_SECTION,
 	rosterSection,
 	SEND_MESSAGE_DESCRIPTION,
@@ -135,7 +140,7 @@ export default {
 			const sections = [...input.sections];
 			const spawnedFrom = self.spawnedFrom;
 			const origin = spawnedFrom && all.find((session) => session.id === spawnedFrom.sessionId);
-			if (origin && listed(origin)) sections.push({ id: ORIGIN_SECTION, text: originSection(origin.id) });
+			if (origin && listed(origin)) sections.push({ id: ORIGIN_SECTION, text: originSection(origin.id, reportsTo(self, origin)) });
 			const family = familyOf(self, all);
 			if (family.length > 0)
 				sections.push({
@@ -256,14 +261,18 @@ export default {
 				const ready = await addressed(args, run, "`to` is required: a session id, or an address from list_sessions.");
 				if ("refused" in ready) return ready.refused;
 				const { message, found, letter } = ready;
-				const posted = post(run.sessionId, found, letter, { text: message, guide: LETTER_GUIDE });
+				// 来处的信叫起了这一轮，答案写在收尾回复里由本体交回；再寄一封，来处就收到两份。在限速之前退回，不算发过。
+				const cause = run.session.cause;
+				if (reportsTo(found.from, found.target) && cause?.by === "peer" && cause.from === found.target.id) return { output: ANSWER_IN_REPLY, isError: true };
+				const reported = reportsTo(found.target, found.from);
+				const posted = post(run.sessionId, found, letter, { text: message, guide: reported ? REPORTED_GUIDE : LETTER_GUIDE });
 				if ("refused" in posted) return posted.refused;
 				const { receipt } = posted;
 				remember(receipt);
 				// 旧版本的本体不给 `held`：当作叫得醒，和那时的行为一致。
 				const held = receipt.held === true;
 				return {
-					output: sent(found.to, { queued: receipt.queued, held }),
+					output: sent(found.to, { queued: receipt.queued, held, reported }),
 					details: {
 						kind: "session_message",
 						to: found.to,

@@ -17,6 +17,7 @@ import type {
 	SessionSummary,
 	ToolDefinition,
 	ToolRun,
+	TurnCause,
 } from "@plume/contract";
 import { currentStep } from "../src/history.ts";
 import plugin from "../src/index.ts";
@@ -38,8 +39,8 @@ const summary = (id: string, extra: Partial<SessionSummary> = {}): SessionSummar
 		...extra,
 	}) as SessionSummary;
 
-/** 钩子输入和 `run` 上的 `session`，照会话摘要填。 */
-const scope = (session: SessionSummary | undefined, id: string): SessionScope =>
+/** 钩子输入和 `run` 上的 `session`，照会话摘要填；`cause` 是这一轮是谁引起的。 */
+const scope = (session: SessionSummary | undefined, id: string, cause?: TurnCause): SessionScope =>
 	session
 		? {
 				id,
@@ -47,6 +48,7 @@ const scope = (session: SessionSummary | undefined, id: string): SessionScope =>
 				...(session.parentId ? { parentId: session.parentId } : {}),
 				...(session.owner ? { owner: session.owner } : {}),
 				...(session.spawnedFrom ? { spawnedFrom: session.spawnedFrom } : {}),
+				...(cause ? { cause } : {}),
 			}
 		: { id, kind: "top" };
 
@@ -65,7 +67,7 @@ interface Posted {
 }
 
 /**
- * 几个会话：`plan` 在项目 p1；`exec` 是从它开出来的、开在别处（短名 exec）；`near` 也在 p1，在它的子目录里；`far` 在别处；
+ * 几个会话：`plan` 在项目 p1；`exec` 是从它开出来的、开在别处（短名 exec，每轮交回 plan）；`near` 也在 p1，在它的子目录里；`far` 在别处；
  * `side` 是 `plan` 的子会话；`grand` 是从 `exec` 开出来的。目录都不存在，git 认不出仓库。
  */
 function fixture() {
@@ -74,7 +76,7 @@ function fixture() {
 		summary("bbbbbb22-0000-4000-8000-000000000000", {
 			title: "执行",
 			cwd: "/elsewhere",
-			spawnedFrom: { sessionId: "aaaaaa11-0000-4000-8000-000000000000", toolCallId: "c1", name: "exec" },
+			spawnedFrom: { sessionId: "aaaaaa11-0000-4000-8000-000000000000", toolCallId: "c1", name: "exec", reportBack: true },
 		}),
 		summary("cccccc33-0000-4000-8000-000000000000", { title: "旁边", cwd: "/w/app/src", project: "p1", running: true }),
 		summary("dddddd44-0000-4000-8000-000000000000", { title: "别处", cwd: "/other" }),
@@ -126,8 +128,8 @@ function fixture() {
 		serve: (api: SessionsApi) => void (served = api),
 	} as unknown as PluginContext;
 	void plugin.apply(ctx);
-	/** 调一件工具；顶层会话的调用拿得到寄信的口子，和本体一样。 */
-	const call = (name: string, sessionId: string, args: Record<string, unknown>) => {
+	/** 调一件工具；顶层会话的调用拿得到寄信的口子，和本体一样。`cause` 是这一轮是谁引起的。 */
+	const call = (name: string, sessionId: string, args: Record<string, unknown>, cause?: TurnCause) => {
 		const self = sessions.find((session) => session.id === sessionId);
 		const top = !self?.parentId;
 		const letter = (to: string, input: LetterInput) => {
@@ -136,7 +138,11 @@ function fixture() {
 			posted.push(entry);
 			return entry.receipt;
 		};
-		return (tools.get(name) as ToolDefinition).execute(args, { sessionId, session: scope(self, sessionId), ...(top ? { letter } : {}) } as unknown as ToolRun);
+		return (tools.get(name) as ToolDefinition).execute(args, {
+			sessionId,
+			session: scope(self, sessionId, cause),
+			...(top ? { letter } : {}),
+		} as unknown as ToolRun);
 	};
 	const context = (sessionId: string) =>
 		(layers.get("model.context") as HookLayer<"model.context">)(
@@ -318,6 +324,35 @@ test("send_message 的下落记在内存里给界面：读到了、拦下了；�
 		familyOf(f.near, [f.plan, f.exec, f.near]).map((one) => one.id),
 		[],
 	);
+});
+
+test("来处问每轮交回它的会话：收件方的说明叫它在收尾回复里答；来处的信叫起的那一轮回寄来处退回、不算发过；别的时候、寄给别人照常", async () => {
+	const f = fixture();
+	// 来处 plan 寄给 exec（每轮交回 plan）：换一段说明，回执说答案随交回来。
+	const asked = await f.call("send_message", f.plan.id, { to: "exec", message: "为什么选 SQLite？" });
+	assert.match(asked.output, /its answer comes in that report, not as a message of its own/);
+	assert.match(f.posted[0]!.input.guide!, /收尾回复/);
+	assert.doesNotMatch(f.posted[0]!.input.guide!, /用 send_message 发给它/);
+	// 寄给不交回的会话（grand 没要交回）照旧。
+	await f.call("send_message", f.exec.id, { to: f.grand.id, message: "看看" });
+	assert.match(f.posted[1]!.input.guide!, /要回话就用 send_message 发给它/);
+
+	// exec 在 plan 的信叫起的那一轮里回寄 plan：退回，叫它写进收尾回复；没寄出去，不扣限速、不算重复。
+	const fromPlan: TurnCause = { by: "peer", from: f.plan.id };
+	const back = await f.call("send_message", f.exec.id, { to: "aaaaaa", message: "因为单机" }, fromPlan);
+	assert.deepEqual({ isError: back.isError, final: /final reply/.test(back.output) }, { isError: true, final: true });
+	assert.equal(f.posted.length, 2);
+	// 别的会话的信、开出来的第一轮叫起的那一轮里，主动问来处照常能寄；同一句也不算重复。
+	assert.equal((await f.call("send_message", f.exec.id, { to: "aaaaaa", message: "因为单机" }, { by: "launch", plugin: "plume.plan" })).isError, undefined);
+	assert.equal((await f.call("send_message", f.exec.id, { to: f.grand.id, message: "顺便看看" }, fromPlan)).isError, undefined);
+	// 不交回的会话（grand 对 exec）回寄照常。
+	assert.equal((await f.call("send_message", f.grand.id, { to: "exec", message: "收到" }, { by: "peer", from: f.exec.id })).isError, undefined);
+	assert.equal(f.posted.length, 5);
+
+	// 来源那一段：每轮交回来处的会话多一句「在收尾回复里答」，不交回的没有。
+	const origin = async (sessionId: string) => (await f.context(sessionId)).sections.find((section) => section.id === "plume.sessions.origin")?.text ?? "";
+	assert.match(await origin(f.exec.id), /answer in your final reply/);
+	assert.doesNotMatch(await origin(f.grand.id), /answer in your final reply/);
 });
 
 test("正在做的那一项认最新一份成功的进度清单（details.checklist），不认是哪个工具记的", () => {
