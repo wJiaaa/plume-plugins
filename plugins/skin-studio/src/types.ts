@@ -22,8 +22,8 @@ interface SkinBackdrop {
 	from: string;
 	to: string;
 }
-export type SkinBackgroundEffect = "none" | "dither" | "ascii" | "halftone" | "scanlines" | "grid" | "haze";
-export interface SkinImageBackground {
+type SkinBackgroundEffect = "none" | "dither" | "ascii" | "halftone" | "scanlines" | "grid" | "haze";
+interface SkinImageBackground {
 	image: string;
 	fit: "cover" | "tile";
 	effect: SkinBackgroundEffect;
