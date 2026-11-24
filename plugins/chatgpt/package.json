@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/chatgpt",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "用 ChatGPT 账号登录，把套餐里的额度给 Plume 用：模型出现在模型设置的「ChatGPT」供应商里，不需要 API key。",
   "author": "Plume",
   "keywords": [
