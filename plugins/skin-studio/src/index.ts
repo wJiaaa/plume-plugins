@@ -1,6 +1,7 @@
 import type { Plugin } from "@plume/contract";
 import { errorText } from "./errors.ts";
 import { createStudioStore } from "./store.ts";
+import { STUDIO_SKIN_TOKENS } from "./tokens.ts";
 import { COLOR_KEYS, type StudioView } from "./types.ts";
 
 function toolView(view: StudioView) {
@@ -23,7 +24,7 @@ export default {
 		ctx.serve(store);
 		ctx.tools.register({
 			name: "skin_studio_theme",
-			description: `Design and manage Plume color skins. list returns all built-in and saved skins and activeId, but omits embedded image bytes. apply with id switches to an existing skin; apply with name, base and colors saves a new skin and applies it immediately. save with name, base and colors only adds to the library; save with only name copies the active Studio skin. remove deletes a custom skin by id (ask the user first); reset releases the Studio skin and returns to the user's own appearance. The system/light/dark theme is the user's app setting, chosen in the Studio panel or Settings; this tool cannot change it. Never edit app settings or CSS to change skins. A skin contains exactly these 12 color roles: ${COLOR_KEYS.join(", ")}. Provide all colors as #RRGGBB. base is light or dark and sets the application mode. Primary and secondary text must have contrast >=4.5:1 and tertiary text >=3:1 against all six bg surfaces. Keep accent readable on its dim background. Optionally add backdrop { from, to } to paint the window frame and docked sidebar with a diagonal gradient from one #RRGGBB to another; text must meet the same contrast against from and to. A skin may also carry background { image, fit?, effect?, opacity?, onNewChat?, inChat? }; image must be a Base64 data URL for PNG, JPEG, GIF or WebP up to 5 MB. This background overrides display only while the skin is active and never replaces or deletes the user's global background. Film grain is a separate user setting, not part of a skin. Skins are local data, not executable code.`,
+			description: `Design and manage Plume color skins. list returns all built-in and saved skins and activeId, but omits embedded image bytes. apply with id switches to an existing skin; apply with name, base and colors saves a new skin and applies it immediately. save with name, base and colors only adds to the library; save with only name copies the active Studio skin. remove deletes a custom skin by id (ask the user first); reset releases the Studio skin and returns to the user's own appearance. The system/light/dark theme is the user's app setting, chosen in the Studio panel or Settings; this tool cannot change it. Never edit app settings or CSS to change skins. A skin contains these 12 base color roles: ${COLOR_KEYS.join(", ")}. Provide all 12 colors as #RRGGBB. base is light or dark and sets the application mode. Primary and secondary text must have contrast >=4.5:1 and tertiary text >=3:1 against all six bg surfaces. Keep accent readable on its dim background. Optionally add tokens { ... } to override fine-grained Plume SkinToken values on top of the 12 colors (surfaces like card/input/float/card-hover/elevated/window-tint/knob/shade, borders like line-soft/line-float, contrast, status/chart colors, code/inline-code/diff/syntax tokens, radii, and typography; supports hex, rgb/hsl/oklch/color-mix/transparent colors and safe numeric/font values; root-image is rejected—use backdrop instead). Optionally add backdrop { from, to } to paint the window frame and docked sidebar with a diagonal gradient from one #RRGGBB to another; text must meet the same contrast against from and to. A skin may also carry background { image, fit?, effect?, opacity?, onNewChat?, inChat? }; image must be a Base64 data URL for PNG, JPEG, GIF or WebP up to 5 MB. This background overrides display only while the skin is active and never replaces or deletes the user's global background. Film grain is a separate user setting, not part of a skin. Skins are local data, not executable code.`,
 			parameters: {
 				type: "object",
 				properties: {
@@ -35,6 +36,12 @@ export default {
 						type: "object",
 						properties: Object.fromEntries(COLOR_KEYS.map((key) => [key, { type: "string", pattern: "^#[0-9a-fA-F]{6}$" }])),
 						required: [...COLOR_KEYS],
+						additionalProperties: false,
+					},
+					tokens: {
+						type: "object",
+						description: "Optional fine-grained Plume SkinToken overrides applied on top of colors (excludes root-image; use backdrop for gradients).",
+						properties: Object.fromEntries(STUDIO_SKIN_TOKENS.map((key) => [key, { type: "string" }])),
 						additionalProperties: false,
 					},
 					backdrop: {
@@ -85,10 +92,11 @@ export default {
 								(args.colors !== undefined ||
 									args.name !== undefined ||
 									args.base !== undefined ||
+									args.tokens !== undefined ||
 									args.backdrop !== undefined ||
 									args.background !== undefined)
 							) {
-								return { output: "Use either id or name/base/colors/backdrop/background, not both.", isError: true };
+								return { output: "Use either id or name/base/colors/tokens/backdrop/background, not both.", isError: true };
 							}
 							view = typeof args.id === "string" ? await store.apply(args.id) : await store.save(args, true);
 							break;

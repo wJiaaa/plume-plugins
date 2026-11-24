@@ -1,4 +1,6 @@
-/** 皮肤是配色数据，不接受 CSS、路径或脚本。 */
+import { parseTokenOverrides, type SkinTokenOverrides } from "./tokens.ts";
+
+/** 皮肤是声明式数据，不接受任意 CSS 规则、路径或脚本。 */
 export const COLOR_KEYS = [
 	"bgRoot",
 	"bgMain",
@@ -36,6 +38,8 @@ export interface ColorSkin {
 	backdrop?: SkinBackdrop;
 	/** 皮肤独立背景；应用时覆盖显示，撤下后恢复人的全局背景。 */
 	background?: SkinImageBackground;
+	/** 叠加在 12 色映射之上的细粒度 SkinToken 覆写（面、半透明态、线条、状态、代码、圆角、排版）。 */
+	tokens?: SkinTokenOverrides;
 }
 export interface StudioSkin extends ColorSkin {
 	id: string;
@@ -141,6 +145,7 @@ export function parseSkin(value: unknown): ColorSkin {
 		backdrop = { from: value.from.toUpperCase(), to: value.to.toUpperCase() };
 	}
 	const background = parseBackground(raw.background);
+	const tokens = parseTokenOverrides(raw.tokens);
 	const backgrounds = [colors.bgRoot, colors.bgMain, colors.bgSidebar, colors.bgElevated, colors.bgHover, colors.bgActive];
 	if (backdrop) backgrounds.push(backdrop.from, backdrop.to);
 	for (const background of backgrounds) {
@@ -148,7 +153,14 @@ export function parseSkin(value: unknown): ColorSkin {
 			throw new Error("lowContrast");
 		}
 	}
-	return { name: raw.name.trim(), base: raw.base, colors, ...(backdrop && { backdrop }), ...(background && { background }) };
+	return {
+		name: raw.name.trim(),
+		base: raw.base,
+		colors,
+		...(backdrop && { backdrop }),
+		...(background && { background }),
+		...(tokens && { tokens }),
+	};
 }
 
 function isHex(value: unknown): value is string {

@@ -42,7 +42,9 @@ export function createStudioStore(ui: UiContext, api: Remote<SkinStudioApi>) {
 					if (disposed || own !== generation) return;
 					const active = view.skins.find((skin) => skin.id === view.activeId);
 					// 只保存作品不应重新注册皮肤，避免抢走其他皮肤插件的优先级。
-					const key = active ? JSON.stringify([active.id, active.base, active.background, ...COLOR_KEYS.map((name) => active.colors[name])]) : "null";
+					const key = active
+						? JSON.stringify([active.id, active.base, active.backdrop, active.background, active.tokens, ...COLOR_KEYS.map((name) => active.colors[name])])
+						: "null";
 					if (key !== applied) {
 						ui.skin(active ? toSkin(active) : null);
 						applied = key;

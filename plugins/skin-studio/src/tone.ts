@@ -42,6 +42,7 @@ export function toneSkin(id: string, name: string, h: number, c: number): Studio
 		accentDim: oklch(0.93, c * 1.1, h),
 		border: oklch(0.885, c * 0.5, h),
 	};
+	const paper = oklch(1, 0, 0);
 	return {
 		id,
 		name,
@@ -49,5 +50,12 @@ export function toneSkin(id: string, name: string, h: number, c: number): Studio
 		builtin: true,
 		colors: values satisfies SkinColors,
 		backdrop: { from: oklch(0.875, c, h), to: oklch(0.865, c, h + 24) },
+		tokens: {
+			input: paper,
+			float: paper,
+			"card-hover": "color-mix(in srgb, var(--plume-fg) 6%, transparent)",
+			elevated: "color-mix(in srgb, var(--plume-fg) 11%, transparent)",
+			"line-soft": "color-mix(in srgb, var(--plume-fg) 8%, transparent)",
+		},
 	};
 }

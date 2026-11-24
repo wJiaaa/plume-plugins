@@ -3,7 +3,7 @@ import type { StudioSkin } from "./types.ts";
 
 const zhCN = {
 	title: "换肤工坊",
-	description: "挑选 12 色皮肤，或让 AI 为你设计。",
+	description: "挑选配色与细粒度 token 皮肤，或让 AI 为你设计。",
 	toolVerb: "调整配色",
 	light: "浅色",
 	dark: "深色",
@@ -29,10 +29,11 @@ const zhCN = {
 	save: "保存副本",
 	import: "导入别人分享的皮肤",
 	importTitle: "导入新作品",
-	importDetail: "粘贴含 name、base 和 colors 的 JSON；可带独立的 background 图片。通过校验后保存为新作品并立即应用，不会替换全局背景。",
+	importDetail:
+		"粘贴含 name、base 和 colors 的 JSON；可带可选 tokens 细粒度覆写、backdrop 渐变与独立 background 图片。通过校验后保存为新作品并立即应用，不会替换全局背景。",
 	json: "配色 JSON",
 	jsonPlaceholder: "粘贴复制出的配色 JSON",
-	jsonHint: "12 色都须为 #RRGGBB；base 为 light 或 dark；background 只接受 Base64 PNG、JPEG、GIF 或 WebP。",
+	jsonHint: "12 色都须为 #RRGGBB；base 为 light 或 dark；可选 tokens 仅接受安全 SkinToken 值；background 只接受 Base64 PNG、JPEG、GIF 或 WebP。",
 	invalidJson: "JSON 格式不正确，请检查引号、逗号与括号。",
 	importApply: "导入并应用",
 	copy: "复制配色 JSON",
@@ -51,6 +52,8 @@ const zhCN = {
 	builtinNames: {
 		"light-t3-code": "T3 Code 浅色",
 		"dark-t3-code": "T3 Code 深色",
+		"light-clawd": "Clawd 浅色",
+		"dark-clawd": "Clawd 深色",
 		"light-mint": "薄荷清晨",
 		"light-peach": "蜜桃奶油",
 		"dark-graphite": "石墨",
@@ -66,7 +69,7 @@ export const MESSAGES: Record<Locale, typeof zhCN> = {
 	"zh-CN": zhCN,
 	en: {
 		title: "Skin studio",
-		description: "Choose a 12-color skin, or design one with AI.",
+		description: "Choose a skin with 12-color and token overrides, or design one with AI.",
 		toolVerb: "Adjusted colors",
 		light: "Light",
 		dark: "Dark",
@@ -93,10 +96,11 @@ export const MESSAGES: Record<Locale, typeof zhCN> = {
 		import: "Import a shared skin",
 		importTitle: "Import a new creation",
 		importDetail:
-			"Paste JSON with name, base, and colors, optionally with its own background image. After validation it is saved and applied without replacing your global background.",
+			"Paste JSON with name, base, and colors, optionally with fine-grained tokens overrides, backdrop, or its own background image. After validation it is saved and applied without replacing your global background.",
 		json: "Skin JSON",
 		jsonPlaceholder: "Paste copied skin JSON",
-		jsonHint: "All 12 colors must use #RRGGBB; base must be light or dark; background accepts only Base64 PNG, JPEG, GIF, or WebP.",
+		jsonHint:
+			"All 12 colors must use #RRGGBB; base must be light or dark; optional tokens must use safe SkinToken values; background accepts only Base64 PNG, JPEG, GIF, or WebP.",
 		invalidJson: "Invalid JSON. Check the quotes, commas, and brackets.",
 		importApply: "Import and apply",
 		copy: "Copy skin JSON",
@@ -115,6 +119,8 @@ export const MESSAGES: Record<Locale, typeof zhCN> = {
 		builtinNames: {
 			"light-t3-code": "T3 Code Light",
 			"dark-t3-code": "T3 Code Dark",
+			"light-clawd": "Clawd Light",
+			"dark-clawd": "Clawd Dark",
 			"light-mint": "Mint Morning",
 			"light-peach": "Peach Cream",
 			"dark-graphite": "Graphite",
@@ -133,6 +139,7 @@ export const ERROR_MESSAGES = {
 		invalidName: "皮肤名称不能为空，最多 80 个字。",
 		invalidBase: "皮肤模式只能是 light 或 dark。",
 		invalidColors: "请提供全部 12 个颜色，每个颜色使用 #RRGGBB 格式。",
+		invalidTokens: "扩展 tokens 只能使用允许的 Plume SkinToken 名称与安全的颜色、数值、圆角或字体值。",
 		invalidBackdrop: "外圈底纹需要 from、to 两个 #RRGGBB 颜色。",
 		invalidBackground: "皮肤背景只接受 5 MB 以内的 Base64 PNG、JPEG、GIF 或 WebP，并需要合法的铺放、效果、浓度与显示位置。",
 		backgroundTooLarge: "皮肤背景不能超过 5 MB。",
@@ -150,6 +157,7 @@ export const ERROR_MESSAGES = {
 		invalidName: "Use a non-empty skin name of at most 80 characters.",
 		invalidBase: "The base mode must be light or dark.",
 		invalidColors: "Provide all 12 colors in #RRGGBB format.",
+		invalidTokens: "Optional tokens must use supported Plume SkinToken names with safe color, numeric, radius, or font values.",
 		invalidBackdrop: "The backdrop needs from and to colors in #RRGGBB format.",
 		invalidBackground: "A skin background must be a Base64 PNG, JPEG, GIF, or WebP up to 5 MB with valid fit, effect, opacity, and placement values.",
 		backgroundTooLarge: "A skin background cannot exceed 5 MB.",

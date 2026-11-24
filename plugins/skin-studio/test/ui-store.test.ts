@@ -69,9 +69,10 @@ test("启用即订阅，无需挂载面板；保存未应用作品不抢皮肤�
 	assert.deepEqual(applied[0]!.background, background);
 	await push({ ...first, skins: [...first.skins, { ...PRESETS[0]!, id: "new", builtin: false }] });
 	assert.equal(applied.length, 1);
-	await push({ ...first, activeId: "dark-berry" });
+	await push({ ...first, activeId: "dark-clawd" });
 	assert.equal(applied.length, 2);
 	assert.equal(applied[1]!.mode, "dark");
+	assert.equal(applied[1]!.dark!["radius-panel"], "14px");
 	await push({ ...first, activeId: null });
 	assert.equal(applied[2], null);
 	store.dispose();

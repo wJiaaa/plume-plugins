@@ -268,7 +268,7 @@ export function StudioPanel({ ui, api, store, sessionId }: { ui: UiContext; api:
 	};
 	const design = async () => {
 		// i18n-exempt：这是给模型的设计任务，追加草稿供用户修改，不是界面文案。
-		const prompt = `请为 Plume 设计一套温和、清晰、适合长时间阅读的 12 色数据皮肤，优先考虑我在这条消息里补充的风格偏好。请使用 skin_studio_theme 工具，action="apply"，提供 name、base（light 或 dark）和完整的 colors，把它保存为新作品并立即应用，不要只在回复中输出 JSON。colors 必须含 bgRoot、bgMain、bgSidebar、bgElevated、bgHover、bgActive、textPrimary、textSecondary、textTertiary、accent、accentDim、border，所有值都用 #RRGGBB。textPrimary 和 textSecondary 对全部六种背景的对比度至少为 4.5:1，textTertiary 至少为 3:1。想让窗口外圈和停靠侧栏有渐变底纹时，可以再给 backdrop：from、to 两个 #RRGGBB，文字对 from、to 也要满足同样的对比度。只设计配色，不更改布局、字体或背景图片。`;
+		const prompt = `请为 Plume 设计一套温和、清晰、适合长时间阅读的数据皮肤，优先考虑我在这条消息里补充的风格偏好。请使用 skin_studio_theme 工具，action="apply"，提供 name、base（light 或 dark）和完整的 12 色 colors，把它保存为新作品并立即应用，不要只在回复中输出 JSON。colors 必须含 bgRoot、bgMain、bgSidebar、bgElevated、bgHover、bgActive、textPrimary、textSecondary、textTertiary、accent、accentDim、border，所有值都用 #RRGGBB。textPrimary 和 textSecondary 对全部六种背景的对比度至少为 4.5:1，textTertiary 至少为 3:1。如需进一步细化卡片/输入框/浮层分层、半透明悬停与描边、状态色、代码与语法高亮、圆角或排版，可通过可选的 tokens 覆盖对应 SkinToken。想让窗口外圈和停靠侧栏有渐变底纹时，可以再给 backdrop：from、to 两个 #RRGGBB，文字对 from、to 也要满足同样的对比度。除非我明确要求，不要更改背景图片。`;
 		try {
 			await ui.draftInSession(sessionId || undefined, { text: prompt });
 			if (store.active()) ui.notify(text.aiReady);

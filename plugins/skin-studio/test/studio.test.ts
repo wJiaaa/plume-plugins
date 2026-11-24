@@ -1,3 +1,4 @@
+// color-exempt：测试皮肤数据的色值与 token 校验断言，不是界面固定色
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -23,8 +24,8 @@ async function fixture(t: { after(callback: () => Promise<void>): void }) {
 	return { dir, stop, store: await createStudioStore(dir, stop.signal) };
 }
 
-test("十套预设均有12色，文字在所有表面可读，映射不丢角色", () => {
-	assert.equal(PRESETS.length, 10);
+test("十二套预设均有12色，文字在所有表面可读，映射不丢角色", () => {
+	assert.equal(PRESETS.length, 12);
 	for (const preset of PRESETS) {
 		const skin = parseSkin(preset);
 		assert.equal(Object.keys(skin.colors).length, 12);
@@ -33,15 +34,31 @@ test("十套预设均有12色，文字在所有表面可读，映射不丢角色
 		assert.equal(mapped.name, skin.name);
 		assert.deepEqual(mapped.light, mapped.dark);
 		const tokens = mapped.light!;
-		assert.equal(tokens.root, skin.colors.bgRoot);
-		assert.equal(tokens.shell, skin.colors.bgMain);
-		assert.equal(tokens.input, skin.colors.bgElevated);
-		assert.equal(tokens["ink-muted"], skin.colors.textSecondary);
-		assert.equal(tokens["ink-faint"], skin.colors.textTertiary);
-		assert.equal(tokens["accent-dim"], skin.colors.accentDim);
-		assert.ok(contrast(tokens.accent!, tokens["on-accent"]!) >= 4.5);
-		for (const key of COLOR_KEYS) assert.ok(Object.values(tokens).includes(skin.colors[key]), key);
+		if (skin.tokens) {
+			for (const [key, value] of Object.entries(skin.tokens)) {
+				assert.equal(tokens[key as keyof typeof tokens], value, `${preset.id}.${key}`);
+			}
+			assert.notEqual(tokens.card, tokens.float, `${preset.id}：浮层与卡片应有区分，不融底`);
+		} else {
+			assert.equal(tokens.root, skin.colors.bgRoot);
+			assert.equal(tokens.shell, skin.colors.bgMain);
+			assert.equal(tokens.input, skin.colors.bgElevated);
+			assert.equal(tokens["ink-muted"], skin.colors.textSecondary);
+			assert.equal(tokens["ink-faint"], skin.colors.textTertiary);
+			assert.equal(tokens["accent-dim"], skin.colors.accentDim);
+			assert.ok(contrast(tokens.accent!, tokens["on-accent"]!) >= 4.5);
+			for (const key of COLOR_KEYS) assert.ok(Object.values(tokens).includes(skin.colors[key]), key);
+		}
 	}
+	// 纯 12 色皮肤（不含 tokens 覆写）照常完整映射。
+	const plain = parseSkin({ ...PRESETS[0]!, tokens: undefined });
+	const plainTokens = toSkin(plain).light!;
+	assert.equal(plainTokens.root, plain.colors.bgRoot);
+	assert.equal(plainTokens.shell, plain.colors.bgMain);
+	assert.equal(plainTokens.input, plain.colors.bgElevated);
+	assert.equal(plainTokens["card-hover"], plain.colors.bgHover);
+	assert.ok(contrast(plainTokens.accent!, plainTokens["on-accent"]!) >= 4.5);
+	for (const key of COLOR_KEYS) assert.ok(Object.values(plainTokens).includes(plain.colors[key]), key);
 });
 
 /** OKLCH 的亮度（0–1），只用来比两块底色分不分得开。 */
@@ -56,12 +73,51 @@ function lightness(hex: string): number {
 	return 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
 }
 
-test("原创预设的侧栏（外圈）都比会话窗暗一档，浅色的悬停在侧栏上也看得出", () => {
-	for (const preset of PRESETS.filter((skin) => !skin.id.endsWith("t3-code"))) {
+test("其余原创预设的侧栏（外圈）都比会话窗暗一档，浅色的悬停在侧栏上也看得出", () => {
+	for (const preset of PRESETS.filter(
+		(skin) => !skin.id.endsWith("t3-code") && !skin.id.endsWith("clawd") && skin.id !== "dark-graphite" && skin.id !== "dark-teal",
+	)) {
 		const { bgRoot, bgMain, bgHover } = preset.colors;
 		assert.ok(lightness(bgMain) - lightness(bgRoot) >= 0.035, `${preset.id}：侧栏 ${bgRoot} 和会话窗 ${bgMain} 太接近`);
 		if (preset.base === "light" && !preset.backdrop) assert.ok(lightness(bgRoot) - lightness(bgHover) >= 0.02, `${preset.id}：侧栏上的悬停看不出来`);
 	}
+	for (const id of ["dark-graphite", "dark-teal"]) {
+		const skin = PRESETS.find((preset) => preset.id === id)!;
+		assert.ok(lightness(skin.colors.bgRoot) > lightness(skin.colors.bgMain), `${id} 外圈应亮于会话窗`);
+		assert.ok(lightness(skin.colors.bgSidebar) > lightness(skin.colors.bgMain), `${id} 侧栏应亮于会话窗`);
+	}
+});
+
+test("Clawd 浅色与深色预设保持正确明暗分层并保留完整细粒度 token 覆写", () => {
+	const light = PRESETS.find((skin) => skin.id === "light-clawd")!;
+	const dark = PRESETS.find((skin) => skin.id === "dark-clawd")!;
+	assert.equal(light.base, "light");
+	assert.equal(dark.base, "dark");
+	assert.ok(lightness(light.colors.bgMain) > lightness(light.colors.bgRoot), "浅色外圈应灰于会话窗");
+	assert.ok(lightness(light.colors.bgMain) > lightness(light.colors.bgSidebar), "浅色侧栏应灰于会话窗");
+	assert.ok(lightness(dark.colors.bgRoot) > lightness(dark.colors.bgMain), "深色外圈应亮于会话窗");
+	assert.ok(lightness(dark.colors.bgSidebar) > lightness(dark.colors.bgMain), "深色侧栏应亮于会话窗");
+	const lightTokens = toSkin(parseSkin(light)).light!;
+	const darkTokens = toSkin(parseSkin(dark)).dark!;
+	assert.equal(lightTokens.shell, "oklch(0.981775 0.005392 95.099)");
+	assert.equal(lightTokens.root, "oklch(0.965992 0.009326 99.984)");
+	assert.equal(lightTokens.card, "oklch(0.948457 0.010853 95.166)");
+	assert.equal(lightTokens.input, "oklch(1 0 0)");
+	assert.equal(lightTokens["card-hover"], "rgb(127 127 127 / 0.14)");
+	assert.equal(lightTokens["window-tint"], "color-mix(in srgb, oklch(0.965992 0.009326 99.984) 70%, transparent)");
+	assert.equal(lightTokens["line-float"], "rgb(127 127 127 / 0.18)");
+	assert.equal(lightTokens["inline-code-bg"], "rgb(127 127 127 / 0.16)");
+	assert.equal(lightTokens["radius-panel"], "14px");
+	assert.equal(lightTokens["code-tracking"], "-0.002em");
+	assert.equal(darkTokens.shell, "oklch(0.213423 0 0)");
+	assert.equal(darkTokens.root, "oklch(0.239292 0 0)");
+	assert.equal(darkTokens.sidebar, "oklch(0.268618 0 0)");
+	assert.equal(darkTokens.card, "oklch(0.268618 0 0)");
+	assert.equal(darkTokens.input, "oklch(0.309186 0 0)");
+	assert.equal(darkTokens.float, "oklch(0.285017 0 0)");
+	assert.equal(darkTokens.elevated, "rgb(127 127 127 / 0.16)");
+	assert.equal(darkTokens["window-tint"], "color-mix(in srgb, oklch(0.285017 0 0) 60%, transparent)");
+	assert.equal(darkTokens.danger, "oklch(0.72 0.165 22)");
 });
 
 test("T3 Code 浅色会话窗亮于侧栏与外圈，深色侧栏与外圈亮于会话窗", () => {
@@ -147,7 +203,8 @@ test("拒绝缺失颜色、CSS/URL、非法模式、过长名和不可读的AI�
 		{ ...valid, colors: { ...valid.colors, textPrimary: valid.colors.bgMain } },
 	])
 		assert.throws(() => parseSkin(invalid));
-	assert.deepEqual(Object.keys(parseSkin({ ...valid, ignored: true })).sort(), ["base", "colors", "name"]);
+	assert.deepEqual(Object.keys(parseSkin({ ...valid, tokens: undefined, ignored: true })).sort(), ["base", "colors", "name"]);
+	assert.deepEqual(Object.keys(parseSkin({ ...valid, ignored: true })).sort(), ["base", "colors", "name", "tokens"]);
 });
 
 test("保存、切换、提取、删除及重启恢复；同名作品不覆盖", async (t) => {
@@ -271,4 +328,56 @@ test("带底纹的作品保存、复制当前皮肤和重启后都保留底纹",
 	assert.deepEqual(copy.backdrop, PRESETS.find((skin) => skin.id === "light-tone-sky")!.backdrop);
 	const reloaded = await (await createStudioStore(dir, stop.signal)).view();
 	assert.deepEqual(reloaded.skins.find((skin) => skin.id === copy.id)!.backdrop, copy.backdrop);
+});
+
+test("扩展 tokens 支持合法细粒度覆写、保存、复制和重启恢复，拒绝未知 token 与危险 CSS", async (t) => {
+	const base = PRESETS[0]!;
+	const tokens = {
+		card: "oklch(0.95 0.01 95)",
+		input: "#FFFFFF",
+		"card-hover": "rgb(127 127 127 / 0.14)",
+		"window-tint": "color-mix(in srgb, oklch(0.96 0.01 99) 70%, transparent)",
+		"inline-code-ring": "transparent",
+		"syntax-variable": "var(--plume-ink)",
+		contrast: "0.6",
+		"code-line-height": "1.55",
+		"code-tracking": "-0.002em",
+		"radius-panel": "14px",
+		"ui-size": "14px",
+		"font-sans": 'ui-sans-serif, -apple-system, "Segoe UI", sans-serif',
+	};
+	const parsed = parseSkin({ ...base, name: "精细皮肤", tokens });
+	assert.deepEqual(parsed.tokens, tokens);
+	assert.equal(parseSkin({ ...base, tokens: {} }).tokens, undefined);
+	const mapped = toSkin(parsed).light!;
+	assert.equal(mapped.card, tokens.card);
+	assert.equal(mapped["card-hover"], tokens["card-hover"]);
+	assert.equal(mapped["radius-panel"], "14px");
+
+	for (const badTokens of [
+		null,
+		[],
+		{ "root-image": "linear-gradient(red, blue)" },
+		{ unknown: "#112233" },
+		{ card: "url(https://example.com/a.png)" },
+		{ card: "red; background: url(https://example.com)" },
+		{ "window-tint": "color-mix(in srgb, url(https://example.com) 50%, red)" },
+		{ "syntax-variable": "var(--other-var)" },
+		{ contrast: "1.5" },
+		{ "code-line-height": "5" },
+		{ "code-tracking": "2em" },
+		{ "radius-panel": "100px" },
+		{ "ui-size": "40px" },
+		{ "font-sans": "Arial; } body { display: none }" },
+	]) {
+		assert.throws(() => parseSkin({ ...base, tokens: badTokens }), /invalidTokens/);
+	}
+
+	const { store, dir, stop } = await fixture(t);
+	await store.apply("dark-clawd");
+	const copied = await store.saveCurrent("我的 Clawd");
+	const active = copied.skins.find((skin) => skin.id === copied.activeId)!;
+	assert.deepEqual(active.tokens, PRESETS.find((skin) => skin.id === "dark-clawd")!.tokens);
+	const reloaded = await (await createStudioStore(dir, stop.signal)).view();
+	assert.deepEqual(reloaded.skins.find((skin) => skin.id === active.id)!.tokens, active.tokens);
 });
