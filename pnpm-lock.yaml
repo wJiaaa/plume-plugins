@@ -7,8 +7,8 @@ settings:
 catalogs:
   default:
     '@plumeai/plugin-sdk':
-      specifier: ^0.9.1
-      version: 0.9.1
+      specifier: ^0.9.2
+      version: 0.9.2
 
 importers:
 
@@ -16,7 +16,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@swc/core':
         specifier: ^1.16.21
         version: 1.16.22
@@ -46,7 +46,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -61,7 +61,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -73,7 +73,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -85,7 +85,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -97,7 +97,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -113,7 +113,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -122,7 +122,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -134,7 +134,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -152,7 +152,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -164,7 +164,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -176,7 +176,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -191,7 +191,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -203,7 +203,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -221,7 +221,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -236,7 +236,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -248,7 +248,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -264,7 +264,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -300,7 +300,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -312,7 +312,7 @@ importers:
     devDependencies:
       '@plumeai/plugin-sdk':
         specifier: 'catalog:'
-        version: 0.9.1(react@19.3.1)
+        version: 0.9.2(react@19.3.1)
       '@types/node':
         specifier: ^24.10.0
         version: 24.19.2
@@ -985,8 +985,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@plumeai/plugin-sdk@0.9.1':
-    resolution: {integrity: sha512-q6u/n1RZ67v4QN/P3CCVlo55DV4szyAr/q4Ih/L7zjbUowj1mer5oWSmLfwVO/3YNRARJoUl+EwRxZEZWzvMkg==}
+  '@plumeai/plugin-sdk@0.9.2':
+    resolution: {integrity: sha512-dUskUwAH7CiN4488l1Z/QGTk1VOW8gNVQe4Qbt3mrar6MjMM373RRiXE6IXQ+IBE29YjPi9SGeDtPR6exOvFBQ==}
     engines: {node: '>=24'}
     hasBin: true
 
@@ -2977,7 +2977,7 @@ snapshots:
   '@oxlint/binding-win32-x64-msvc@1.93.0':
     optional: true
 
-  '@plumeai/plugin-sdk@0.9.1(react@19.3.1)':
+  '@plumeai/plugin-sdk@0.9.2(react@19.3.1)':
     dependencies:
       '@types/node': 24.19.2
       '@types/react': 19.3.0
