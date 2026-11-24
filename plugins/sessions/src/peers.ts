@@ -13,7 +13,7 @@
  * 找人只在看得见的里面找（`reachable` 之后再 `resolveSession`）：重名、ref 撞上的只算看得见的，别处的会话名字也不会出现在退回的话里。
  */
 
-import type { SessionSummary } from "@plume/contract";
+import type { Message, SessionSummary } from "@plume/contract";
 
 const REF = /^(.*?)\s*\[([0-9a-f]{6,12})\]$/i;
 
@@ -75,6 +75,36 @@ export function together(from: SessionSummary, to: SessionSummary, repos: Readon
  */
 export function reportsTo(session: Pick<SessionSummary, "spawnedFrom">, to: Pick<SessionSummary, "id">): boolean {
 	return session.spawnedFrom?.sessionId === to.id && session.spawnedFrom.reportBack === true;
+}
+
+/** 这条回复在这一轮收尾落定了（不是还在写、交给了工具、或被人按停而不会交回）。 */
+function endedReplyAt(message: Message): number | undefined {
+	if (message.role !== "assistant") return undefined;
+	if (message.stopReason === "pending" || message.stopReason === "toolUse" || message.stopReason === "aborted") return undefined;
+	return message.timestamp + (typeof message.durationMs === "number" && message.durationMs > 1 ? message.durationMs : 0);
+}
+
+/**
+ * 对方每轮交回这边时，`mine` 那次发出去的信算不算已收到汇报答复：对方在 `target[at]` 读到这封信以后至少结束了一轮可交回的回复，
+ * 且这边在发出那封信及对方那轮回复收尾之后收到了它的交回（排除发信时对方上一轮刚结束、擦肩而过的旧汇报）。
+ */
+export function hasReportedReply(
+	own: readonly Message[] | undefined,
+	target: readonly Message[] | undefined,
+	at: number,
+	mine: number,
+	targetId: string,
+): boolean {
+	if (at < 0 || mine < 0 || !own || !target) return false;
+	let endedAt: number | undefined;
+	for (let index = at + 1; index < target.length; index++) {
+		endedAt = endedReplyAt(target[index]!);
+		if (endedAt !== undefined) break;
+	}
+	if (endedAt === undefined) return false;
+	return own
+		.slice(mine + 1)
+		.some((message) => message.role === "user" && message.timestamp >= endedAt && message.delivery?.some((report) => report.sessionId === targetId));
 }
 
 /**

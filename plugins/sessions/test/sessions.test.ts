@@ -23,7 +23,7 @@ import { currentStep } from "../src/history.ts";
 import plugin from "../src/index.ts";
 import type { SessionsApi } from "../src/api.ts";
 import { PEER_DEDUP_MS } from "../src/pacing.ts";
-import { familyOf, resolveSession, sessionAddress, together } from "../src/peers.ts";
+import { familyOf, hasReportedReply, resolveSession, sessionAddress, together } from "../src/peers.ts";
 import { repositories } from "../src/repository.ts";
 
 /** 会话摘要；`kind` 和本体一样按 `parentId`、`owner` 算。 */
@@ -353,6 +353,42 @@ test("来处问每轮交回它的会话：收件方的说明叫它在收尾回�
 	const origin = async (sessionId: string) => (await f.context(sessionId)).sections.find((section) => section.id === "plume.sessions.origin")?.text ?? "";
 	assert.match(await origin(f.exec.id), /answer in your final reply/);
 	assert.doesNotMatch(await origin(f.grand.id), /answer in your final reply/);
+});
+
+test("回执认交回的汇报：对方读到这封并结束一轮之后送到的才算，擦肩而过的旧汇报、进行中、被按停的不算", () => {
+	const sentCall = {
+		role: "toolResult",
+		toolCallId: "t1",
+		toolName: "send_message",
+		content: [],
+		isError: false,
+		details: { kind: "session_message", to: "exec", sessionId: "child", letterId: "l1" },
+		timestamp: 100,
+	} as unknown as Message;
+	const reportAt = (timestamp: number) =>
+		({
+			role: "user",
+			synthetic: true,
+			content: [],
+			delivery: [{ id: "d", plugin: "p", title: "t", status: "done", sessionId: "child" }],
+			timestamp,
+		}) as unknown as Message;
+	const letterAt = (timestamp: number) =>
+		({ role: "user", synthetic: true, content: [], peer: [{ id: "l1", sessionId: "origin", from: "origin", text: "问" }], timestamp }) as unknown as Message;
+	const reply = (timestamp: number, stopReason: string, durationMs?: number) =>
+		({ role: "assistant", content: [{ type: "text", text: "答" }], stopReason, timestamp, ...(durationMs ? { durationMs } : {}) }) as unknown as Message;
+
+	// 发信时对方上一轮刚结束，旧汇报在 500ms 落进这边，对方在 450ms 读到这封信、第二轮还在跑或刚调工具：不算已回复。
+	const staleOwn = [sentCall, reportAt(500)];
+	assert.equal(hasReportedReply(staleOwn, [letterAt(450)], 0, 0, "child"), false);
+	assert.equal(hasReportedReply(staleOwn, [letterAt(450), reply(600, "pending")], 0, 0, "child"), false);
+	assert.equal(hasReportedReply(staleOwn, [letterAt(450), reply(600, "toolUse")], 0, 0, "child"), false);
+	// 对方第二轮在 800ms 收尾，但这边还只有 500ms 那份旧汇报：新汇报还在路上，不算已回复。
+	assert.equal(hasReportedReply(staleOwn, [letterAt(450), reply(700, "stop", 100)], 0, 0, "child"), false);
+	// 对方第二轮被人按停（不交回），之后这边才落盘早先憋着的旧汇报：不算已回复。
+	assert.equal(hasReportedReply([sentCall, reportAt(1000)], [letterAt(450), reply(700, "aborted", 100)], 0, 0, "child"), false);
+	// 对方第二轮收尾（800ms）后，新汇报（1200ms）落进这边：算已回复。
+	assert.equal(hasReportedReply([...staleOwn, reportAt(1200)], [letterAt(450), reply(700, "stop", 100)], 0, 0, "child"), true);
 });
 
 test("正在做的那一项认最新一份成功的进度清单（details.checklist），不认是哪个工具记的", () => {

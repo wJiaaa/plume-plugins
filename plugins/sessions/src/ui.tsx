@@ -6,7 +6,7 @@
  *
  * 回执从对方的记录里认：里面有这封信（`peer` 上的 id）是已送达；读到它以后，对方又给这边发了消息（它记录里一次成功的 `send_message`）
  * 是已回复——两边的信擦肩而过、它读到这封之前寄出的那封不算。对方每轮交回这边的（这边开出它、要了交回），答案随交回送到、不回寄：
- * 它读到这封以后，这边的记录里在这封之后有它交回的那一行（`delivery` 上的 `sessionId`），也是已回复。逻辑入口记着它没送到（钩子拦下、对方删掉）是未送达；寄出时就知道叫不醒对方
+ * 它读到这封并结束一轮以后，这边的记录里收到它交回的那一行（`delivery` 上的 `sessionId`），也是已回复。逻辑入口记着它没送到（钩子拦下、对方删掉）是未送达；寄出时就知道叫不醒对方
  * （`held`）的是等对方开口；别的都是排队中——对方在忙、还没读到，或者应用重启前寄出、没了下落。
  */
 
@@ -16,6 +16,7 @@ import { ChevronRight, MessagesSquare, ScrollText, Send } from "@plume/ui/icons"
 import { useEffect, useMemo, useState } from "react";
 import type { SessionsApi } from "./api.ts";
 import { MESSAGES } from "./messages.ts";
+import { hasReportedReply } from "./peers.ts";
 
 let ui: UiContext;
 let api: Remote<SessionsApi>;
@@ -62,10 +63,8 @@ function useReceipt(sessionId: string, sent: SentDetails): Receipt {
 	const reported = useMemo(() => {
 		if (!delivered || !own) return false;
 		const mine = own.findIndex((message) => message.role === "toolResult" && isSent(message.details) && message.details.letterId === sent.letterId);
-		return (
-			mine >= 0 && own.slice(mine + 1).some((message) => message.role === "user" && message.delivery?.some((report) => report.sessionId === sent.sessionId))
-		);
-	}, [own, delivered, sent.letterId, sent.sessionId]);
+		return hasReportedReply(own, target, at, mine, sent.sessionId);
+	}, [own, target, at, delivered, sent.letterId, sent.sessionId]);
 	const [fate, setFate] = useState<string>();
 	// 对方的记录变了（读到了、被拦下了）再问一次下落；已经认出送达就不用问。
 	const seen = target?.length ?? 0;
