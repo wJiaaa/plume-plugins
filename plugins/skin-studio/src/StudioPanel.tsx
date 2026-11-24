@@ -260,7 +260,7 @@ export function StudioPanel({ ui, api, store, sessionId }: { ui: UiContext; api:
 
 	const copy = async (skin: ColorSkin) => {
 		try {
-			await navigator.clipboard.writeText(JSON.stringify({ name: skin.name, base: skin.base, colors: skin.colors, backdrop: skin.backdrop }, null, 2));
+			await navigator.clipboard.writeText(JSON.stringify(parseSkin(skin), null, 2));
 			if (store.active()) ui.notify(text.copied);
 		} catch {
 			if (store.active()) ui.notify(text.copyFailed, "error");

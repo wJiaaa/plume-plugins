@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -10,6 +10,8 @@ import { PRESETS } from "../src/presets.ts";
 import { COLOR_KEYS, contrast, parseSkin } from "../src/types.ts";
 import { toSkin } from "../src/palette.ts";
 import { oklch } from "../src/tone.ts";
+
+const ONE_PIXEL_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZP8sAAAAASUVORK5CYII=";
 
 async function fixture(t: { after(callback: () => Promise<void>): void }) {
 	const dir = await mkdtemp(join(tmpdir(), "plume-skin-studio-"));
@@ -106,6 +108,32 @@ test("底纹只接受两个 #RRGGBB，文字压不住渐变两端时拒绝，颗
 	assert.deepEqual(parseSkin({ ...tone, backdrop: { ...tone.backdrop, grain: true } }).backdrop, tone.backdrop);
 });
 
+test("皮肤独立背景保存、映射和重启后保持，且不接受网络地址、SVG 或伪造图片", async (t) => {
+	const source = {
+		...PRESETS.find((skin) => skin.id === "dark-berry")!,
+		name: "Nyx",
+		background: {
+			image: ONE_PIXEL_PNG,
+			fit: "cover",
+			effect: "grid",
+			opacity: 0.52,
+			onNewChat: true,
+			inChat: true,
+		},
+	};
+	const parsed = parseSkin(source);
+	assert.deepEqual(parsed.background, source.background);
+	assert.deepEqual(toSkin(parsed).background, source.background);
+	const { store, dir, stop } = await fixture(t);
+	const saved = await store.save(source, true);
+	const active = saved.skins.find((skin) => skin.id === saved.activeId)!;
+	assert.deepEqual(active.background, source.background);
+	const reloaded = await (await createStudioStore(dir, stop.signal)).view();
+	assert.deepEqual(reloaded.skins.find((skin) => skin.id === active.id)!.background, source.background);
+	for (const image of ["https://example.com/nyx.webp", "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=", ONE_PIXEL_PNG.replace("image/png", "image/webp")])
+		assert.throws(() => parseSkin({ ...source, background: { ...source.background, image } }), /invalidBackground/);
+});
+
 test("拒绝缺失颜色、CSS/URL、非法模式、过长名和不可读的AI配色", () => {
 	const valid = PRESETS[0]!;
 	for (const invalid of [
@@ -158,15 +186,19 @@ test("并发保存串行落盘，失败不污染当前皮肤或下一次保存",
 
 test("损坏的皮肤库不当空列表覆盖", async (t) => {
 	const { dir, stop } = await fixture(t);
+	const file = join(dir, "skins.json");
 	for (const content of [
 		"{broken",
 		JSON.stringify({ custom: [{ ...PRESETS[0], id: "bad" }], activeId: null }),
 		JSON.stringify({ custom: [], activeId: "missing" }),
 	]) {
-		await writeFile(join(dir, "skins.json"), content);
+		await writeFile(file, content);
 		await assert.rejects(createStudioStore(dir, stop.signal), /invalidLibrary/);
-		assert.equal(await readFile(join(dir, "skins.json"), "utf8"), content);
+		assert.equal(await readFile(file, "utf8"), content);
 	}
+	await writeFile(file, "");
+	await truncate(file, 31 * 1024 * 1024);
+	await assert.rejects(createStudioStore(dir, stop.signal), /invalidLibrary/);
 });
 
 test("订阅立即读取、无面板时推送切换，取消和插件卸载解除等待", async (t) => {
@@ -210,10 +242,16 @@ test("AI工具真正保存并应用，列表只读，拒绝只读模式下的修
 	const run = { signal: new AbortController().signal } as ToolRun;
 	assert.equal(tool.readsOnly?.({ action: "list" }), true);
 	assert.equal(tool.readsOnly?.({ action: "apply" }), false);
-	const applied = await tool.execute({ action: "apply", ...PRESETS.find((skin) => skin.id === "dark-berry"), id: undefined, name: "AI 莓果" }, run);
+	const background = { image: ONE_PIXEL_PNG, fit: "cover", effect: "grid", opacity: 0.52, onNewChat: true, inChat: true };
+	const applied = await tool.execute({ action: "apply", ...PRESETS.find((skin) => skin.id === "dark-berry"), id: undefined, name: "AI 莓果", background }, run);
 	assert.ok(!applied.isError, applied.output);
+	assert.doesNotMatch(applied.output, /data:image/);
 	const view = JSON.parse(applied.output);
-	assert.equal(view.skins.find((skin: { id: string }) => skin.id === view.activeId).name, "AI 莓果");
+	const active = view.skins.find((skin: { id: string }) => skin.id === view.activeId);
+	assert.equal(active.name, "AI 莓果");
+	assert.deepEqual(active.background, { fit: "cover", effect: "grid", opacity: 0.52, onNewChat: true, inChat: true, embedded: true, mediaType: "png" });
+	const stored = JSON.parse(await readFile(join(dir, "skins.json"), "utf8"));
+	assert.equal(stored.custom[0].background.image, ONE_PIXEL_PNG);
 	const saved = await tool.execute({ action: "save", name: "只保存的副本" }, run);
 	assert.equal(JSON.parse(saved.output).activeId, view.activeId, "save 不切换当前皮肤");
 	const denied = await tool.execute({ action: "reset" }, { ...run, readOnly: true });

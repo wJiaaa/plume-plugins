@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { readFile, rename, writeFile } from "node:fs/promises";
+import { readFile, rename, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { SkinStudioApi } from "./api.ts";
 import { PRESETS } from "./presets.ts";
@@ -10,11 +10,25 @@ interface Library {
 	activeId: string | null;
 }
 
+const MAX_BACKGROUND_LIBRARY_BYTES = 20 * 1024 * 1024;
+const MAX_LIBRARY_FILE_BYTES = 30 * 1024 * 1024;
+
+function backgroundBytes(skin: StudioSkin): number {
+	const encoded = skin.background?.image.split(",", 2)[1];
+	if (!encoded) return 0;
+	return Math.floor((encoded.length * 3) / 4) - (encoded.endsWith("==") ? 2 : encoded.endsWith("=") ? 1 : 0);
+}
+
+function validateBackgroundTotal(custom: StudioSkin[]): void {
+	if (custom.reduce((total, skin) => total + backgroundBytes(skin), 0) > MAX_BACKGROUND_LIBRARY_BYTES) throw new Error("backgroundLibraryTooLarge");
+}
+
 /** 串行、原子写入；坏文件让加载失败，不当空库覆盖。 */
 export async function createStudioStore(dataDir: string, signal: AbortSignal): Promise<SkinStudioApi> {
 	const file = join(dataDir, "skins.json");
 	let state: Library = { custom: [], activeId: null };
 	try {
+		if ((await stat(file)).size > MAX_LIBRARY_FILE_BYTES) throw new Error("invalidLibrary");
 		const raw: unknown = JSON.parse(await readFile(file, "utf8"));
 		if (!raw || typeof raw !== "object") throw new Error("invalidLibrary");
 		const candidate = raw as Record<string, unknown>;
@@ -28,6 +42,7 @@ export async function createStudioStore(dataDir: string, signal: AbortSignal): P
 			return { ...skin, id, builtin: false };
 		});
 		if (new Set(custom.map((skin) => skin.id)).size !== custom.length) throw new Error("invalidLibrary");
+		validateBackgroundTotal(custom);
 		if (candidate.activeId !== null && ![...PRESETS, ...custom].some((skin) => skin.id === candidate.activeId)) throw new Error("invalidLibrary");
 		state = { custom, activeId: candidate.activeId as string | null };
 	} catch (error) {
@@ -52,7 +67,9 @@ export async function createStudioStore(dataDir: string, signal: AbortSignal): P
 	const add = (current: Library, value: unknown, apply: boolean): Library => {
 		if (current.custom.length >= 200) throw new Error("tooMany");
 		const skin: StudioSkin = { ...parseSkin(value), id: `custom-${randomUUID()}`, builtin: false };
-		return { custom: [...current.custom, skin], activeId: apply ? skin.id : current.activeId };
+		const custom = [...current.custom, skin];
+		validateBackgroundTotal(custom);
+		return { custom, activeId: apply ? skin.id : current.activeId };
 	};
 	return {
 		view: () => queue.then(snapshot),

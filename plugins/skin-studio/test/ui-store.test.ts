@@ -51,10 +51,22 @@ function fixture() {
 test("启用即订阅，无需挂载面板；保存未应用作品不抢皮肤优先级", async () => {
 	const { store, applied, push, cancelled } = fixture();
 	store.start();
-	const first: StudioView = { skins: structuredClone([...PRESETS]), activeId: "light-mint" };
+	const background = {
+		image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZP8sAAAAASUVORK5CYII=",
+		fit: "cover",
+		effect: "grid",
+		opacity: 0.52,
+		onNewChat: true,
+		inChat: true,
+	} as const;
+	const first: StudioView = {
+		skins: structuredClone(PRESETS.map((skin) => (skin.id === "light-mint" ? { ...skin, background } : skin))),
+		activeId: "light-mint",
+	};
 	await push(first);
 	assert.equal(applied.length, 1);
 	assert.equal(applied[0]!.mode, "light");
+	assert.deepEqual(applied[0]!.background, background);
 	await push({ ...first, skins: [...first.skins, { ...PRESETS[0]!, id: "new", builtin: false }] });
 	assert.equal(applied.length, 1);
 	await push({ ...first, activeId: "dark-berry" });
