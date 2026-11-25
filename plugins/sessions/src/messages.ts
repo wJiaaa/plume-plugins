@@ -15,6 +15,8 @@ const zhCN = {
 	undeliveredDropped: "钩子拦下了这次送达，对方没读到",
 	undeliveredClosed: "对方会话已经不在了",
 	openSession: "打开这个会话",
+	sentMessage: "发出的消息",
+	sessionGone: "这个会话已经不在了",
 };
 
 export const MESSAGES: Record<Locale, typeof zhCN> = {
@@ -32,5 +34,7 @@ export const MESSAGES: Record<Locale, typeof zhCN> = {
 		undeliveredDropped: "A hook stopped this message before the other chat read it",
 		undeliveredClosed: "The other chat is gone",
 		openSession: "Open this chat",
+		sentMessage: "Sent message",
+		sessionGone: "That session no longer exists",
 	},
 };

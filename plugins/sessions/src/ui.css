@@ -1,0 +1,19 @@
+.plume-sessions-head {
+	display: flex;
+	min-width: 0;
+	align-items: center;
+	gap: 4px;
+}
+
+.plume-sessions-body {
+	margin-top: 6px;
+	border-left: 2px solid var(--plume-line);
+	padding-left: 12px;
+}
+
+.plume-sessions-text {
+	color: var(--plume-ink-muted);
+	font-size: inherit;
+	line-height: inherit;
+	letter-spacing: inherit;
+}

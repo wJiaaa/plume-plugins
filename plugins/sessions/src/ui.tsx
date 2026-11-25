@@ -11,15 +11,28 @@
  */
 
 import type { ToolCardProps, UiContext, UiPlugin, Remote } from "@plume/contract/ui";
-import { FlowRow, Text, useI18n } from "@plume/ui";
-import { ChevronRight, MessagesSquare, ScrollText, Send } from "@plume/ui/icons";
+import { Collapse, FlowRow, IconButton, Text, useI18n } from "@plume/ui";
+import { ArrowUpRight, MessagesSquare, ScrollText, Send } from "@plume/ui/icons";
 import { useEffect, useMemo, useState } from "react";
 import type { SessionsApi } from "./api.ts";
 import { MESSAGES } from "./messages.ts";
 import { hasReportedReply } from "./peers.ts";
+import css from "./ui.css";
 
 let ui: UiContext;
 let api: Remote<SessionsApi>;
+
+function mountStyles(): () => void {
+	const id = "plume.sessions";
+	let style = document.querySelector<HTMLStyleElement>(`style[data-plugin-style="${id}"]`);
+	if (!style) {
+		style = document.createElement("style");
+		style.dataset.pluginStyle = id;
+		document.head.append(style);
+	}
+	style.textContent = css;
+	return () => style?.remove();
+}
 
 /** 地址里的名字：`修登录 [a1b2c3]` 说成「修登录」，ref 是给模型认人的；只写了 ref 或 id 就说它。 */
 function peerName(to: unknown): string | undefined {
@@ -87,28 +100,38 @@ function useReceipt(sessionId: string, sent: SentDetails): Receipt {
 
 function SentRow({ sessionId, call, sent }: { sessionId: string; call: ToolCardProps["call"]; sent: SentDetails }) {
 	const text = MESSAGES[useI18n().resolvedLocale];
+	const [open, setOpen] = useState(false);
 	const receipt = useReceipt(sessionId, sent);
 	const label = receipt === "dropped" || receipt === "closed" ? text.undelivered : text[receipt];
 	const why = receipt === "dropped" ? text.undeliveredDropped : receipt === "closed" ? text.undeliveredClosed : undefined;
 	const hint = why ?? (receipt === "held" ? text.heldHint : undefined);
-	const message = typeof call.args.message === "string" ? call.args.message : "";
+	const message = typeof call.args.message === "string" ? call.args.message.trim() : "";
+	const jump = () => void ui.openSession(sent.sessionId).catch(() => ui.notify(text.sessionGone, "warn"));
 	return (
 		<div data-peer-message={sent.letterId} data-peer-receipt={receipt}>
-			<FlowRow
-				icon={<Send size={13} strokeWidth={1.8} />}
-				title={text.sendMessage}
-				summary={peerName(sent.to)}
-				trailing={
-					<>
+			<div className="plume-sessions-head">
+				<FlowRow
+					icon={<Send size={13} strokeWidth={1.8} />}
+					title={text.sendMessage}
+					summary={peerName(sent.to)}
+					trailing={
 						<Text size="caption" tone={why ? "danger" : "faint"} title={hint}>
 							{label}
 						</Text>
-						<ChevronRight size={12} strokeWidth={2} aria-hidden />
-					</>
-				}
-				onToggle={() => void ui.openSession(sent.sessionId)}
-				label={message ? `${text.openSession} · ${message}` : text.openSession}
-			/>
+					}
+					open={message ? open : undefined}
+					onToggle={message ? () => setOpen((value) => !value) : undefined}
+					label={text.sentMessage}
+				/>
+				<IconButton size="xs" icon={<ArrowUpRight size={12} strokeWidth={1.8} />} label={text.openSession} onClick={jump} data-peer-open="" />
+			</div>
+			{message && (
+				<Collapse open={open} bodyClassName="plume-sessions-body">
+					<Text as="div" size="label" tone="muted">
+						<ui.Markdown text={message} sessionId={sessionId} className="plume-sessions-text" />
+					</Text>
+				</Collapse>
+			)}
 		</div>
 	);
 }
@@ -124,6 +147,7 @@ export default {
 	apply(context) {
 		ui = context;
 		api = context.remote<SessionsApi>();
+		context.effect(mountStyles());
 		context.toolLine("list_sessions", { verb: (locale) => MESSAGES[locale].listSessions, group: "peer", icon: MessagesSquare });
 		context.toolLine("read_session", {
 			verb: (locale) => MESSAGES[locale].readSession,
