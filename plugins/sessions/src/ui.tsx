@@ -106,14 +106,24 @@ function SentRow({ sessionId, call, sent }: { sessionId: string; call: ToolCardP
 	const why = receipt === "dropped" ? text.undeliveredDropped : receipt === "closed" ? text.undeliveredClosed : undefined;
 	const hint = why ?? (receipt === "held" ? text.heldHint : undefined);
 	const message = typeof call.args.message === "string" ? call.args.message.trim() : "";
+	const name = peerName(sent.to);
 	const jump = () => void ui.openSession(sent.sessionId).catch(() => ui.notify(text.sessionGone, "warn"));
 	return (
 		<div data-peer-message={sent.letterId} data-peer-receipt={receipt}>
 			<div className="plume-sessions-head">
 				<FlowRow
 					icon={<Send size={13} strokeWidth={1.8} />}
-					title={text.sendMessage}
-					summary={peerName(sent.to)}
+					summary={
+						<>
+							<Text tone={open ? "default" : "muted"}>{text.sendMessage}</Text>
+							{name ? (
+								<>
+									{" "}
+									<Text tone="default">{name}</Text>
+								</>
+							) : null}
+						</>
+					}
 					trailing={
 						<Text size="caption" tone={why ? "danger" : "faint"} title={hint}>
 							{label}
