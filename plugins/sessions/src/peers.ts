@@ -70,11 +70,11 @@ export function together(from: SessionSummary, to: SessionSummary, repos: Readon
 }
 
 /**
- * `session` 每结束一轮都由本体交回 `to`：它是从 `to` 开出来的，开的时候要了交回（`spawnedFrom.reportBack`）。
- * 这时 `to` 问它的话，答案在它收尾那段回复里、随交回送到，不用再寄一封回来。
+ * `session` 每结束一轮都由本体交回 `to`：它是从 `to` 开出来的，开的时候要了交回（`spawnedFrom.reportBack`），开它的那次调用也在 `to` 里
+ * （有 `callIn` 的交回那个子会话，不交 `to`）。这时 `to` 问它的话，答案在它收尾那段回复里、随交回送到，不用再寄一封回来。
  */
 export function reportsTo(session: Pick<SessionSummary, "spawnedFrom">, to: Pick<SessionSummary, "id">): boolean {
-	return session.spawnedFrom?.sessionId === to.id && session.spawnedFrom.reportBack === true;
+	return session.spawnedFrom?.sessionId === to.id && session.spawnedFrom.reportBack === true && session.spawnedFrom.callIn === undefined;
 }
 
 /** 这条回复在这一轮收尾落定了（不是还在写、交给了工具、或被人按停而不会交回）。 */
