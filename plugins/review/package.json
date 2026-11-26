@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/review",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "写代码的对话不审自己：/review 派审阅子智能体找问题、核实，发现原样列出，再逐条决定修哪几条、在这个对话里修。",
   "author": "Plume",
   "keywords": [

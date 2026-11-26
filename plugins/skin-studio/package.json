@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/skin-studio",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "用 12 色与细粒度 SkinToken 覆写设计完整皮肤：预设画廊、AI 设计、自定义皮肤保存与分享。",
   "author": "Plume",
   "keywords": [

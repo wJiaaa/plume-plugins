@@ -1,6 +1,6 @@
 {
   "name": "@plume-plugins/welcome",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "欢迎页问候下面每天换一句话：每天第一次打开时让默认模型写一句，当天都显示它，换掉「要在某个项目里开发什么」那一行。",
   "author": "Plume",
   "keywords": [
